@@ -1,0 +1,136 @@
+
+@namespace ct 'http://gionkunz.github.com/chartist-js/ct';
+
+* {
+    appearance: none;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    -ms-appearance: none;
+    box-sizing: border-box;
+    text-size-adjust: none;
+
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    @media screen and (max-width: 1500px) {
+        font-size: 16px;
+    }
+    @media screen and (min-width: 1500px) and (max-width: 2200px) and (min-height: 600px) {
+        font-size: 20px;
+    }
+    @media screen and (min-width: 2200px) and (min-height: 600px) {
+        font-size: 24px;
+    }
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+ul {
+    padding: 0;
+    list-style: none;
+}
+
+.main {
+    margin: 0 auto;
+    min-width: 33rem;
+    max-width: 60rem;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.host-list {
+    background: white;
+    border: 1px solid #f0f0f0;
+    border-top: none;
+    line-height: 1;
+    overflow: hidden;
+    .host-header {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 0.8rem;
+        .status {
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.4rem;
+            width: 1rem;
+            height: 1rem;
+            &[data-status="0"] { background: hsl(135, 65%, 55%) } /* Normal */
+            &[data-status="8"] { background: hsl(45, 95%, 55%) } /* Warning */
+            &[data-status="16"] { background: hsl(355, 75%, 55%) } /* Fatal */
+        }
+        span:nth-child(2) {
+            vertical-align: top;
+        }
+    }
+}
+
+.chart:hover, .chart.touch {
+    .ct-line {
+        stroke-width: 2px;
+    }
+}
+
+.key-header {
+    background: #fafafa;
+    border-bottom: 1px solid white;
+    padding: 0.6rem;
+    &:hover, &.touch {
+        background: #f5f5f5;
+        & + .chart .ct-line {
+            stroke-width: 2px;
+        }
+    }
+    span {
+        display: inline-block;
+    }
+    span:nth-child(1) {
+        color: #aaaaaa;
+        margin-right: 0.7rem;
+    }
+    
+    &[data-status="8"] {
+        span:nth-child(2) {
+            color: hsl(45, 95%, 55%);
+            font-weight: bold;
+        }
+    } /* Warning */
+    &[data-status="16"] {
+        span:nth-child(2) {
+            color: hsl(355, 75%, 55%);
+            font-weight: bold;
+        }
+    } /* Fatal */
+}
+
+.chart {
+    display: none;
+    &, * {
+        overflow: visible;
+    }
+    position: relative;
+    height: 9rem;
+    padding: 0.7rem 1.5rem 0.2rem 0.5rem;
+}
+.ct-point {
+    stroke-width: 5px;
+    stroke: rgba(0, 0, 0, 0) !important;
+    &:hover {
+        stroke-width: 10px;
+        stroke: #d70206 !important;
+    }
+    &[ct|meta^="*"] {
+        stroke-width: 8px;
+        stroke: #d70206 !important;
+    }
+}
+.ct-line {
+    stroke-width: 1px;
+}
+.chartist-tooltip-meta {
+    font-size: 0.7rem;
+}

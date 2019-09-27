@@ -1,0 +1,146 @@
+@namespace ct "http://gionkunz.github.com/chartist-js/ct";
+* {
+  appearance: none;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  -ms-appearance: none;
+  box-sizing: border-box;
+  text-size-adjust: none;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  font-family: "Open Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+@media screen and (max-width: 1500px) {
+  html, body {
+    font-size: 16px;
+  }
+}
+@media screen and (min-width: 1500px) and (max-width: 2200px) and (min-height: 600px) {
+  html, body {
+    font-size: 20px;
+  }
+}
+@media screen and (min-width: 2200px) and (min-height: 600px) {
+  html, body {
+    font-size: 24px;
+  }
+}
+
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+.main {
+  margin: 0 auto;
+  min-width: 33rem;
+  max-width: 60rem;
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.host-list {
+  background: white;
+  border: 1px solid #f0f0f0;
+  border-top: none;
+  line-height: 1;
+  overflow: hidden;
+}
+.host-list .host-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0.8rem;
+}
+.host-list .host-header .status {
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.4rem;
+  width: 1rem;
+  height: 1rem;
+  /* Normal */
+  /* Warning */
+  /* Fatal */
+}
+.host-list .host-header .status[data-status="0"] {
+  background: #42d767;
+}
+.host-list .host-header .status[data-status="8"] {
+  background: #f9c31f;
+}
+.host-list .host-header .status[data-status="16"] {
+  background: #e23645;
+}
+.host-list .host-header span:nth-child(2) {
+  vertical-align: top;
+}
+
+.chart:hover .ct-line, .chart.touch .ct-line {
+  stroke-width: 2px;
+}
+
+.key-header {
+  background: #fafafa;
+  border-bottom: 1px solid white;
+  padding: 0.6rem;
+  /* Warning */
+  /* Fatal */
+}
+.key-header:hover, .key-header.touch {
+  background: #f5f5f5;
+}
+.key-header:hover + .chart .ct-line, .key-header.touch + .chart .ct-line {
+  stroke-width: 2px;
+}
+.key-header span {
+  display: inline-block;
+}
+.key-header span:nth-child(1) {
+  color: #aaaaaa;
+  margin-right: 0.7rem;
+}
+.key-header[data-status="8"] span:nth-child(2) {
+  color: #f9c31f;
+  font-weight: bold;
+}
+.key-header[data-status="16"] span:nth-child(2) {
+  color: #e23645;
+  font-weight: bold;
+}
+
+.chart {
+  display: none;
+  position: relative;
+  height: 9rem;
+  padding: 0.7rem 1.5rem 0.2rem 0.5rem;
+}
+.chart, .chart * {
+  overflow: visible;
+}
+
+.ct-point {
+  stroke-width: 5px;
+  stroke: rgba(0, 0, 0, 0) !important;
+}
+.ct-point:hover {
+  stroke-width: 10px;
+  stroke: #d70206 !important;
+}
+.ct-point[ct|meta^="*"] {
+  stroke-width: 8px;
+  stroke: #d70206 !important;
+}
+
+.ct-line {
+  stroke-width: 1px;
+}
+
+.chartist-tooltip-meta {
+  font-size: 0.7rem;
+}
