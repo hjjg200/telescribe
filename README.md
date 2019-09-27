@@ -22,6 +22,7 @@ Telescribe is designed in such a way that the only thing you have to worry about
 Telescribe is currently at alpha stage. When all of the followings get done, it will be its beta stage.
 
 1. Better handling of responses and requests
+1. Putting static data into binary
 1. Elliptic curve encryption
 1. I/O monitoring
 1. Disk monitoring
