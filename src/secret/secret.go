@@ -13,6 +13,36 @@ import (
     "fmt"
 )
 
+
+/*
+
+type Session
+Listener
+Dialer
+
+Client
+- Random P256 Public Key
+- Client Random
+
+Server
+- Session ID
+- Random P256 Public Key
+- Signature of Public Key signed with preexisting P256 private key
+- Server Random
+
+Client
+* Generate master secret
+- Send message
+
+Server
+* Master secret
+- Send message
+
+
+*/
+
+
+
 func rand32Bytes() []byte {
     key := make( []byte, 32 )
     _, _ = rand.Read( key )
