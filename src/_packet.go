@@ -30,18 +30,9 @@ const (
     flResponseEncrypted = 1 << iota
 )
 
-func HostnameOf( conn net.Conn ) ( string, error ) {
-    host, _, err := net.SplitHostPort( conn.RemoteAddr().String() )
-    if err != nil {
-        return "", err
-    }
-    return host, err
-}
 
-var headerSplitRegexp = regexp.MustCompile( "\\s*:\\s*" )
-func SplitResponseHeader( s string ) []string {
-    return headerSplitRegexp.Split( s, 2 )
-} 
+
+
 
 func ReadNextJsonResponse( i Instance, conn net.Conn ) ( rsp Response, err error ) {
 

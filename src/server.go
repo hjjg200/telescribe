@@ -24,16 +24,13 @@ const (
 type Server struct {
     config ServerConfig
     httpListener net.Listener
-    telescribeListener net.Listener
-    serverPrivateKey *rsa.PrivateKey // Randomly issued private key for the current session
-    clientPublicKey map[string] *rsa.PublicKey // 
-    authPrivateKey *rsa.PrivateKey
     authFingerprint string
-    cachedExecutable []byte
-    cachedExecutableSha256Signature []byte
+
     clientMonitorData map[string] map[string] MonitorDataSlice
     graphDataComposite GrpahDataComposite
     graphDataCompositeJson []byte
+    cachedExecutable []byte
+    cachedExecutableSha256Signature []byte
 }
 
 type ServerConfig struct {
@@ -98,11 +95,6 @@ var DefaultServerConfig = ServerConfig{
     },
 }
 
-type ServerInstance struct {
-    parent *Server
-    host string
-}
-
 func NewServer( prt int ) *Server {
     srv := &Server{}
     srv.clientPublicKey = make( map[string] *rsa.PublicKey )
@@ -110,39 +102,8 @@ func NewServer( prt int ) *Server {
     return srv
 }
 
-func ( srv *Server ) NewInstance( host string ) *ServerInstance {
-    return &ServerInstance{
-        parent: srv,
-        host: host,
-    }
-}
-
-func ( si *ServerInstance ) MyPrivateKey() *rsa.PrivateKey {
-    return si.parent.serverPrivateKey
-}
-
-func ( si *ServerInstance ) MyPublicKey() *rsa.PublicKey {
-    return &si.parent.serverPrivateKey.PublicKey
-}
-
-func ( si *ServerInstance ) TheirPublicKey() *rsa.PublicKey {
-    return si.parent.clientPublicKey[si.host]
-}
-
-func ( si *ServerInstance ) SetTheirPublicKey( rsaPub *rsa.PublicKey ) {
-    si.parent.clientPublicKey[si.host] = rsaPub
-}
-
-func ( si *ServerInstance ) Parent() *Server {
-    return si.parent
-}
-
-func ( si *ServerInstance ) Host() string {
-    return si.host
-}
-
-func ( si *ServerInstance ) ClientConfig() ClientConfig {
-    clCfg, ok := si.Parent().config.ClientConfigs[si.Host()]
+func ( srv *Server ) ClientConfig( host string ) ClientConfig {
+    clCfg, ok := si.Parent().config.ClientConfigs[host]
     if !ok {
         panic( "No client config" )
     }
@@ -203,109 +164,46 @@ func ( srv *Server ) cacheExecutable() error {
 }
 
 func ( srv *Server ) checkAuthPrivateKey() error {
-
     apk := srv.config.AuthPrivateKeyPath
-    st, err := os.Stat( apk )
-
-    switch {
-    case err != nil && !os.IsNotExist( err ):
-        // Panic
-        return err
-    case os.IsNotExist( err ):
-        // Not exists
-        Logger.Infoln( "Server authentication private key does not exist." )
-        Logger.Infoln( "Creating a new one at", apk )
-        f, err := os.OpenFile( apk, os.O_WRONLY | os.O_CREATE, 0400 )
-        if err != nil {
-            return err
-        }
-        srv.authPrivateKey = secret.RandomPrivateKey()
-        f.Write( []byte( secret.SerializePrivateKey( srv.authPrivateKey ) ) )
-        f.Close()
-        Logger.Infoln( "Issued a new private key for signature authentication." )
-        return nil
-    default:
-        // Exists
-        if st.Mode() != 0400 {
-            return fmt.Errorf( "The server authentication private key is in a wrong permission mode. Please set it to 400." )
-        }
-        Logger.Infoln( "Reading the server authentication private key..." )
-        f, err := os.OpenFile( apk, os.O_RDONLY, 0400 )
-        if err != nil {
-            return err
-        }
-        buf := make( []byte, st.Size() )
-        _, err = f.Read( buf )
-        if err != nil {
-            return err
-        }
-        srv.authPrivateKey, err = secret.DeserializePrivateKey( string( buf ) )
-        if err != nil {
-            return err
-        }
-        Logger.Infoln( "Successfully loaded the server authentication private key." )
-        return nil
-    }
-
+    return LoadAuthPrivateKey( apk )
 }
 
-func ( srv *Server ) Start() error {
+func ( srv *Server ) Start() ( err error ) {
+
+    defer Catch( &err )
 
     // Config
-    err := srv.LoadConfig( flServerConfigPath )
-    if err != nil {
-        return err
-    }
+    err = srv.LoadConfig( flServerConfigPath )
+    Try( err )
     Logger.Infoln( "Loaded Config" )
 
-    // Session Key
-    srv.serverPrivateKey = secret.RandomPrivateKey()
-    Logger.Infoln( "Issued a Random Key for the Current Session" )
-
-    // Authentication
+    //
     err = srv.checkAuthPrivateKey()
-    if err != nil {
-        return err
-    }
+    Try( err )
     srv.authFingerprint = secret.FingerprintPublicKey( &srv.authPrivateKey.PublicKey )
     Logger.Infoln( "The fingerprint of the authentication public key is:" )
     Logger.Infoln( srv.authFingerprint )
 
     // Cache Executable
     err = srv.cacheExecutable()
-    if err != nil {
-        return err
-    }
+    Try( err )
     Logger.Infoln( "Cached Executable for Auto-Update" )
 
     // Read Monitor Data Cache
     err = srv.readCachedMonitordItems()
-    if err != nil {
-        return err
-    }
+    Try( err )
     Logger.Infoln( "Read the Cached Monitored Items" )
 
     // Ensure Directories
     err = EnsureDirectory( srv.config.MonitorDataCacheDir )
-    if err != nil {
-        return err
-    }
+    Try( err )
     Logger.Infoln( "Ensured Necessary Directories" )
 
     // Network
     addr := fmt.Sprintf( "%s:%d", srv.config.Bind, srv.config.Port )
     ln, err := net.Listen( "tcp", addr )
-    if err != nil {
-        return err
-    }
+    Try( err )
     Logger.Infoln( "Network Configured to Listen at", addr )
-
-    // Sub Listener
-    srv.telescribeListener, err = net.Listen( "tcp", "127.0.0.1:0" )
-    if err != nil {
-        return err
-    }
-    Logger.Infoln( "Sub Listener Started" )
 
     // Flush cache
     go func() {
@@ -344,10 +242,10 @@ func ( srv *Server ) Start() error {
                 ClientAliases: ca,
                 ClientMonitorData: cmd,
             }
-            var err error
-            srv.graphDataCompositeJson, err = json.Marshal( srv.graphDataComposite )
-            if err != nil {
-                Logger.Warnln( err )
+            var err2 error
+            srv.graphDataCompositeJson, err2 = json.Marshal( srv.graphDataComposite )
+            if err2 != nil {
+                Logger.Warnln( err2 )
             } else {
                 Logger.Infoln( "Cached Graph-ready Data" )
             }
@@ -389,26 +287,6 @@ func ( srv *Server ) Start() error {
         defer dest.Close()
         io.Copy( dest, src )
     }
-    forwardConnection := func( pre []byte, src net.Conn, addr string ) {
-        proxy, err := net.Dial( "tcp", addr )
-        if err != nil {
-            return
-        }
-        startLine := strings.Split( string( pre ), "\n" )[0]
-        switch {
-        case strings.Contains( startLine, "HTTP" ):
-        case strings.Contains( startLine, "TELESCRIBE" ):
-            // Write Remote Host
-            host, err := HostnameOf( src )
-            if err != nil {
-                return
-            }
-            proxy.Write( packStringPacket( host ) )
-        }
-        proxy.Write( pre ) // Write the bytes that are already read
-        go copyIO( src, proxy )
-        go copyIO( proxy, src )
-    }
     for {
 
         time.Sleep( time.Duration( 1000.0 / float64( srv.config.Tickrate ) ) * time.Millisecond )
@@ -432,19 +310,30 @@ func ( srv *Server ) Start() error {
             continue
         }
 
-        var destAddr string
+        already := append( []byte( startLine ), rest... ) // Bytes that are already read
+
         switch {
         case strings.Contains( startLine, "HTTP" ):
-            destAddr = srv.httpListener.Addr().String()
+            proxy, err2 := net.Dial( "tcp", srv.httpListener.Addr().String() )
+            if err2 != nil {
+                Logger.Warnln( err )
+                continue
+            }
+            proxy.Write( already )
+            go copyIO( proxy, conn )
+            go copyIO( conn, proxy )
         case strings.Contains( startLine, "TELESCRIBE" ):
-            destAddr = srv.telescribeListener.Addr().String()
+            s := NewSession()
+            s.PrependRawInput( bytes.NewReader( already ) )
+            srv.HandleSession( s )
         default:
             continue
         }
 
-        go forwardConnection( append( []byte( startLine ), rest... ), conn, destAddr )
-
     }
+
+    err = fmt.Errorf( "Server terminated" )
+    return
 
 }
 
@@ -554,13 +443,12 @@ func ( srv *Server ) FlushCachedMonitoredItems() ( err error ) {
 
 }
 
-func ( si *ServerInstance ) RecordMonitorData( md map[string] interface{} ) {
+func ( srv *ServerInstance ) RecordMonitorData( host string, md map[string] interface{} ) {
 
     //
-    srv := si.Parent()
-    _, ok := srv.clientMonitorData[si.Host()]
+    _, ok := srv.clientMonitorData[host]
     if !ok {
-        srv.clientMonitorData[si.Host()] = make( map[string] MonitorDataSlice )
+        srv.clientMonitorData[host] = make( map[string] MonitorDataSlice )
     }
 
     //
@@ -568,7 +456,7 @@ func ( si *ServerInstance ) RecordMonitorData( md map[string] interface{} ) {
     timestamp := time.Now().Unix()
 
     appendValue := func( key string, val float64 ) {
-        short, ok := srv.clientMonitorData[si.Host()][key]
+        short, ok := srv.clientMonitorData[host][key]
         if !ok {
             short = initialized
         }
@@ -578,7 +466,7 @@ func ( si *ServerInstance ) RecordMonitorData( md map[string] interface{} ) {
             short = short[start:]
         }
 
-        srv.clientMonitorData[si.Host()][key] = append(
+        srv.clientMonitorData[host][key] = append(
             short,
             MonitorDataSliceElem{
                 Value: val,
@@ -621,222 +509,69 @@ func ( srv *Server ) getMonitorInfo( host, key string ) ( MonitorInfo ) {
 
 }
 
-func ( si *ServerInstance ) HandleClientConnection( conn net.Conn ) {
+func ( srv *Server ) HandleSession( s *Session ) {
+
+    // Need to send config somehow
 
     //
+    host := s.RemoetHost()
     whitelisted := false
-    for k := range si.Parent().config.ClientConfigs {
-        if k == si.Host() {
+    for k := range srv.config.ClientConfigs {
+        if k == host {
             whitelisted = true
             break
         }
     }
     if !whitelisted {
-        WriteJsonResponse(
-            si, conn,
-            Response{
-                Name: "not-whitelisted",
-            },
-        )
-        Logger.Infoln( si.Host(), "[non-whitelisted] tried to establish a connection" )
+        srvRsp := NewResponse( "not-whitelisted" )
+        s.WriteResponse( srvRsp )
+        Logger.Infoln( host, "[non-whitelisted] tried to establish a connection" )
         return
     }
 
-    Logger.Infoln( si.Host(), "connected" )
-    rsp, err := ReadNextJsonResponse( si, conn )
+    Logger.Infoln( host, "connected" )
+    clRsp, err := s.NextResponse()
     if err != nil {
-        WriteJsonResponse(
-            si, conn,
-            Response{
-                Name: "session-expired",
-            },
-        )
-        Logger.Infoln( si.Host(), "session expiry" )
+        // TODO err
         return
     }
 
-    // TODO expired-session
-
-    switch rsp.Name {
+    //
+    switch clRsp.Name() {
     case "monitor-data":
 
         // TODO version check
-        if rsp.String( "version" ) != Version {
+        if clRsp.String( "version" ) != Version {
             // ...
-            Logger.Warnln( si.Host(), "VERSION MISMATCH" )
-            err = WriteJsonResponse(
-                si, conn,
-                Response{
-                    Name: "version-mismatch",
-                    Args: map[string] interface{} {
-                        "sha256Signature": si.Parent().cachedExecutableSha256Signature,
-                        "executable": si.Parent().cachedExecutable,
-                    },
-                },
-            )
+            Logger.Warnln( host, "VERSION MISMATCH" )
+            srvRsp := NewResponse( "version-mismatch" )
+            srvRsp.SetArg( "sha256Signature", srv.cachedExecutableSha256Signature )
+            srvRsp.SetArg( "executable", srv.cachedExecutable )
+            err = s.WriteResponse( srvRsp )
             if err != nil {
+                // TODO err
                 return
             }
             return
         }
 
-        //miCfg := si.ClientConfig().MonitorInfos
-        md, ok := rsp.Args["monitorData"].( map[string] interface{} )
+        //
+        md, ok := clRsp.Args["monitorData"].( map[string] interface{} )
         if !ok {
+            // TODO err
             return
         }
-        si.RecordMonitorData( md )
+        srv.RecordMonitorData( host, md )
 
         // OK
-        err = WriteJsonResponse(
-            si, conn,
-            Response{
-                Name: "ok",
-            },
-        )
+        srvRsp := NewResponse( "ok" )
+        err = s.WriteResponse( srvRsp )
         if err != nil {
+            // TODO err
             return
         }
 
         return
-    case "handshake-initiate":
-        Logger.Infoln( si.Host(), "HANDSHAKE INITIATE" )
-
-        // Server PublicKey
-        err = WriteJsonResponse(
-            si, conn,
-            Response{
-                Name: "handshake-server-publickey",
-                Args: map[string] interface{} {
-                    "publicKey": secret.SerializePublicKey( si.MyPublicKey() ),
-                    "authPublicKey": secret.SerializePublicKey( &si.Parent().authPrivateKey.PublicKey ),
-                },
-            },
-        )
-        if err != nil {
-            return
-        }
-
-         // Version Challenge
-        Logger.Infoln( si.Host(), "VERSION CHALLENGE" )
-        rsp, err := ReadNextJsonResponse( si, conn )
-        if err != nil {
-            return
-        }
-        if rsp.Name != "handshake-version-challenge" {
-            return
-        }
-        ver := rsp.String( "version" )
-        if ver != Version {
-            Logger.Warnln( si.Host(), "VERSION MISMATCH" )
-            err = WriteJsonResponse(
-                si, conn,
-                Response{
-                    Name: "handshake-version-challenge-response",
-                    Args: map[string] interface{} {
-                        "result": "mismatch",
-                        "sha256Signature": si.Parent().cachedExecutableSha256Signature,
-                        "executable": si.Parent().cachedExecutable,
-                    },
-                },
-            )
-            Logger.Infoln( si.Host(), "TERMINATING CONNECTION" )
-            return
-        } else {
-            err = WriteJsonResponse(
-                si, conn,
-                Response{
-                    Name: "handshake-version-challenge-response",
-                    Args: map[string] interface{} {
-                        "result": "match",
-                    },
-                },
-            )
-            if err != nil {
-                return
-            }
-        }
-
-        // Authentication Challenge
-        Logger.Infoln( si.Host(), "AUTHENTICATION CHALLENGE" )
-        rsp, err = ReadNextJsonResponse( si, conn )
-        if err != nil {
-            return
-        }
-        if rsp.Name != "handshake-authentication-challenge" {
-            return
-        }
-        msg := rsp.Bytes( "message" )
-        signature := secret.Sign( si.Parent().authPrivateKey, msg )
-        
-        err = WriteJsonResponse(
-            si, conn,
-            Response{
-                Name: "handshake-challenge-response",
-                Args: map[string] interface{} {
-                    "signature": signature,
-                },
-            },
-        )
-        if err != nil {
-            return
-        }
-
-        // Client public key
-        rsp, err = ReadNextJsonResponse( si, conn )
-        if err != nil {
-            return
-        }
-        if rsp.Name != "handshake-client-publickey" {
-            return
-        }
-        serializedPublicKey := rsp.String( "publicKey" )
-        rsaPub, err := secret.DeserializePublicKey( serializedPublicKey )
-        if err != nil {
-            return
-        }
-        si.SetTheirPublicKey( rsaPub )
-
-        // Ping
-        err = WriteEncryptedJsonResponse(
-            si, conn,
-            Response{
-                Name: "handshake-ping",
-            },
-        )
-        if err != nil {
-            return
-        }
-
-        // Pong
-        rsp, err = ReadNextJsonResponse( si, conn )
-        if err != nil {
-            return
-        }
-        if rsp.Name != "handshake-pong" {
-            return
-        }
-
-        // Client Config
-        ccfg := si.Parent().config.ClientConfigs[si.Host()]
-        j, err := json.Marshal( ccfg )
-        if err != nil {
-            return
-        }
-        sha256Signature := secret.Sign( si.Parent().authPrivateKey, Sha256Sum( j )[:] )
-        err = WriteEncryptedJsonResponse(
-            si, conn,
-            Response{
-                Name: "handshake-client-config",
-                Args: map[string] interface{} {
-                    "config": j,
-                    "sha256Signature": sha256Signature,
-                },
-            },
-        )
-
-        Logger.Infoln( si.Host(), "SUCCESSFUL HANDSHAKE" )
-
     }
 
 }

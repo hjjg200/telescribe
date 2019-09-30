@@ -43,7 +43,7 @@ Server
 
 
 
-func rand32Bytes() []byte {
+func Rand32Bytes() []byte {
     key := make( []byte, 32 )
     _, _ = rand.Read( key )
     // https://golang.org/pkg/math/rand/#Read
@@ -123,7 +123,7 @@ func Encrypt( rsaPub *rsa.PublicKey, data []byte ) []byte {
     // | RSA-Encrypted AES Key(256) | AES Encrypted Data(variable) |
 
     // AES PART
-    aesSymKey := rand32Bytes()
+    aesSymKey := Rand32Bytes()
     aesBlock, _ := aes.NewCipher( aesSymKey )
     // symKey is guaranteed to be 32 bytes long
     aesGcm, _ := cipher.NewGCM( aesBlock )
