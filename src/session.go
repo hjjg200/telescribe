@@ -3,16 +3,22 @@ package main
 import (
     "bufio"
     "bytes"
-    "crypto/rsa"
+    "crypto/elliptic"
     "encoding/base64"
     "encoding/binary"
+    "encoding/json"
     "fmt"
     "io"
+    "math/big"
     "net"
-    "strconv"
+    "os"
     "strings"
     "regexp"
+    "sync"
+    "sync/atomic"
+    "time"
     . "./tc"
+    "./secret"
     "./secret/p256"
     "./secret/aesgcm"
 )
@@ -43,15 +49,17 @@ var sessionAutoIncrement int64 = 0
 type SessionInfo struct {
     id []byte
     ephmPriv *p256.PrivateKey
+    ephmPub *p256.PublicKey
     ephmMaster *aesgcm.Key
     thirdPub *p256.PublicKey // third party's public
     expiry time.Time
 }
 
 type Session struct {
+    handshaken int32
     info *SessionInfo
     rawInput io.Reader
-    input *bufio.Reader
+    input *bytes.Reader
     conn net.Conn
     inMu sync.Mutex
     outMu sync.Mutex
@@ -74,15 +82,14 @@ func init() {
 }
 
 func NewSession(conn net.Conn) *Session {
-
-    s := &Session{
-        id: nil,
-        rawInput: conn,
-        conn: conn,
-    }
-
+    s := &Session{}
+    s.SetConn(conn)
     return s
+}
 
+func (s *Session) SetConn(conn net.Conn) {
+    s.rawInput = conn
+    s.conn = conn
 }
 
 func NewSessionInfo() (*SessionInfo) {
@@ -92,8 +99,9 @@ func NewSessionInfo() (*SessionInfo) {
     priv := p256.GenerateKey()
 
     si := &SessionInfo{
-        id, id,
+        id: id,
         ephmPriv: priv,
+        ephmPub: &priv.PublicKey,
         expiry: time.Now().Add(sessionLifetime),
     }
     cachedSessionInfos[string(id)] = si
@@ -102,6 +110,7 @@ func NewSessionInfo() (*SessionInfo) {
 
 }
 
+var knownHostsPath string
 func LoadKnownHosts(fn string) error {
 
     // KnownHosts file structure
@@ -110,6 +119,7 @@ func LoadKnownHosts(fn string) error {
     // # Server 1
     // localhost 1bh=+vbhBg312...
 
+    knownHostsPath = fn
     sessionKnownHosts = make(map[string] *p256.PublicKey)
     kh := fn
     st, err := os.Stat(kh)
@@ -147,17 +157,15 @@ func LoadKnownHosts(fn string) error {
                 Logger.Warnln(err)
                 continue
             }
-            sessionKnownHosts[host] = fp
+            sessionKnownHosts[host] = pub
         }
         return nil
     }
 
 }
 
-var knownHostsPath string
 func LoadAuthPrivateKey(apk string) error {
 
-    knownHostsPath = apk
     st, err := os.Stat(apk)
 
     switch {
@@ -242,36 +250,37 @@ const (
 //
 
 func (s *Session) RemoteHost() (string, error) {
-    return HostnameOf(s.conn.RemoteAddr())
+    return HostnameOf(s.conn)
 }
 
 func (s *Session) PrependRawInput(r io.Reader) {
     s.rawInput = io.MultiReader(r, s.rawInput)
 }
 
-func (s *Session) ReadEncrypted(p []byte) (int, error) {
-    buf := make([]byte, len(p))
-    n, err := s.rawInput.Read(buf)
-    if err != nil {
-        return 0, err
-    }
-    decrypted := aesgcm.Decrypt(s.info.ephmMaster, buf)
-    s.input = bufio.NewReader(bytes.NewReader(decrypted))
+func (s *Session) ReadEncrypted(p []byte) (i int, err error) {
+    defer Catch(&err)
+    encrypted, err := readNextPacket(s.rawInput)
+    Try(err)
+    decrypted, err := aesgcm.Decrypt(s.info.ephmMaster, encrypted)
+    Try(err)
+    s.input = bytes.NewReader(decrypted)
     return s.input.Read(p)
 }
 
-func (s *Session) WriteEncrypted(p []byte) (int, error) {
+func (s *Session) WriteEncrypted(p []byte) (i int, err error) {
+    defer Catch(&err)
     s.writeRecordHeader(packetTypeEncrypted)
-    writeVarint(s.conn, len(s.info.id))
-    s.conn.Write(s.info.id)
     encrypted := aesgcm.Encrypt(s.info.ephmMaster, p)
+    Try(writeByteSlicePacket(s.conn, s.info.id))
+    Try(writeByteSlicePacket(s.conn, encrypted))
     return s.conn.Write(encrypted)
 }
 
 func (s *Session) Read(p []byte) (int, error) {
-    s.inMu.Lock()
-    defer s.inMu.Unlock()
 
+    s.inMu.Lock()
+
+    Logger.Debugln("Read start")
     if s.input != nil && s.input.Len() > 0 {
         return s.input.Read(p)
     }
@@ -279,13 +288,15 @@ func (s *Session) Read(p []byte) (int, error) {
     //
     prh, err := s.readRecordHeader()
     if err != nil {
-        return err
+        return 0, err
     }
+    Logger.Debugln(prh)
 
     switch prh.typ {
     case packetTypeSessionNotFound:
         // Not found
         atomic.StoreInt32(&s.handshaken, 0)
+        s.inMu.Unlock()
         return 0, fmt.Errorf("Need to perform another handshake")
     case packetTypeHandshakeBegin:
         s.outMu.Lock()
@@ -294,10 +305,11 @@ func (s *Session) Read(p []byte) (int, error) {
             return 0, err
         }
         s.outMu.Unlock()
+        s.inMu.Unlock()
         return s.Read(p)
     // case packetTypeHandshakeEnd:
     case packetTypeEncrypted:
-        sessionId, err := readNextPacket(srvHs)
+        sessionId, err := readNextPacket(s.rawInput)
         if err != nil {
             return 0, err
         }
@@ -315,9 +327,11 @@ func (s *Session) Read(p []byte) (int, error) {
                 return 0, fmt.Errorf("Session id mismatch")
             }
         }
+        s.inMu.Unlock()
         return s.ReadEncrypted(p)
     }
 
+    s.inMu.Unlock()
     return 0, fmt.Errorf("Invalid")
 }
 
@@ -327,6 +341,7 @@ func (s *Session) Write(p []byte) (int, error) {
 
     if !s.Handshaken() {
         s.inMu.Lock()
+        Logger.Debugln("Handshake attempt")
         err := s.BeginHandshake()
         if err != nil {
             return 0, err
@@ -345,20 +360,21 @@ func HostnameOf(conn net.Conn) (string, error) {
     return host, err
 }
 
-func (s *Session) calculatePreMaster(pub *p256.PublicKey) ([]byte, error) {
+func (s *Session) calculatePreMaster(pub *p256.PublicKey) ([]byte) {
     x, y := pub.X, pub.Y
-    pmX, pmY := p256.ScalarMult(x, y, s.info.ephmPriv.Bytes())
-    pm, _ := elliptic.Marshal(elliptic.P256(), pmX, pmY)
-    return pm, nil
+    curve := elliptic.P256()
+    pmX, pmY := curve.ScalarMult(x, y, s.info.ephmPriv.D.Bytes())
+    pm := elliptic.Marshal(curve, pmX, pmY)
+    return pm
 }
 
 func (s *Session) writeRecordHeader(typ byte) error {
 
     buf := bytes.NewBuffer(nil)
     buf.Write([]byte(packetRecordHeaderStart))
-    buf.Write([]byte{ packetVersionMajor, packetVersionMinor })
-    buf.Write([]byte{ typ })
-    buf.Write([]byte{ '\n' })
+    buf.Write([]byte{packetVersionMajor, packetVersionMinor})
+    buf.Write([]byte{typ})
+    buf.Write([]byte{'\n'})
     _, err := s.conn.Write(buf.Bytes())
     return err
 
@@ -369,51 +385,15 @@ func (s *Session) BeginHandshake() (err error) {
     defer Catch(&err)
 
     if sessionKnownHosts == nil {
-        return 0, fmt.Errorf("Client must have known host list.")
+        return fmt.Errorf("Client must have known host list.")
     }
-
-    authPub, ok := sessionKnownHosts[host]
-    if !ok {
-        // TODO scan for y
-
-        
-        // Check Known Hosts
-        fp := secret.FingerprintPublicKey(rsaAuthPub)
-        host := flClientHostname
-        haveFp, ok := cl.knownHosts[host]
-
-        if ok && haveFp != fp {
-            return fmt.Errorf("The fingerprint for %s does not match!\nHave: %s\nGiven: %s", host, haveFp, fp)
-        } else if !ok {
-            fmt.Println("The server you are trying to connect has an unknown public key fingerprint:")
-            fmt.Println(fp, "\n")
-            fmt.Print("Accept the server's authentication public key? (y/N): ")
-            rd := bufio.NewReader(os.Stdin)
-            y, err := rd.ReadString('\n')
-            if err != nil {
-                return err
-            }
-            y = y[:1]
-            if y == "y" || y == "Y" {
-                cl.knownHosts[host] = fp
-                err = cl.updateKnownHosts()
-                if err != nil {
-                    return err
-                }
-            } else {
-                return fmt.Errorf("Did not accept the server request.")
-            }
-        }
-
-
-        return 0, fmt.Errorf("The host is not known")
-    }
-
-    err := s.writeRecordHeader(packetTypeHandshakeBegin)
-    Try(err)
 
     host, err := HostnameOf(s.conn)
     Try(err)
+    authPub, haveAuthPub := sessionKnownHosts[host]
+
+    Try(s.writeRecordHeader(packetTypeHandshakeBegin))
+
     forDigest := bytes.NewBuffer(nil)
 
     // Block from client
@@ -423,50 +403,92 @@ func (s *Session) BeginHandshake() (err error) {
     si := NewSessionInfo()
     si.id = nil
     s.info = si
-    clRnd := secret.Rand32Bytes()
-    challenge := secret.Rand32Bytes()
+    clRnd := secret.RandomBytes(32)
+    challenge := secret.RandomBytes(32)
     buf := bytes.NewBuffer(nil)
     mw := io.MultiWriter(buf, s.conn)
+    Logger.Debugln("Attempting to write to server")
     err = writeByteSeriesPacket(mw, [][]byte{
-        clRnd, s.info.ephmPub, challenge,
+        clRnd, s.info.ephmPub.Bytes(), challenge,
     })
     Try(err)
     clHsMsg, err := readNextPacket(bytes.NewReader(buf.Bytes()))
     Try(err)
     forDigest.Write(clHsMsg)
     
+    Logger.Debugln("Sent all handshake packet")
+    
     // Block from server
     // | length(varint) | server random length | server random |
     // | public key length | public key |
     // | signature length | public key signature signed with auth priv |
     // | challenge signature length | challenge signature |
+    // | server auth pub length | server auth pub |
     // | session id length | session id |
 
     //
     prh, err := s.readRecordHeader()
     Try(err)
+    Logger.Debugln(prh)
 
     //
     if prh.typ != packetTypeHandshakeEnd {
-        return fmt.Errorf("Bad handshake record header")
+        Try(fmt.Errorf("Bad handshake record header"))
     }
 
-    bx, err := readNextPacket(s.conn)
+    bx, err := readNextPacket(s.rawInput)
     Try(err)
     srvHs := bytes.NewReader(bx)
     srvRnd, err := readNextPacket(srvHs)
     Try(err)
-    srvPub, err := readNextPacket(srvHs)
+    srvPubBytes, err := readNextPacket(srvHs)
     Try(err)
     srvPubSig, err := readNextPacket(srvHs)
     Try(err)
     srvChallenge, err := readNextPacket(srvHs)
     Try(err)
-    sessionId, err := readNextPacket(srvHs)
+    srvAuthPubBytes, err := readNextPacket(srvHs)
     Try(err)
 
+    if !haveAuthPub {
+        // TODO scan for y
+
+        authPub = new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        fp := authPub.Fingerprint()
+        fmt.Println("The server you are trying to connect has an unknown public key fingerprint:")
+        fmt.Println(fp, "\n")
+        fmt.Println("Accept the server's authentication public key? (y/N): ")
+
+        stdRd := bufio.NewReader(os.Stdin)
+        y, err := stdRd.ReadString('\n')
+        Try(err)
+        y = y[:1]
+        if y == "y" || y == "Y" {
+            sessionKnownHosts[host] = authPub
+            Try(FlushKnownHosts())
+        } else {
+            Try(fmt.Errorf("Did not accept the server request."))
+        }
+    } else {
+        // Compare Public Key
+        cmp := bytes.Compare(authPub.Bytes(), srvAuthPubBytes)
+        givenAuthPub := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        if cmp != 0 {
+            Logger.Warnln("The host's public key fingerprint does not match!\n" +
+                "Terminating the connection!\n\n" +
+                "Have:", authPub.Fingerprint() +
+                "Given:", givenAuthPub.Fingerprint(),
+            )
+            Try(fmt.Errorf("Auth public key does not match"))
+        }
+    }
+
+    sessionId, err := readNextPacket(srvHs)
+    Try(err)
+    s.info.id = sessionId
+
     // Verify server pub
-    verified := p256.Verify(authPub, srvPub.Bytes(), srvPubSig)
+    verified := p256.Verify(authPub, srvPubBytes, srvPubSig)
     challengeResult := p256.Verify(authPub, challenge, srvChallenge)
 
     if !(verified && challengeResult) {
@@ -479,68 +501,68 @@ func (s *Session) BeginHandshake() (err error) {
     // SHA256(PreMasterSecret || SHA256(digest) || clRnd || srvRnd)
 
     buf = bytes.NewBuffer(nil)
+    srvPub := new(p256.PublicKey).SetBytes(srvPubBytes)
     preMaster := s.calculatePreMaster(srvPub)
-    digest := sha256Sum(forDigest.Bytes())
+    digest := Sha256Sum(forDigest.Bytes())
     buf.Write(preMaster)
     buf.Write(digest)
     buf.Write(clRnd)
     buf.Write(srvRnd)
 
-    s.info.ephmMaster = Sha256Sum(buf.Bytes())
+    master := aesgcm.NewKey(Sha256Sum(buf.Bytes()))
+    Logger.Debugln("Master", master)
+    s.info.ephmMaster = master
     s.info.thirdPub = srvPub
     atomic.StoreInt32(&s.handshaken, 1)
+
+    return nil
 
 }
 
 func (s *Session) EndHandshake() (err error) {
 
     defer Catch(&err)
-
     //
     if sessionAuthPriv == nil {
-        return 0, fmt.Errorf("Server must have an auth private key.")
+        return fmt.Errorf("Server must have an auth private key.")
     }
 
-    //
-    prh, err := s.readRecordHeader()
-    Try(err)
-
-    //
-    if prh.typ != packetTypeHandshakeBegin {
-        return fmt.Errorf("Bad handshake record header")
-    }
+    Logger.Debugln("Accepted handshake begin")
 
     //
     forDigest := bytes.NewBuffer(nil)
 
-    bx, err := readNextPacket(s.conn)
+    bx, err := readNextPacket(s.rawInput)
+    bxRd := bytes.NewReader(bx)
     Try(err)
-    clRnd, err := readNextPacket(bx)
+    clRnd, err := readNextPacket(bxRd)
     Try(err)
-    clPub, err := readNextPacket(bx)
+    clPubBytes, err := readNextPacket(bxRd)
     Try(err)
-    clChallenge, err := readNextPacket(bx)
+    clPub := new(p256.PublicKey).SetBytes(clPubBytes)
+    clChallenge, err := readNextPacket(bxRd)
     Try(err)
 
     forDigest.Write(bx)
 
     // Response
-    err := s.writeRecordHeader(packetTypeHandshakeEnd)
-    Try(err)
+    Try(s.writeRecordHeader(packetTypeHandshakeEnd))
 
     si := NewSessionInfo()
-    srvRnd := rand32Bytes()
+    s.info = si
+    srvRnd := secret.RandomBytes(32)
     srvPubSig := p256.Sign(sessionAuthPriv, si.ephmPub.Bytes())
     challengeSig := p256.Sign(sessionAuthPriv, clChallenge)
 
     buf := bytes.NewBuffer(nil)
     mw := io.MultiWriter(buf, s.conn)
     err = writeByteSeriesPacket(mw, [][]byte{
-        srvRnd, si.ephmPub.Bytes(), srvPubSig, challengeSig, si.id,
+        srvRnd, si.ephmPub.Bytes(), srvPubSig,
+        challengeSig, sessionAuthPriv.PublicKey.Bytes(), si.id,
     })
     Try(err)
 
-    bx, err := readNextPacket(buf.Bytes())
+    bx, err = readNextPacket(bytes.NewReader(buf.Bytes()))
     Try(err)
     forDigest.Write(bx)
 
@@ -549,15 +571,19 @@ func (s *Session) EndHandshake() (err error) {
 
     buf = bytes.NewBuffer(nil)
     preMaster := s.calculatePreMaster(clPub)
-    digest := sha256Sum(forDigest.Bytes())
+    digest := Sha256Sum(forDigest.Bytes())
     buf.Write(preMaster)
     buf.Write(digest)
     buf.Write(clRnd)
     buf.Write(srvRnd)
 
-    si.ephmMaster = sha256Sum(buf.Bytes())
+    master := aesgcm.NewKey(Sha256Sum(buf.Bytes()))
+    Logger.Debugln("Master", master)
+    si.ephmMaster = master
     si.thirdPub = clPub
     atomic.StoreInt32(&s.handshaken, 1)
+
+    return nil
 
 }
 
@@ -574,10 +600,10 @@ func (br byteReader) ReadByte() (byte, error) {
     return p[0], nil
 }
 
-func writeVarint(w io.Writer, n int64) error {
-    buf := make([]byte, binary.MaxVarintLen64)
-    p := binary.PutVarint(buf, n)
-    _, err := w.Write(p.Bytes())
+func writeVarint(w io.Writer, i int64) error {
+    p := make([]byte, binary.MaxVarintLen64)
+    n := binary.PutVarint(p, i)
+    _, err := w.Write(p[:n])
     return err
 }
 
@@ -591,24 +617,33 @@ func readNextPacket(r io.Reader) ([]byte, error) {
         return nil, err
     }
     p := make([]byte, n)
-    n2, err = r.Read(p)
-    if err != nil || n != n2 {
+    n2, err := r.Read(p)
+    if err != nil || n != int64(n2) {
         return nil, fmt.Errorf("Bad packet")
     }
     return p, nil
 }
 
-func writeByteSeriesPacket(w io.Writer bx [][]byte) error {
+func writeByteSlicePacket(w io.Writer, p []byte) (err error) {
+    defer Catch(&err)
+    Try(writeVarint(w, int64(len(p))))
+    _, err = w.Write(p)
+    return
+}
+
+func writeByteSeriesPacket(w io.Writer, bx [][]byte) (err error) {
+    defer Catch(&err)
+
     buf := bytes.NewBuffer(nil)
     for _, p := range bx {
-        writeVarint(buf, len(p))
-        buf.Write(p)
+        Try(writeByteSlicePacket(buf, p))
     }
     all := buf.Bytes()
     buf = bytes.NewBuffer(nil)
-    writeVarint(buf, len(all))
+    writeVarint(buf, int64(len(all)))
     buf.Write(all)
-    _, err := w.Write(buf.Bytes())
+
+    _, err = w.Write(buf.Bytes())
     return err
 }
 
@@ -619,13 +654,14 @@ type PacketRecordHeader struct {
 func (s *Session) readRecordHeader() (PacketRecordHeader, error) {
     prhl := packeRecordtHeaderLen
     p := make([]byte, prhl)
-    n, err := s.conn.Read(p)
+    Logger.Debugln("Attenpting to read header")
+    n, err := s.rawInput.Read(p)
     if err != nil || n != prhl {
         return PacketRecordHeader{}, fmt.Errorf("Bad record header")
     }
 
     // Check
-    if p[:10] != packetRecordHeaderStart ||
+    if string(p[:10]) != packetRecordHeaderStart ||
         p[10] != packetVersionMajor ||
         p[11] != packetVersionMinor {
         return PacketRecordHeader{}, fmt.Errorf("Bad record header")
@@ -637,11 +673,17 @@ func (s *Session) readRecordHeader() (PacketRecordHeader, error) {
 }
 
 func (s *Session) WriteResponse(rp Response) error {
-
+    j, err := json.Marshal(rp.Args())
+    if err != nil {
+        return err
+    }
+    return writeByteSeriesPacket(s, [][]byte{
+        []byte(rp.Name()), j,
+    })
 }
 
 func (s *Session) NextResponse() (Response, error) {
-
+    return ReadResponse(s)
 }
 
 func (s *Session) Handshaken() bool {
@@ -655,10 +697,6 @@ type Response struct {
     args map[string] interface{}
 }
 
-var commaSplitRegexp = regexp.MustCompile("\\s*,\\s*")
-func SplitComma(s string) []string {
-    return commaSplitRegexp.Split(s, -1)
-}
 var headerSplitRegexp = regexp.MustCompile("\\s*:\\s*")
 func SplitResponseHeader(s string) []string {
     return headerSplitRegexp.Split(s, 2)
@@ -666,55 +704,29 @@ func SplitResponseHeader(s string) []string {
 
 func ReadResponse(r io.Reader) (Response, error) {
 
-    br := bufio.NewReader(r)
-    
-    start, err := br.ReadString('\n')
+    bx, err := readNextPacket(r)
+    Logger.Debugln(string(bx))
     if err != nil {
         return Response{}, err
     }
-
-    startCols := strings.SplitN(start, " ", 2)
-    if startCols[0] != "TELESCRIBE" || len(startCols) != 2 {
-        return Response{}, fmt.Errorf("Bad response block")
-    }
-    name := startCols[1]
-
-    headers := make(map[string] []string)
-    for {
-        l, err := br.ReadString('\n')
-        if err != nil {
-            return Response{}, err
-        }
-        headerCols := SplitResponseHeader(l)
-        if len(headerCols) != 2 {
-            break
-        }
-
-        key := strings.ToLower(headerCols[0])
-        headers[key] = SplitComma(headerCols[1])
-    }
-
-    contentLength, ok := headers["content-length"]
-    if !ok {
-        return Response{}, fmt.Errorf("Bad response block")
-    }
-
-    cl, err := strconv.Atoi(contentLength)
+    bxRd := bytes.NewReader(bx)
+    nameBytes, err := readNextPacket(bxRd)
     if err != nil {
         return Response{}, err
     }
-
-    body := io.LimitReader(br, cl)
+    name := string(nameBytes)
+    body, err := readNextPacket(bxRd)
+    if err != nil {
+        return Response{}, err
+    }
     args := make(map[string] interface{})
-    dec := json.NewDecoder(body)
-    err = dec.Decode(&args)
+    err = json.Unmarshal(body, &args)
     if err != nil {
         return Response{}, err
     }
 
     return Response{
         name: name,
-        headers: headers,
         args: args,
     }, nil
 
@@ -723,12 +735,15 @@ func ReadResponse(r io.Reader) (Response, error) {
 func NewResponse(name string) Response {
     return Response{
         name: name,
-        headers: make(map[string] []string),
         args: make(map[string] interface{}),
     }
 }
 
-func (rp *Response) Arg(key string) interface{} {
+func (rp *Response) Name() string {
+    return rp.name
+}
+
+func (rp *Response) Get(key string) interface{} {
     v, _ := rp.args[key]
     return v
 }
@@ -737,49 +752,12 @@ func (rp *Response) Args() map[string] interface{} {
     return rp.args
 }
 
-func (rp *Response) SetArg(key string, val interface{}) {
+func (rp *Response) Set(key string, val interface{}) {
     rp.args[key] = val
 }
 
 func (rp *Response) SetArgs(args map[string] interface{}) {
     rp.args = args
-}
-
-func (rp *Response) SetHeader(key, val string) {
-    key = strings.ToLower(key)
-    rp.headers[key] = []string{ val }
-}
-
-func (rp *Response) AddHeader(key, val string) {
-    key = strings.ToLower(key)
-    h, ok := rp.headers[key]
-    if !ok {
-        rp.headers[key] = []string{ val }
-        return
-    }
-    rp.headers[key] = append([]string{ val }, h...)
-}
-
-func (rp *Response) SetHeaders(headers map[string] []string) {
-    rp.headers = make(map[string] []string)
-    for key, h := range headers {
-        key = strings.ToLower(key)
-        for _, v := range h {
-            rp.AddHeader(key, v)
-        }
-    }
-}
-
-func (rp *Response) Headers() map[string] []string {
-    return rp.headers
-}
-
-func (rp *Response) Header(key string) string {
-    h, ok := rp.headers[key]
-    if !ok || len(h) == 0 {
-        return ""
-    }
-    return h[0]
 }
 
 func (rp *Response) String(key string) (str string) {

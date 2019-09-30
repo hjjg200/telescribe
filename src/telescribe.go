@@ -177,8 +177,7 @@ func main() {
         Logger.Infoln("Starting as a client for", addr)
         Logger.Panicln(cl.Start())
     case flServer:
-        srv := NewServer(1226)
-        Logger.Infoln("Starting as a server for port", 1226)
+        srv := NewServer()
         Logger.Panicln(srv.Start())
     }
 

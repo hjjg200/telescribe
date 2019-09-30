@@ -9,6 +9,7 @@ import (
     "crypto/rand"
     "crypto/sha256"
     "encoding/gob"
+    "fmt"
     "math/big"
     ".."
 )
@@ -16,7 +17,6 @@ import (
 var p256 = elliptic.P256()
 
 type PublicKey struct {
-    elliptic.Curve
     X, Y *big.Int
 }
 
@@ -37,7 +37,6 @@ func DeserializePublicKey( str string ) ( *PublicKey, error ) {
     }
     X, Y := elliptic.Unmarshal( p256, b )
     return &PublicKey{
-        Curve: p256,
         X: X,
         Y: Y,
     }, nil
@@ -56,7 +55,6 @@ func DeserializePrivateKey( str string ) ( *PrivateKey, error ) {
     X, Y := p256.ScalarBaseMult( b )
     return &PrivateKey{
         PublicKey: PublicKey{
-            Curve: p256,
             X: X,
             Y: Y,
         },
@@ -64,26 +62,48 @@ func DeserializePrivateKey( str string ) ( *PrivateKey, error ) {
     }, nil
 }
 
-func ( priv *PrivateKey ) Ecdsa() *ecdsa.PrivateKey {
+func (priv *PrivateKey) Ecdsa() *ecdsa.PrivateKey {
+    pub := priv.PublicKey.Ecdsa()
     return &ecdsa.PrivateKey{
-        PublicKey: *( priv.PublicKey.Ecdsa() ),
+        PublicKey: *pub,
         D: priv.D,
     }
 }
 
-func ( pub *PublicKey ) Ecdsa() *ecdsa.PublicKey {
+func (pub *PublicKey) Ecdsa() *ecdsa.PublicKey {
     return &ecdsa.PublicKey{
-        Curve: pub.Curve,
+        Curve: p256,
         X: pub.X,
         Y: pub.Y,
     }
+}
+
+func (pub *PublicKey) Fingerprint() string {
+    m := elliptic.Marshal(p256, pub.X, pub.Y)
+    h := sha256.New()
+    h.Write(m)
+    fp := "ECC_P256 SHA256"
+    for _, b := range h.Sum(nil)[:] {
+        fp += fmt.Sprintf(":%02x", b)
+    }
+    return fp
+}
+
+func (pub *PublicKey) Bytes() []byte {
+    b := elliptic.Marshal(p256, pub.X, pub.Y)
+    return b
+}
+
+func (pub *PublicKey) SetBytes(p []byte) *PublicKey {
+    x, y := elliptic.Unmarshal(p256, p)
+    pub.X, pub.Y = x, y
+    return pub
 }
 
 func GenerateKey() *PrivateKey {
     priv, _ := ecdsa.GenerateKey( p256, rand.Reader )
     return &PrivateKey{
         PublicKey: PublicKey{
-            Curve: p256,
             X: priv.PublicKey.X,
             Y: priv.PublicKey.Y,
         },
@@ -91,18 +111,18 @@ func GenerateKey() *PrivateKey {
     }
 }
 
-func Sign( priv *PrivateKey, data []byte ) []byte {
+func Sign(priv *PrivateKey, data []byte) []byte {
 
     // Hash
     h := sha256.New()
-    h.Write( data )
-    r, s, _ := ecdsa.Sign( rand.Reader, priv.Ecdsa(), h.Sum( nil )[:] )
+    h.Write(data)
+    r, s, _ := ecdsa.Sign(rand.Reader, priv.Ecdsa(), h.Sum(nil)[:])
 
     // Encode
-    buf := bytes.NewBuffer( nil )
-    enc := gob.NewEncoder( buf )
-    enc.Encode( r )
-    enc.Encode( s )
+    buf := bytes.NewBuffer(nil)
+    enc := gob.NewEncoder(buf)
+    enc.Encode(r)
+    enc.Encode(s)
 
     return buf.Bytes()
 }

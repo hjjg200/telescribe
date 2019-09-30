@@ -1,0 +1,42 @@
+{
+  "authPrivateKeyPath": "./.serverAuth.priv",
+  "http.username": "user",
+  "http.password(sha256)": "",
+  "http.certFilePath": "",
+  "http.keyFilePath": "",
+  "monitor.dataCacheInterval(minutes)": 1,
+  "monitor.dataCacheDir": "./serverCache.d",
+  "monitor.gapThresholdTime(minutes)": 30,
+  "monitor.maxDataLength": 43200,
+  "monitor.graphThreshold": 500,
+  "monitor.graphDecimationInterval(minutes)": 10,
+  "monitor.graphGapPercent": 5,
+  "monitor.graphMomentJsFormat": "MM/DD HH:mm",
+  "network.bind": "127.0.0.1",
+  "network.port": 1226,
+  "network.tickrate(hz)": 60,
+  "clientConfigs": {
+    "127.0.0.1": {
+      "alias": "example",
+      "comment": "This is an example.",
+      "monitorInfos": {
+        "general-cpuUsage": {
+          "fatalRange": "80.8:100.0,0:5.0",
+          "warningRange": "22.5:55"
+        }
+      },
+      "monitorInterval": 60
+    },
+    "localhost": {
+      "alias": "example",
+      "comment": "This is an example.",
+      "monitorInfos": {
+        "general-cpuUsage": {
+          "fatalRange": "80.8:100.0,0:5.0",
+          "warningRange": "22.5:55"
+        }
+      },
+      "monitorInterval": 60
+    }
+  }
+}

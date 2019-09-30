@@ -1,25 +1,20 @@
 package main
 
 import (
-    "bufio"
-    "crypto/rand"
-    "crypto/rsa"
-    "crypto/sha256"
     "encoding/json"
     "fmt"
     "net"
     "os"
-    "strings"
     "time"
-    "regexp"
+    . "./tc"
     "./monitor"
-    "./secret"
 )
 
-const defaultHandshakeRetryInterval = time.Minute * 1
+const defaultHelloRetryInterval = time.Minute * 1
 
 type Client struct {
     serverAddr string
+    s *Session
     config ClientConfig
 }
 
@@ -36,9 +31,9 @@ func NewClient(serverAddr string) *Client {
     }
 }
 
-func (cl *Client) handshake() error {
+func (cl *Client) hello() (err error) {
 
-    // Initiate Handshake
+    defer Catch(&err)
     
     // Connection
     conn, err := net.Dial("tcp", cl.serverAddr)
@@ -49,35 +44,19 @@ func (cl *Client) handshake() error {
     Logger.Infoln("HANDSHAKE INITIATE")
 
     s := NewSession(conn)
-    s.WriteResponse({
-
-    })
-
-
+    cl.s = s
+    clRsp := NewResponse("hello")
+    Try(s.WriteResponse(clRsp))
 
     // Config
-    rsp, err = ReadNextJsonResponse(cl, conn)
-    if err != nil {
-        return err
-    }
-    if rsp.Name != "handshake-client-config" {
+    srvRsp, err := s.NextResponse()
+    Try(err)
+    if srvRsp.Name() != "hello" {
         return fmt.Errorf("Bad config response")
     }
-    config := rsp.Bytes("config")
-    signature := rsp.Bytes("sha256Signature")
-
-    h := sha256.New()
-    h.Write(config)
-    verified = secret.Verify(cl.serverAuthPublicKey, h.Sum(nil)[:], signature)
-    if !verified {
-        return fmt.Errorf("Config signature is invalid!")
-    }
-
-    err = json.Unmarshal(config, &cl.config)
-    if err != nil {
-        return err
-    }
-
+    config := srvRsp.Bytes("config")
+    Try(json.Unmarshal(config, &cl.config))
+   
     return nil
 
 }
@@ -86,20 +65,7 @@ func (cl *Client) checkKnownHosts() error {
     return LoadKnownHosts(flClientKnownHostsPath)
 }
 
-func (cl *Client) autoUpdate(executable []byte, signature []byte) error {
-
-    // Verification
-    h := sha256.New()
-    h.Write(executable)
-    execHash := h.Sum(nil)
-
-    // Verify
-    verified := secret.Verify(cl.serverAuthPublicKey, execHash, signature)
-    if !verified {
-        return fmt.Errorf("Authentication Failed!")
-    }
-
-    Logger.Infoln("Hash Authentication Successful!")
+func (cl *Client) autoUpdate(executable []byte) error {
 
     Logger.Infoln("Started Auto Update Procedure.")
     Logger.Infoln("The service must be set to automatically restart.")
@@ -137,21 +103,21 @@ func (cl *Client) Start() error {
     }
 
     //
-    handshakeRetryInterval := defaultHandshakeRetryInterval
+    hri := defaultHelloRetryInterval
 
     for {
 
-        err = cl.handshake()
+        err = cl.hello()
         if err != nil {
-            Logger.Warnln("Handshake Failed:", err)
-            time.Sleep(handshakeRetryInterval)
+            Logger.Warnln("Hello Failed:", err)
+            time.Sleep(hri)
             continue
         }
 
-        Logger.Infoln("SUCCESSFUL HANDSHAKE")
+        Logger.Infoln("SUCCESSFUL HELLO")
         // Config
         monitorInterval := time.Second * time.Duration(cl.config.MonitorInterval)
-        handshakeRetryInterval = monitorInterval
+        hri = monitorInterval
         pass := make(chan struct{})
         go func() {
             pass <- struct{}{}
@@ -175,6 +141,7 @@ func (cl *Client) Start() error {
                 Logger.Warnln("Server Not Responding")
                 continue
             }
+            cl.s.SetConn(conn)
 
             md := make(map[string] interface{})
             for k := range cl.config.MonitorInfos {
@@ -190,36 +157,29 @@ func (cl *Client) Start() error {
             }
 
             // Send to Server
-            err = WriteEncryptedJsonResponse(
-                cl, conn,
-                Response{
-                    Name: "monitor-data",
-                    Args: map[string] interface{} {
-                        "version": Version,
-                        "timestamp": time.Now().Unix(),
-                        "monitorData": md,
-                    },
-                },
-            )
+            clRsp := NewResponse("monitor-data")
+            clRsp.Set("version", Version)
+            clRsp.Set("timestamp", time.Now().Unix())
+            clRsp.Set("monitorData", md)
+            err = cl.s.WriteResponse(clRsp)
             if err != nil {
                 Logger.Warnln(err)
             }
             Logger.Infoln("Sent Data")
 
             //
-            rsp, err := ReadNextJsonResponse(cl, conn)
+            srvRsp, err := cl.s.NextResponse()
             if err != nil {
                 Logger.Warnln(err)
             }
 
-            switch rsp.Name {
+            switch srvRsp.Name() {
             case "ok":
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
-                executable := rsp.Bytes("executable")
-                signature := rsp.Bytes("sha256Signature")
+                executable := srvRsp.Bytes("executable")
         
-                err = cl.autoUpdate(executable, signature)
+                err = cl.autoUpdate(executable)
                 if err != nil {
                     Logger.Warnln(err)
                 }

@@ -10,6 +10,15 @@ type Key struct {
     key []byte
 }
 
+func NewKey(k []byte) *Key {
+    if len(k) != 32 {
+        return nil
+    }
+    return &Key{
+        key: k,
+    }
+}
+
 func GenerateKey() *Key {
     return &Key{
         key: secret.RandomBytes( 32 ),

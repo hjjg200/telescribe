@@ -3,7 +3,6 @@ package main
 import (
     "bufio"
     "bytes"
-    "crypto/rsa"
     "encoding/gob"
     "encoding/hex"
     "encoding/json"
@@ -14,7 +13,7 @@ import (
     "path/filepath"
     "strings"
     "time"
-    "./secret"
+    . "./tc"
 )
 
 const (
@@ -96,13 +95,12 @@ var DefaultServerConfig = ServerConfig{
 
 func NewServer() *Server {
     srv := &Server{}
-    srv.clientPublicKey = make(map[string] *rsa.PublicKey)
     srv.clientMonitorData = make(map[string] map[string] MonitorDataSlice)
     return srv
 }
 
 func (srv *Server) ClientConfig(host string) (ClientConfig, bool) {
-    clCfg, ok := si.Parent().config.ClientConfigs[host]
+    clCfg, ok := srv.config.ClientConfigs[host]
     return clCfg, ok
 }
 
@@ -165,30 +163,24 @@ func (srv *Server) Start() (err error) {
     defer Catch(&err)
 
     // Config
-    err = srv.LoadConfig(flServerConfigPath)
-    Try(err)
+    Try(srv.LoadConfig(flServerConfigPath))
     Logger.Infoln("Loaded Config")
 
     //
-    err = srv.checkAuthPrivateKey()
-    Try(err)
-    srv.authFingerprint = secret.FingerprintPublicKey(&srv.authPrivateKey.PublicKey)
+    Try(srv.checkAuthPrivateKey())
     Logger.Infoln("The fingerprint of the authentication public key is:")
-    Logger.Infoln(srv.authFingerprint)
+    Logger.Infoln(sessionAuthPriv.PublicKey.Fingerprint())
 
     // Cache Executable
-    err = srv.cacheExecutable()
-    Try(err)
+    Try(srv.cacheExecutable())
     Logger.Infoln("Cached Executable for Auto-Update")
 
     // Read Monitor Data Cache
-    err = srv.readCachedMonitordItems()
-    Try(err)
+    Try(srv.readCachedMonitordItems())
     Logger.Infoln("Read the Cached Monitored Items")
 
     // Ensure Directories
-    err = EnsureDirectory(srv.config.MonitorDataCacheDir)
-    Try(err)
+    Try(EnsureDirectory(srv.config.MonitorDataCacheDir))
     Logger.Infoln("Ensured Necessary Directories")
 
     // Network
@@ -250,30 +242,7 @@ func (srv *Server) Start() (err error) {
     go srv.startHttpServer()
     Logger.Infoln("Started HTTP Server")
 
-    // Telescribe
-    go func() {
-        for {
-            conn, err := srv.telescribeListener.Accept()
-            if err != nil {
-                Logger.Warnln(err)
-                continue
-            }
-
-            host, err := readStringPacket(conn)
-            if err != nil {
-                Logger.Warnln(err)
-                continue
-            }
-
-            go srv.NewInstance(host).HandleClientConnection(conn)
-
-            time.Sleep(time.Duration(1000.0 / float64(srv.config.Tickrate)) * time.Millisecond)
-        }
-    }()
-    Logger.Infoln("Started Telescribe Server")
-
     Logger.Infoln("Successfully Started the Server")
-
     copyIO := func(dest, src net.Conn) {
         defer src.Close()
         defer dest.Close()
@@ -315,9 +284,13 @@ func (srv *Server) Start() (err error) {
             go copyIO(proxy, conn)
             go copyIO(conn, proxy)
         case strings.Contains(startLine, "TELESCRIBE"):
-            s := NewSession()
-            s.PrependRawInput(bytes.NewReader(already))
-            srv.HandleSession(s)
+            go func() {
+                s := NewSession(conn)
+                s.PrependRawInput(bytes.NewReader(already))
+                Logger.Debugln(string(already))
+                Logger.Debugln(fmt.Sprint(already))
+                srv.HandleSession(s)
+            }()
         default:
             continue
         }
@@ -435,7 +408,7 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
 
 }
 
-func (srv *ServerInstance) RecordMonitorData(host string, md map[string] interface{}) {
+func (srv *Server) RecordMonitorData(host string, md map[string] interface{}) {
 
     //
     _, ok := srv.clientMonitorData[host]
@@ -506,7 +479,11 @@ func (srv *Server) HandleSession(s *Session) {
     // Need to send config somehow
 
     //
-    host := s.RemoetHost()
+    host, err := s.RemoteHost()
+    if err != nil {
+        // TODO handle err
+        return
+    }
     whitelisted := false
     for k := range srv.config.ClientConfigs {
         if k == host {
@@ -523,13 +500,17 @@ func (srv *Server) HandleSession(s *Session) {
 
     Logger.Infoln(host, "connected")
     clRsp, err := s.NextResponse()
+    Logger.Debugln(host, err)
     if err != nil {
         // TODO err
         return
     }
+    Logger.Debugln(clRsp)
 
     //
     switch clRsp.Name() {
+    case "hello":
+        s.WriteResponse(NewResponse("hello1"))
     case "request-client-info":
     case "monitor-data":
 
@@ -538,7 +519,7 @@ func (srv *Server) HandleSession(s *Session) {
             // ...
             Logger.Warnln(host, "VERSION MISMATCH")
             srvRsp := NewResponse("version-mismatch")
-            srvRsp.SetArg("executable", srv.cachedExecutable)
+            srvRsp.Set("executable", srv.cachedExecutable)
             err = s.WriteResponse(srvRsp)
             if err != nil {
                 // TODO err
@@ -548,7 +529,7 @@ func (srv *Server) HandleSession(s *Session) {
         }
 
         //
-        md, ok := clRsp.Args["monitorData"].(map[string] interface{})
+        md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
         if !ok {
             // TODO err
             return
