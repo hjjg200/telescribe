@@ -4,6 +4,6 @@ import (
     "testing"
 )
 
-func TestMonitorDataSliceCompression( t *testing.T ) {
+func TestMonitorDataSliceCompression(t *testing.T) {
     
 }

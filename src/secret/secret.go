@@ -1,16 +1,7 @@
 package secret
 
 import (
-    "bytes"
-    "crypto"
-    "crypto/aes"
-    "crypto/cipher"
-    "crypto/sha256"
     "crypto/rand"
-    "crypto/rsa"
-    "encoding/base64"
-    "encoding/gob"
-    "fmt"
 )
 
 
@@ -42,6 +33,13 @@ Server
 */
 
 
+func RandomBytes( l int ) []byte {
+    p := make( []byte, l )
+    rand.Read( p )
+    return p
+}
+
+/*
 
 func Rand32Bytes() []byte {
     key := make( []byte, 32 )
@@ -182,3 +180,5 @@ func Verify( rsaPub *rsa.PublicKey, data, signed []byte ) bool {
     }
     return true
 }
+
+*/

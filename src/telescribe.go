@@ -102,46 +102,46 @@ var (
 
 func setFlags() {
 
-    flag.BoolVar( &flServer, "server", false, "Run as a server" )
-    flag.StringVar( &flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command." )
+    flag.BoolVar(&flServer, "server", false, "Run as a server")
+    flag.StringVar(&flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.")
 
-    flag.BoolVar( &flClient, "client", false, "Run as a client" )
-    flag.StringVar( &flClientHostname, "client-host", "", "(Client) The hostname of the server for the client to connect to" )
-    flag.IntVar( &flClientPort, "client-port", 1226, "(Client) The port of the server for the client to connect to" )
-    flag.StringVar( &flClientKnownHostsPath, "client-known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure." )
+    flag.BoolVar(&flClient, "client", false, "Run as a client")
+    flag.StringVar(&flClientHostname, "client-host", "", "(Client) The hostname of the server for the client to connect to")
+    flag.IntVar(&flClientPort, "client-port", 1226, "(Client) The port of the server for the client to connect to")
+    flag.StringVar(&flClientKnownHostsPath, "client-known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
     
-    flag.BoolVar( &flDebug, "debug", false, "(Debug) verbose" )
+    flag.BoolVar(&flDebug, "debug", false, "(Debug) verbose")
     flag.Parse()
 
     // Check wrong flags
     
     //// Client or server
     if !flServer && !flClient {
-        fmt.Println( "-server or -client must be given\n" )
+        fmt.Println("-server or -client must be given\n")
         flag.PrintDefaults()
-        os.Exit( 1 )
+        os.Exit(1)
     }
 
     //// Mutually exclusive
     if flServer && flClient {
-        fmt.Println( "-server and -client are mutually exclusive\n" )
+        fmt.Println("-server and -client are mutually exclusive\n")
         flag.PrintDefaults()
-        os.Exit( 1 )
+        os.Exit(1)
     }
 
     //// Port range
     if flClientPort < 1 || flClientPort > 65535 {
-        fmt.Printf( "Bad port: %d\n\n", flClientPort )
+        fmt.Printf("Bad port: %d\n\n", flClientPort)
         flag.PrintDefaults()
-        os.Exit( 1 )
+        os.Exit(1)
     }
 
     //// Client
     if flClient {
         if flClientHostname == "" {
-            fmt.Println( "No hostname was given\n" )
+            fmt.Println("No hostname was given\n")
             flag.PrintDefaults()
-            os.Exit( 1 )
+            os.Exit(1)
         }
     }
 
@@ -153,7 +153,7 @@ func main() {
 
     // Loggers
     Logger = &log.Logger{}
-    Logger.AddWriter( os.Stderr, true )
+    Logger.AddWriter(os.Stderr, true)
 
     //
     setFlags()
@@ -163,23 +163,23 @@ func main() {
     var err error
     executablePath, err = os.Executable()
     if err != nil {
-        Logger.Fatalln( err )
+        Logger.Fatalln(err)
     }
-    executablePath, err = filepath.EvalSymlinks( executablePath )
+    executablePath, err = filepath.EvalSymlinks(executablePath)
     if err != nil {
-        Logger.Fatalln( err )
+        Logger.Fatalln(err)
     }
 
     switch {
     case flClient:
-        addr := fmt.Sprintf( "%s:%d", flClientHostname, flClientPort )
-        cl := NewClient( addr )
-        Logger.Infoln( "Starting as a client for", addr )
-        Logger.Panicln( cl.Start() )
+        addr := fmt.Sprintf("%s:%d", flClientHostname, flClientPort)
+        cl := NewClient(addr)
+        Logger.Infoln("Starting as a client for", addr)
+        Logger.Panicln(cl.Start())
     case flServer:
-        srv := NewServer( 1226 )
-        Logger.Infoln( "Starting as a server for port", 1226 )
-        Logger.Panicln( srv.Start() )
+        srv := NewServer(1226)
+        Logger.Infoln("Starting as a server for port", 1226)
+        Logger.Panicln(srv.Start())
     }
 
 }
