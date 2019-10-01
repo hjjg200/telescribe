@@ -6,8 +6,9 @@ import (
     "net"
     "os"
     "time"
-    . "./tc"
     "./monitor"
+
+    . "github.com/hjjg200/go-act"
 )
 
 const defaultHelloRetryInterval = time.Minute * 1
@@ -37,27 +38,30 @@ func (cl *Client) hello() (err error) {
     
     // Connection
     conn, err := net.Dial("tcp", cl.serverAddr)
-    if err != nil {
-        return err
-    }
+    Try(err)
+    Logger.Infoln("HELLO SERVER")
 
-    Logger.Infoln("HANDSHAKE INITIATE")
-
+    defer conn.Close()
     s := NewSession(conn)
     cl.s = s
     clRsp := NewResponse("hello")
+    clRsp.Set("version", Version)
     Try(s.WriteResponse(clRsp))
 
     // Config
     srvRsp, err := s.NextResponse()
     Try(err)
-    if srvRsp.Name() != "hello" {
+
+    switch srvRsp.Name() {
+    case "hello":
+        config := srvRsp.Bytes("config")
+        return json.Unmarshal(config, &cl.config)
+    case "version-mismatch":
+        executable := srvRsp.Bytes("executable")
+        return cl.autoUpdate(executable)
+    default:
         return fmt.Errorf("Bad config response")
     }
-    config := srvRsp.Bytes("config")
-    Try(json.Unmarshal(config, &cl.config))
-   
-    return nil
 
 }
 
@@ -127,7 +131,8 @@ func (cl *Client) Start() error {
         MonitorLoop:
         for {
 
-            <- pass
+            var conn net.Conn
+            <- pass // Wait
 
             // Sleep
             go func() {
@@ -136,6 +141,10 @@ func (cl *Client) Start() error {
             }()
 
             // Connection
+            if conn != nil {
+                conn.Close()
+                conn = nil
+            }
             conn, err := net.Dial("tcp", cl.serverAddr)
             if err != nil {
                 Logger.Warnln("Server Not Responding")
@@ -164,6 +173,7 @@ func (cl *Client) Start() error {
             err = cl.s.WriteResponse(clRsp)
             if err != nil {
                 Logger.Warnln(err)
+                continue
             }
             Logger.Infoln("Sent Data")
 
@@ -171,10 +181,12 @@ func (cl *Client) Start() error {
             srvRsp, err := cl.s.NextResponse()
             if err != nil {
                 Logger.Warnln(err)
+                continue
             }
 
             switch srvRsp.Name() {
             case "ok":
+            // case "reconfigure":
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
                 executable := srvRsp.Bytes("executable")
@@ -182,13 +194,12 @@ func (cl *Client) Start() error {
                 err = cl.autoUpdate(executable)
                 if err != nil {
                     Logger.Warnln(err)
+                    continue
                 }
                 break MonitorLoop
             case "session-expired":
                 break MonitorLoop
             }
-            
-            conn.Close()
 
         }
 

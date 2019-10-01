@@ -13,7 +13,7 @@ import (
     "path/filepath"
     "strings"
     "time"
-    . "./tc"
+    . "github.com/hjjg200/go-act"
 )
 
 const (
@@ -34,6 +34,7 @@ type Server struct {
 type ServerConfig struct {
     // General
     AuthPrivateKeyPath string `json:"authPrivateKeyPath"`
+        // TODO Log latest.log, 20190102.log ...
     // Http
     HttpUsername string `json:"http.username"`
     HttpPassword string `json:"http.password(sha256)"`
@@ -189,13 +190,14 @@ func (srv *Server) Start() (err error) {
     Try(err)
     Logger.Infoln("Network Configured to Listen at", addr)
 
-    // Flush cache
+    // Flush cache thread
     go func() {
         for {
             time.Sleep(time.Minute * time.Duration(srv.config.MonitorDataCacheInterval))
             goErr := srv.FlushCachedMonitoredItems()
             if goErr != nil {
                 Logger.Warnln(goErr)
+                continue
             }
             Logger.Infoln("Flushed Client MonitorData Cache")
         }
@@ -204,16 +206,15 @@ func (srv *Server) Start() (err error) {
 
     // Graph-ready Data Preparing Thread
     go func() {
-        //graphClientMonitorData
+        // graphClientMonitorData
         for {
-
-            ca := make(map[string] string)
-            cmd := make(map[string] map[string] MonitorDataSlice)
+            ca := make(map[string] string) // Client aliases
+            cmd := make(map[string] map[string] MonitorDataSlice) // Client monitor data
             for host, mdsMap := range srv.clientMonitorData {
                 ca[host] = srv.config.ClientConfigs[host].Alias
                 cmd[host] = make(map[string] MonitorDataSlice)
                 for key, mds := range mdsMap {
-                    cmd[host][key] = LTTBMonitorDataSlice(
+                    cmd[host][key] = LTTBMonitorDataSlice( // Decimate monitor data
                         mds, srv.config.GraphPointThreshold,
                    )
                 }
@@ -242,6 +243,7 @@ func (srv *Server) Start() (err error) {
     go srv.startHttpServer()
     Logger.Infoln("Started HTTP Server")
 
+    // Main
     Logger.Infoln("Successfully Started the Server")
     copyIO := func(dest, src net.Conn) {
         defer src.Close()
@@ -252,12 +254,14 @@ func (srv *Server) Start() (err error) {
 
         time.Sleep(time.Duration(1000.0 / float64(srv.config.Tickrate)) * time.Millisecond)
 
+        // Connection
         conn, err := ln.Accept()
         if err != nil {
             Logger.Warnln(err)
             continue
         }
 
+        host, _ := HostnameOf(conn)
         rd := bufio.NewReader(conn)
         startLine, err := rd.ReadString('\n') // Start line
         if err != nil {
@@ -275,20 +279,23 @@ func (srv *Server) Start() (err error) {
 
         switch {
         case strings.Contains(startLine, "HTTP"):
-            proxy, err2 := net.Dial("tcp", srv.httpListener.Addr().String())
-            if err2 != nil {
-                Logger.Warnln(err)
-                continue
-            }
-            proxy.Write(already)
-            go copyIO(proxy, conn)
-            go copyIO(conn, proxy)
+            go func() {
+                proxy, err2 := net.Dial("tcp", srv.httpListener.Addr().String())
+                if err2 != nil {
+                    Logger.Warnln(err)
+                    return
+                }
+                startLine = strings.Trim(startLine, "\r\n")
+                Logger.Infoln(host, startLine)
+                proxy.Write(already)
+                go copyIO(proxy, conn)
+                go copyIO(conn, proxy)
+            }()
         case strings.Contains(startLine, "TELESCRIBE"):
             go func() {
                 s := NewSession(conn)
+                defer s.Close()
                 s.PrependRawInput(bytes.NewReader(already))
-                Logger.Debugln(string(already))
-                Logger.Debugln(fmt.Sprint(already))
                 srv.HandleSession(s)
             }()
         default:
@@ -474,77 +481,68 @@ func (srv *Server) getMonitorInfo(host, key string) (MonitorInfo) {
 
 }
 
-func (srv *Server) HandleSession(s *Session) {
+func (srv *Server) HandleSession(s *Session) (err error) {
 
-    // Need to send config somehow
+    defer Catch(&err)
 
     //
     host, err := s.RemoteHost()
-    if err != nil {
-        // TODO handle err
-        return
-    }
-    whitelisted := false
-    for k := range srv.config.ClientConfigs {
-        if k == host {
-            whitelisted = true
-            break
-        }
-    }
+    Try(err)
+    clCfg, whitelisted := srv.config.ClientConfigs[host]
     if !whitelisted {
         srvRsp := NewResponse("not-whitelisted")
         s.WriteResponse(srvRsp)
-        Logger.Infoln(host, "[non-whitelisted] tried to establish a connection")
-        return
+        return fmt.Errorf("%s [non-whitelisted] tried to establish a connection", host)
     }
 
     Logger.Infoln(host, "connected")
     clRsp, err := s.NextResponse()
-    Logger.Debugln(host, err)
-    if err != nil {
-        // TODO err
-        return
-    }
-    Logger.Debugln(clRsp)
+    Try(err)
 
-    //
+    // Version Check
+    ver := clRsp.String("version")
+    switch ver {
+    case "":
+        // Verison empty
+        panic("Client response does not include version")
+    case Version:
+        // Version match
+    default:
+        // Version mismatch
+        Logger.Warnln(host, "VERSION MISMATCH")
+        return srv.handleSessionVersionMismatch(s)
+    }
+
+    // Main handling
     switch clRsp.Name() {
     case "hello":
-        s.WriteResponse(NewResponse("hello1"))
-    case "request-client-info":
-    case "monitor-data":
 
-        // TODO version check
-        if clRsp.String("version") != Version {
-            // ...
-            Logger.Warnln(host, "VERSION MISMATCH")
-            srvRsp := NewResponse("version-mismatch")
-            srvRsp.Set("executable", srv.cachedExecutable)
-            err = s.WriteResponse(srvRsp)
-            if err != nil {
-                // TODO err
-                return
-            }
-            return
-        }
+        cfgBytes, err := json.Marshal(clCfg)
+        Try(err)
+        srvRsp := NewResponse("hello")
+        srvRsp.Set("config", cfgBytes)
+        Logger.Infoln(host, "HELLO CLIENT")
+        return s.WriteResponse(srvRsp)
+
+    case "monitor-data":
 
         //
         md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
-        if !ok {
-            // TODO err
-            return
-        }
+        Assert(ok, "Malformed monitor data")
         srv.RecordMonitorData(host, md)
 
         // OK
         srvRsp := NewResponse("ok")
-        err = s.WriteResponse(srvRsp)
-        if err != nil {
-            // TODO err
-            return
-        }
+        return s.WriteResponse(srvRsp)
 
-        return
+    default:
+        panic("Unknown response")
     }
 
+}
+
+func (srv *Server) handleSessionVersionMismatch(s *Session) error {
+    srvRsp := NewResponse("version-mismatch")
+    srvRsp.Set("executable", srv.cachedExecutable)
+    return s.WriteResponse(srvRsp)
 }

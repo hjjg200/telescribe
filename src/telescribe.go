@@ -84,7 +84,7 @@ Ensure
 // :   "name": "session-restarted"
 // : }
 
-const Version = "telescribe-alpha-0.5"
+const Version = "telescribe-alpha-0.6"
 
 var (
     flServer bool

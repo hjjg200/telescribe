@@ -28,23 +28,19 @@ const (
     prefixWarn = clYellow + "WARN" + clReset
     prefixFatal = clRed + "FATAL!" + clReset
     prefixPanic = clRed + "PANIC!" + clReset
-    prefixDebug = "DEBUG"
+    prefixDebug = "+DEBUG"
 )
 
 var logStartTime time.Time
-var logStartTimeCalled = false
 var Debug = false
 
-func init() {
-    logStartTime = time.Now()
-}
-
 func secondsFromStart() string {
-    if !logStartTimeCalled {
-        logStartTimeCalled = true
-        return fmt.Sprintf( "%10d", time.Now().Unix() )
+    var t time.Time
+    if logStartTime == t {
+        logStartTime = time.Now()
+        return fmt.Sprintf( "%11d", time.Now().Unix() )
     }
-    return fmt.Sprintf( "%10.3f", float64( time.Now().Sub( logStartTime ) ) / float64( time.Second ) )
+    return fmt.Sprintf( "%11.3f", float64( time.Now().Sub( logStartTime ) ) / float64( time.Second ) )
 }
 
 func ( lgr *Logger ) AddWriter( w io.Writer, cl bool ) {
@@ -80,7 +76,7 @@ func ( lgr *Logger ) Debugln( args ...interface{} ) {
     f = dir + "/" + filepath.Base( f )
     n := filepath.Base( fn.Name() )
     args = append(
-        []interface{}{ fmt.Sprintf( "%s:%d - %s", f, l, n ) },
+        []interface{}{ fmt.Sprintf( "%s[%s:%d]", n, f, l ) },
         args...,
     )
     lgr.println( prefixDebug, args... )
