@@ -4,15 +4,21 @@ import (
     "fmt"
 )
 
-func Try( err error ) {
+func Try(err error) {
     if err != nil {
-        panic( err )
+        panic(err)
     }
 }
 
-func Catch( err *error ) {
+func Catch(err *error) {
     r := recover()
     if r != nil {
-        *err = fmt.Errorf( "%v", r )
+        *err = fmt.Errorf("%v", r)
+    }
+}
+
+func Assert(t bool, msg string) {
+    if !t {
+        panic(msg)
     }
 }

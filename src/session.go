@@ -277,10 +277,17 @@ func (s *Session) WriteEncrypted(p []byte) (i int, err error) {
 }
 
 func (s *Session) Read(p []byte) (int, error) {
+    return s.read(p, false)
+}
 
-    s.inMu.Lock()
+func (s *Session) read(p []byte, nested bool) (int, error) {
 
-    Logger.Debugln("Read start")
+    // Lock mutex unless it is nested read call
+    if !nested {
+        s.inMu.Lock()
+        defer s.inMu.Unlock()
+    }
+
     if s.input != nil && s.input.Len() > 0 {
         return s.input.Read(p)
     }
@@ -290,13 +297,11 @@ func (s *Session) Read(p []byte) (int, error) {
     if err != nil {
         return 0, err
     }
-    Logger.Debugln(prh)
 
     switch prh.typ {
     case packetTypeSessionNotFound:
         // Not found
         atomic.StoreInt32(&s.handshaken, 0)
-        s.inMu.Unlock()
         return 0, fmt.Errorf("Need to perform another handshake")
     case packetTypeHandshakeBegin:
         s.outMu.Lock()
@@ -305,8 +310,8 @@ func (s *Session) Read(p []byte) (int, error) {
             return 0, err
         }
         s.outMu.Unlock()
-        s.inMu.Unlock()
-        return s.Read(p)
+        // Do a nested read call
+        return s.read(p, true)
     // case packetTypeHandshakeEnd:
     case packetTypeEncrypted:
         sessionId, err := readNextPacket(s.rawInput)
@@ -327,17 +332,19 @@ func (s *Session) Read(p []byte) (int, error) {
                 return 0, fmt.Errorf("Session id mismatch")
             }
         }
-        s.inMu.Unlock()
         return s.ReadEncrypted(p)
     }
 
-    s.inMu.Unlock()
     return 0, fmt.Errorf("Invalid")
 }
 
 func (s *Session) Write(p []byte) (int, error) {
     s.outMu.Lock()
     defer s.outMu.Unlock()
+
+    // TODO ensure that failed writes due to expired sessions to be written again after a handshake
+    // + Option 1: Cache recent write and write it again in Session.Read
+    // + Option 2:
 
     if !s.Handshaken() {
         s.inMu.Lock()
@@ -453,7 +460,8 @@ func (s *Session) BeginHandshake() (err error) {
     if !haveAuthPub {
         // TODO scan for y
 
-        authPub = new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        authPub, ok := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        Assert(ok, "Bad public key bytes")
         fp := authPub.Fingerprint()
         fmt.Println("The server you are trying to connect has an unknown public key fingerprint:")
         fmt.Println(fp, "\n")
@@ -472,7 +480,8 @@ func (s *Session) BeginHandshake() (err error) {
     } else {
         // Compare Public Key
         cmp := bytes.Compare(authPub.Bytes(), srvAuthPubBytes)
-        givenAuthPub := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        givenAuthPub, ok := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        Assert(ok, "Bad public key bytes")
         if cmp != 0 {
             Logger.Warnln("The host's public key fingerprint does not match!\n" +
                 "Terminating the connection!\n\n" +
@@ -501,7 +510,8 @@ func (s *Session) BeginHandshake() (err error) {
     // SHA256(PreMasterSecret || SHA256(digest) || clRnd || srvRnd)
 
     buf = bytes.NewBuffer(nil)
-    srvPub := new(p256.PublicKey).SetBytes(srvPubBytes)
+    srvPub, ok := new(p256.PublicKey).SetBytes(srvPubBytes)
+    Assert(ok, "Bad public key bytes")
     preMaster := s.calculatePreMaster(srvPub)
     digest := Sha256Sum(forDigest.Bytes())
     buf.Write(preMaster)
@@ -510,7 +520,6 @@ func (s *Session) BeginHandshake() (err error) {
     buf.Write(srvRnd)
 
     master := aesgcm.NewKey(Sha256Sum(buf.Bytes()))
-    Logger.Debugln("Master", master)
     s.info.ephmMaster = master
     s.info.thirdPub = srvPub
     atomic.StoreInt32(&s.handshaken, 1)
@@ -539,7 +548,8 @@ func (s *Session) EndHandshake() (err error) {
     Try(err)
     clPubBytes, err := readNextPacket(bxRd)
     Try(err)
-    clPub := new(p256.PublicKey).SetBytes(clPubBytes)
+    clPub, ok := new(p256.PublicKey).SetBytes(clPubBytes)
+    Assert(ok, "Bad public key bytes")
     clChallenge, err := readNextPacket(bxRd)
     Try(err)
 
@@ -566,6 +576,8 @@ func (s *Session) EndHandshake() (err error) {
     Try(err)
     forDigest.Write(bx)
 
+    // Digest
+    // Entire client handshake message || entire server handshake message
     // Calc master secret
     // SHA256(PreMasterSecret || SHA256(digest) || clRnd || srvRnd)
 
@@ -578,7 +590,6 @@ func (s *Session) EndHandshake() (err error) {
     buf.Write(srvRnd)
 
     master := aesgcm.NewKey(Sha256Sum(buf.Bytes()))
-    Logger.Debugln("Master", master)
     si.ephmMaster = master
     si.thirdPub = clPub
     atomic.StoreInt32(&s.handshaken, 1)
@@ -673,13 +684,7 @@ func (s *Session) readRecordHeader() (PacketRecordHeader, error) {
 }
 
 func (s *Session) WriteResponse(rp Response) error {
-    j, err := json.Marshal(rp.Args())
-    if err != nil {
-        return err
-    }
-    return writeByteSeriesPacket(s, [][]byte{
-        []byte(rp.Name()), j,
-    })
+    return WriteResponse(s, rp)
 }
 
 func (s *Session) NextResponse() (Response, error) {
@@ -691,15 +696,37 @@ func (s *Session) Handshaken() bool {
     return i == 1
 }
 
+//
+// SESSION ERROR HANDLING
+//
+
+var (
+    SessionErrExpired = fmt.Errorf("Session is expired.")
+)
+
+func IsSessionExpired(err error) bool {
+    return err == SessionErrExpired
+}
+
+//
+// RESPONSE
+//
+
 type Response struct {
     name string
-    headers map[string] []string
     args map[string] interface{}
 }
 
-var headerSplitRegexp = regexp.MustCompile("\\s*:\\s*")
-func SplitResponseHeader(s string) []string {
-    return headerSplitRegexp.Split(s, 2)
+func WriteResponse(w io.Writer, rp Response) error {
+
+    j, err := json.Marshal(rp.Args())
+    if err != nil {
+        return err
+    }
+    return writeByteSeriesPacket(w, [][]byte{
+        []byte(rp.Name()), j,
+    })
+    
 }
 
 func ReadResponse(r io.Reader) (Response, error) {
