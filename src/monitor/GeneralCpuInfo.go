@@ -47,49 +47,49 @@ var (
 func init() {
 
     // Get CPU Count
-    cat, err := readFile( "/proc/stat" )
+    cat, err := readFile("/proc/stat")
     if err != nil {
-        log.Fatalln( "Failed to initialize GeneralCpuUsage: failed to read /proc/stat" )
+        log.Fatalln("Failed to initialize GeneralCpuUsage: failed to read /proc/stat")
     }
 
-    lines := strings.Split( cat, "\n" )
-    if len( lines ) < 2 {
-        log.Fatalln( "Failed to initialize GeneralCpuUsage: bad /proc/stat" )
+    lines := strings.Split(cat, "\n")
+    if len(lines) < 2 {
+        log.Fatalln("Failed to initialize GeneralCpuUsage: bad /proc/stat")
     }
 
     procStatCpuCount = 0
-    for i := 0; i < len( lines ); i++ {
-        cols := splitWhitespace( lines[i] )
+    for i := 0; i < len(lines); i++ {
+        cols := splitWhitespace(lines[i])
         if cols[0][:3] != "cpu" {
             break
         }
-        if len( cols[0] ) > 3 {
+        if len(cols[0]) > 3 {
             procStatCpuCount++
         }
     }
 
     // Init Vars
-    prevProcStat = make( []procStatStruct, int( GetCpuCount() ) + 1 )
+    prevProcStat = make([]procStatStruct, int(GetCpuCount()) + 1)
 
 }
 
-func( pss procStatStruct ) GetTotal() int {
+func(pss procStatStruct) GetTotal() int {
     return pss.user + pss.nice + pss.system + pss.idle + pss.iowait + pss.irq + pss.softirq + pss.steal
 }
 
-func( pss procStatStruct ) GetIdle() int {
+func(pss procStatStruct) GetIdle() int {
     return pss.idle + pss.iowait
 }
 
-func( pss *procStatStruct ) Parse( line string ) error {
+func(pss *procStatStruct) Parse(line string) error {
 
     n, err := fmt.Sscanf(
         line,
         "%s %d %d %d %d %d %d %d %d",
         &pss.name, &pss.user, &pss.nice, &pss.system, &pss.idle, &pss.iowait, &pss.irq, &pss.softirq, &pss.steal,
-    )
+   )
     if n != 9 || err != nil {
-        return fmt.Errorf( "Failed to read cpu stat" )
+        return fmt.Errorf("Failed to read cpu stat")
     }
     return nil
 
@@ -98,34 +98,34 @@ func( pss *procStatStruct ) Parse( line string ) error {
 // GetCpuUsage returns the cpu usage during the duration from the last call of this function of the start of the current session
 // and to the current call of this function.
 
-func GetCpuUsage() ( []float64, error ) {
+func GetCpuUsage() ([]float64, error) {
 
-    cat, err := readFile( "/proc/stat" )
+    cat, err := readFile("/proc/stat")
     if err != nil {
         return nil, err
     }
 
-    cpup1 := int( GetCpuCount() ) + 1
-    lines := strings.Split( cat, "\n" )
+    cpup1 := int(GetCpuCount()) + 1
+    lines := strings.Split(cat, "\n")
     lines = lines[:cpup1]
 
-    usage := make( []float64, cpup1 )
-    currProcStat := make( []procStatStruct, cpup1 )
-    for i := 0; i < len( lines ); i++ {
+    usage := make([]float64, cpup1)
+    currProcStat := make([]procStatStruct, cpup1)
+    for i := 0; i < len(lines); i++ {
 
         // Get Current Values
         currProcStat[i] = procStatStruct{}
-        err = currProcStat[i].Parse( lines[i] )
+        err = currProcStat[i].Parse(lines[i])
         if err != nil {
             return nil, err
         }
 
         // Get Difference
-        dIdle := float64( currProcStat[i].GetIdle() - prevProcStat[i].GetIdle() )
-        dTotal := float64( currProcStat[i].GetTotal() - prevProcStat[i].GetTotal() )
+        dIdle := float64(currProcStat[i].GetIdle() - prevProcStat[i].GetIdle())
+        dTotal := float64(currProcStat[i].GetTotal() - prevProcStat[i].GetTotal())
 
         // Get Usage
-        usage[i] = ( dTotal - dIdle ) / dTotal * 100
+        usage[i] = (dTotal - dIdle) / dTotal * 100
 
     }
 
@@ -137,5 +137,5 @@ func GetCpuUsage() ( []float64, error ) {
 // GetCpuCount returns the count of the cpu from the /proc/stat
 
 func GetCpuCount() float64 {
-    return float64( procStatCpuCount )
+    return float64(procStatCpuCount)
 }

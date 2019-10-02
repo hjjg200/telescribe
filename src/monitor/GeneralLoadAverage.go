@@ -7,9 +7,9 @@ import (
 // GetLoadAverage returns the load average
 // 1m, 5m, 15m in order
 
-func GetLoadAverage() ( map[string] float64, error ) {
+func GetLoadAverage() (map[string] float64, error) {
 
-    cat, err := readFile( "/proc/loadavg" )
+    cat, err := readFile("/proc/loadavg")
     if err != nil {
         return nil, err
     }
@@ -19,10 +19,10 @@ func GetLoadAverage() ( map[string] float64, error ) {
         la1m float64
         la5m float64
         la15m float64
-    )
-    n, err := fmt.Sscanf( cat, "%f %f %f", &la1m, &la5m, &la15m )
+   )
+    n, err := fmt.Sscanf(cat, "%f %f %f", &la1m, &la5m, &la15m)
     if n != 3 || err != nil {
-        return nil, fmt.Errorf( "Failed to parse /proc/loadavg" )
+        return nil, fmt.Errorf("Failed to parse /proc/loadavg")
     }
 
     // Return
@@ -32,7 +32,7 @@ func GetLoadAverage() ( map[string] float64, error ) {
 
 }
 
-func GetLoadAveragePerCpu() ( map[string] float64, error ) {
+func GetLoadAveragePerCpu() (map[string] float64, error) {
     m, err := GetLoadAverage()
     if err != nil {
         return nil, err

@@ -37,17 +37,17 @@ var Wrappers = map[string] wrapper {
     KeyCustomCommand: wrapper{ CustomCommand },
 }
 
-func Getter( longKey string ) ( func() map[string] float64, bool ) {
+func Getter(longKey string) (func() map[string] float64, bool) {
 
-    base, param, idx := ParseWrapperKey( longKey )
+    base, param, idx := ParseWrapperKey(longKey)
     baseWrapper, ok := Wrappers[base]
     if !ok {
         return nil, false
     }
 
     return func() map[string] float64 {
-        out := baseWrapper.Get( param )
-        switch cast := out.( type ) {
+        out := baseWrapper.Get(param)
+        switch cast := out.(type) {
         case float64:
             if idx != "" {
                 return nil
@@ -61,9 +61,9 @@ func Getter( longKey string ) ( func() map[string] float64, bool ) {
                     longKey: cast[idx],
                 }
             }
-            ret := make( map[string] float64 )
+            ret := make(map[string] float64)
             for i, v := range cast {
-                ret[FormatWrapperKey( base, param, i )] = v
+                ret[FormatWrapperKey(base, param, i)] = v
             }
             return ret
         }
@@ -72,32 +72,32 @@ func Getter( longKey string ) ( func() map[string] float64, bool ) {
 
 }
 
-func FormatWrapperKey( base, param, idx string ) string {
+func FormatWrapperKey(base, param, idx string) string {
     qtchars := `")([]`
     key := base
     if param != "" {
-        if strings.ContainsAny( param, qtchars ) {
-            param = strconv.Quote( param )
+        if strings.ContainsAny(param, qtchars) {
+            param = strconv.Quote(param)
         }
         key += "(" + param + ")"
     }
     if idx != "" {
-        if strings.ContainsAny( idx, qtchars ) {
-            idx = strconv.Quote( idx )
+        if strings.ContainsAny(idx, qtchars) {
+            idx = strconv.Quote(idx)
         }
         key += "[" + idx + "]"
     }
     return key
 }
 
-func ParseWrapperKey( key string ) ( base, param, idx string ) {
+func ParseWrapperKey(key string) (base, param, idx string) {
 
     const (
         pBase = iota
         pParam
         pIdx
         pNil
-    )
+   )
 
     parseMode := pBase
     quoted := false
@@ -141,9 +141,9 @@ func ParseWrapperKey( key string ) ( base, param, idx string ) {
             }
         }
         switch parseMode {
-        case pBase: base += string( r )
-        case pParam: param += string( r )
-        case pIdx: idx += string( r )
+        case pBase: base += string(r)
+        case pParam: param += string(r)
+        case pIdx: idx += string(r)
         }
     }
     
@@ -151,29 +151,29 @@ func ParseWrapperKey( key string ) ( base, param, idx string ) {
 
 }
 
-func ( w wrapper ) Get( param string ) interface{} {
+func (w wrapper) Get(param string) interface{} {
 
-    fn := reflect.ValueOf( w.body )
-    ins := make( []reflect.Value, 0 )
+    fn := reflect.ValueOf(w.body)
+    ins := make([]reflect.Value, 0)
     if param != "" {
-        ins = append( ins, reflect.ValueOf( param ) )
+        ins = append(ins, reflect.ValueOf(param))
     }
-    outs := fn.Call( ins )
+    outs := fn.Call(ins)
     val := outs[0]
 
-    if len( outs ) > 1 {
+    if len(outs) > 1 {
         if outs[1].Interface() != nil {
             return nil
         }
     }
 
-    switch cast := val.Interface().( type ) {
+    switch cast := val.Interface().(type) {
     case float64:
         return cast
     case []float64:
-        ret := make( map[string] float64 )
-        for i := 0; i < len( cast ); i++ {
-            ret[fmt.Sprint( i )] = cast[i]
+        ret := make(map[string] float64)
+        for i := 0; i < len(cast); i++ {
+            ret[fmt.Sprint(i)] = cast[i]
         }
         return ret
     case map[string] float64:

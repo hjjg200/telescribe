@@ -38,68 +38,68 @@ func secondsFromStart() string {
     var t time.Time
     if logStartTime == t {
         logStartTime = time.Now()
-        return fmt.Sprintf( "%11d", time.Now().Unix() )
+        return fmt.Sprintf("%11d", time.Now().Unix())
     }
-    return fmt.Sprintf( "%11.3f", float64( time.Now().Sub( logStartTime ) ) / float64( time.Second ) )
+    return fmt.Sprintf("%11.3f", float64(time.Now().Sub(logStartTime)) / float64(time.Second))
 }
 
-func ( lgr *Logger ) AddWriter( w io.Writer, cl bool ) {
-    lgr.writers = append( lgr.writers, Writer{ w, cl } )
+func (lgr *Logger) AddWriter(w io.Writer, cl bool) {
+    lgr.writers = append(lgr.writers, Writer{ w, cl })
 }
 
-func ( lgr *Logger ) Infoln( args ...interface{} ) {
-    lgr.println( prefixInfo, args... )
+func (lgr *Logger) Infoln(args ...interface{}) {
+    lgr.println(prefixInfo, args...)
 }
 
-func ( lgr *Logger ) Warnln( args ...interface{} ) {
-    lgr.println( prefixWarn, args... )
+func (lgr *Logger) Warnln(args ...interface{}) {
+    lgr.println(prefixWarn, args...)
 }
 
-func ( lgr *Logger ) Fatalln( args ...interface{} ) {
-    lgr.println( prefixFatal, args... )
-    os.Exit( 1 )
+func (lgr *Logger) Fatalln(args ...interface{}) {
+    lgr.println(prefixFatal, args...)
+    os.Exit(1)
 }
 
-func ( lgr *Logger ) Panicln( args ...interface{} ) {
-    lgr.print( prefixPanic, "" )
-    panic( fmt.Sprintln( args... ) )
+func (lgr *Logger) Panicln(args ...interface{}) {
+    lgr.print(prefixPanic, "")
+    panic(fmt.Sprintln(args...))
 }
 
-func ( lgr *Logger ) Debugln( args ...interface{} ) {
-    pc, _, _, ok := runtime.Caller( 1 )
+func (lgr *Logger) Debugln(args ...interface{}) {
+    pc, _, _, ok := runtime.Caller(1)
     if !ok || !Debug {
         return
     }
-    fn := runtime.FuncForPC( pc )
-    f, l := fn.FileLine( pc )
-    dir := filepath.Base( filepath.Dir( f ) )
-    f = dir + "/" + filepath.Base( f )
-    n := filepath.Base( fn.Name() )
+    fn := runtime.FuncForPC(pc)
+    f, l := fn.FileLine(pc)
+    dir := filepath.Base(filepath.Dir(f))
+    f = dir + "/" + filepath.Base(f)
+    n := filepath.Base(fn.Name())
     args = append(
-        []interface{}{ fmt.Sprintf( "%s[%s:%d]", n, f, l ) },
+        []interface{}{ fmt.Sprintf("%s[%s:%d]", n, f, l) },
         args...,
-    )
-    lgr.println( prefixDebug, args... )
+   )
+    lgr.println(prefixDebug, args...)
 }
 
-func ( lgr *Logger ) println( prefix string, args ...interface{} ) {
-    args = append( args, "\n" )
-    lgr.print( prefix, args... )
+func (lgr *Logger) println(prefix string, args ...interface{}) {
+    args = append(args, "\n")
+    lgr.print(prefix, args...)
 }
 
-func ( lgr *Logger ) print( prefix string, args ...interface{} ) {
+func (lgr *Logger) print(prefix string, args ...interface{}) {
     for _, w := range lgr.writers {
-        w.print( prefix, args... )
+        w.print(prefix, args...)
     }
 }
 
-func ( w *Writer ) print( prefix string, args ...interface{} ) {
+func (w *Writer) print(prefix string, args ...interface{}) {
 
     if !w.color {
-        prefix = stripAnsiColor( prefix )
+        prefix = stripAnsiColor(prefix)
     }
 
-    out := "[" + padPrefix( prefix, 6 ) + "] "
+    out := "[" + padPrefix(prefix, 6) + "] "
     out += secondsFromStart()
     out += " - "
 
@@ -107,16 +107,16 @@ func ( w *Writer ) print( prefix string, args ...interface{} ) {
         if i > 0 {
             out += " "
         }
-        out += fmt.Sprint( args[i] )
+        out += fmt.Sprint(args[i])
     }
 
-    fmt.Fprint( w.w, out )
+    fmt.Fprint(w.w, out)
 
 }
 
-func padPrefix( str string, width int ) string {
+func padPrefix(str string, width int) string {
 
-    strLen := len( stripAnsiColor( str ) )
+    strLen := len(stripAnsiColor(str))
     if strLen > width {
         return str
     }
@@ -131,18 +131,18 @@ func padPrefix( str string, width int ) string {
     return str
 }
 
-func stripAnsiColor( str string ) string {
+func stripAnsiColor(str string) string {
 
     for i := 0; i < 5; i++ {
-        pos := strings.Index( str, "\033" )
+        pos := strings.Index(str, "\033")
         if pos == -1 {
             break
         }
-        pos2 := strings.Index( str[pos:], "m" ) + pos
+        pos2 := strings.Index(str[pos:], "m") + pos
         if pos2 == -1 {
             break
         }
-        if pos2 == len( str ) - 1 {
+        if pos2 == len(str) - 1 {
             str = str[:pos]
         } else {
             str = str[:pos] + str[pos2 + 1:]

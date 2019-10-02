@@ -7,26 +7,26 @@ import (
     "regexp"
 )
 
-func readFile( path string ) ( string, error ) {
+func readFile(path string) (string, error) {
     
-    f, err := os.Open( path )
+    f, err := os.Open(path)
     if err != nil {
         return "", err
     }
     defer f.Close()
 
-    buf := bytes.NewBuffer( nil )
-    _, err = io.Copy( buf, f )
+    buf := bytes.NewBuffer(nil)
+    _, err = io.Copy(buf, f)
     if err != nil {
         return "", err
     }
 
     // For convenience, returns as string
-    return string( buf.Bytes() ), nil
+    return string(buf.Bytes()), nil
 
 }
 
-var whitespaceRegexp = regexp.MustCompile( "\\s+" )
-func splitWhitespace( str string ) []string {
-    return whitespaceRegexp.Split( str, -1 )
+var whitespaceRegexp = regexp.MustCompile("\\s+")
+func splitWhitespace(str string) []string {
+    return whitespaceRegexp.Split(str, -1)
 }
