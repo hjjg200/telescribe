@@ -24,11 +24,16 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 
 1. ~~Better handling of responses and requests~~
 1. ~~Elliptic curve encryption~~
+1. Detect config change in server and notify the client
+1. Alias-to-host-and-role instead of current host-to-role to prevent redundant configs
 1. Putting static data into binary
 1. I/O monitoring
 1. Disk monitoring
 1. Per-process monitoring
 1. Network monitoring
+1. JS overhaul
+1. (maybe) React.js
+1. Numeral.js format for monitor data
 1. Combining all the data into one single graph and letting users to select which data to view
 1. Custom bash scripts in client configs
 1. Overall overhaul
