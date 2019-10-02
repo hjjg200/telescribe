@@ -54,7 +54,8 @@ type ServerConfig struct {
     Port int `json:"network.port"`
     Tickrate int `json:"network.tickrate(hz)"` // How many times will the server process connections in a second (Hz)
     // Client Config
-    ClientConfigs map[string] ClientConfig `json:"clientConfigs"` // Whitelisted clients
+    ClientAliases map[string] ClientAliasConfig `json:"client.aliases"`
+    ClientRoles map[string] ClientRoleConfig `json:"client.roles"`
 }
 
 var DefaultServerConfig = ServerConfig{
@@ -79,14 +80,19 @@ var DefaultServerConfig = ServerConfig{
     Port: 1226,
     Tickrate: 60,
     // Client Config
-    ClientConfigs: map[string] ClientConfig{
-        "localhost": {
-            Alias: "example",
+    ClientAliases: map[string] ClientAliasConfig{
+        "127.0.0.1": {
+            Alias: "foo",
             Comment: "This is an example.",
+            Role: "example",
+        },
+    },
+    ClientRoles: map[string] ClientRoleConfig{
+        "example": {
             MonitorInfos: map[string] MonitorInfo{
                 "general-cpuUsage": MonitorInfo{
-                    FatalRange: "80.8:100.0,0:5.0",
-                    WarningRange: "22.5:55",
+                    FatalRange: "80:",
+                    WarningRange: "50:",
                 },
             },
             MonitorInterval: 60,
@@ -98,11 +104,6 @@ func NewServer() *Server {
     srv := &Server{}
     srv.clientMonitorData = make(map[string] map[string] MonitorDataSlice)
     return srv
-}
-
-func (srv *Server) ClientConfig(host string) (ClientConfig, bool) {
-    clCfg, ok := srv.config.ClientConfigs[host]
-    return clCfg, ok
 }
 
 func (srv *Server) LoadConfig(p string) error {
@@ -211,7 +212,7 @@ func (srv *Server) Start() (err error) {
             ca := make(map[string] string) // Client aliases
             cmd := make(map[string] map[string] MonitorDataSlice) // Client monitor data
             for host, mdsMap := range srv.clientMonitorData {
-                ca[host] = srv.config.ClientConfigs[host].Alias
+                ca[host] = srv.config.ClientAliases[host].Alias
                 cmd[host] = make(map[string] MonitorDataSlice)
                 for key, mds := range mdsMap {
                     cmd[host][key] = LTTBMonitorDataSlice( // Decimate monitor data
@@ -466,7 +467,9 @@ func (srv *Server) getMonitorInfo(host, key string) (MonitorInfo) {
     aBase, aParam, aIdx := ParseMonitorrKey(key)
     var bpMatch MonitorInfo
 
-    for b, mi := range srv.config.ClientConfigs[host].MonitorInfos {
+    alias := srv.config.ClientAliases[host]
+    role := srv.config.ClientRoles[alias.Role]
+    for b, mi := range role.MonitorInfos {
         bBase, bParam, bIdx := ParseMonitorrKey(b)
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {
@@ -488,13 +491,15 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     //
     host, err := s.RemoteHost()
     Try(err)
-    clCfg, whitelisted := srv.config.ClientConfigs[host]
+    alias, whitelisted := srv.config.ClientAliases[host]
     if !whitelisted {
         srvRsp := NewResponse("not-whitelisted")
         s.WriteResponse(srvRsp)
         return fmt.Errorf("%s [non-whitelisted] tried to establish a connection", host)
     }
 
+    role, ok := srv.config.ClientRoles[alias.Role]
+    Assert(ok, "Client must have its role")
     Logger.Infoln(host, "connected")
     clRsp, err := s.NextResponse()
     Try(err)
@@ -517,10 +522,10 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     switch clRsp.Name() {
     case "hello":
 
-        cfgBytes, err := json.Marshal(clCfg)
+        roleBytes, err := json.Marshal(role)
         Try(err)
         srvRsp := NewResponse("hello")
-        srvRsp.Set("config", cfgBytes)
+        srvRsp.Set("role", roleBytes)
         Logger.Infoln(host, "HELLO CLIENT")
         return s.WriteResponse(srvRsp)
 

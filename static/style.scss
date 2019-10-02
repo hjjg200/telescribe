@@ -36,7 +36,7 @@ ul {
     list-style: none;
 }
 
-.main {
+#app {
     margin: 0 auto;
     min-width: 33rem;
     max-width: 60rem;
@@ -44,7 +44,7 @@ ul {
     overflow-x: auto;
 }
 
-.host-list {
+#host-list {
     background: white;
     border: 1px solid #f0f0f0;
     border-top: none;
@@ -67,6 +67,57 @@ ul {
             vertical-align: top;
         }
     }
+}
+
+.md-list {
+    display: grid;
+    grid-template-columns: auto auto;
+}
+.md-list li {
+    display: inline-grid;
+    label {
+        display: block;
+        padding: 0.5rem 0.8rem;
+        input[type="checkbox"] {
+            border-radius: 0;
+            display: inline-block;
+            border: 1px solid #dfdfdf;
+            height: 0.7rem;
+            width: 0.7rem;
+            margin-right: 0.3rem;
+            &:checked {
+                border: none;
+            }
+        }
+        .key {
+            color: #aaaaaa;
+            margin-right: 0.3rem;
+        }
+    }
+
+    &[data-status="8"] .value {
+        color: hsl(45, 95%, 55%);
+        font-weight: bold;
+    } /* Warning */
+    &[data-status="16"] .value {
+        color: hsl(355, 75%, 55%);
+        font-weight: bold;
+    } /* Fatal */
+    input.series-a { background: #d70206; }
+    input.series-b { background: #f05b4f; }
+    input.series-c { background: #f4c63d; }
+    input.series-d { background: #d17905; }
+    input.series-e { background: #453d3f; }
+    input.series-f { background: #59922b; }
+    input.series-g { background: #0544d3; }
+    input.series-h { background: #6b0392; }
+    input.series-i { background: #f05b4f; }
+    input.series-j { background: #dda458; }
+    input.series-k { background: #eacf7d; }
+    input.series-l { background: #86797d; }
+    input.series-m { background: #b2c326; }
+    input.series-n { background: #6188e2; }
+    input.series-o { background: #a748ca; }
 }
 
 .chart:hover, .chart.touch {
@@ -108,24 +159,23 @@ ul {
 }
 
 .chart {
-    display: none;
     &, * {
         overflow: visible;
     }
     position: relative;
-    height: 9rem;
+    height: 16rem;
     padding: 0.7rem 1.5rem 0.2rem 0.5rem;
 }
 .ct-point {
-    stroke-width: 0.33rem;
-    stroke: rgba(0, 0, 0, 0) !important;
-    &:hover {
-        stroke-width: 0.66rem;
-        stroke: #d70206 !important;
-    }
+    stroke-width: 0.42rem;
+    opacity: 0;
     &[ct|meta^="*"] {
-        stroke-width: 0.5rem;
-        stroke: #d70206 !important;
+        stroke-width: 0.42rem;
+        opacity: 1;
+    }
+    &:hover {
+        stroke-width: 0.5rem !important;
+        opacity: 1;
     }
 }
 .ct-line {

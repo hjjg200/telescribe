@@ -246,6 +246,9 @@ func (s *Session) SetConn(conn net.Conn) {
 }
 
 func (s *Session) IsExpired() bool {
+    if s.info == nil {
+        return true
+    }
     return s.info.IsExpired()
 }
 
@@ -467,7 +470,8 @@ func (s *Session) BeginHandshake() (err error) {
     Try(err)
 
     if !haveAuthPub {
-        authPub, ok := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
+        var ok bool
+        authPub, ok = new(p256.PublicKey).SetBytes(srvAuthPubBytes)
         Assert(ok, "Bad public key bytes")
         fp := authPub.Fingerprint()
         Logger.Warnln(
@@ -513,7 +517,6 @@ func (s *Session) BeginHandshake() (err error) {
     sessionId, err := readNextPacket(srvHs)
     Try(err)
     s.info.id = sessionId
-
     // Verify server pub
     verified := p256.Verify(authPub, srvPubBytes, srvPubSig)
     challengeResult := p256.Verify(authPub, challenge, srvChallenge)

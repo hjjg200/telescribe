@@ -39,7 +39,7 @@ ul {
   list-style: none;
 }
 
-.main {
+#app {
   margin: 0 auto;
   min-width: 33rem;
   max-width: 60rem;
@@ -47,18 +47,18 @@ ul {
   overflow-x: auto;
 }
 
-.host-list {
+#host-list {
   background: white;
   border: 1px solid #f0f0f0;
   border-top: none;
   line-height: 1;
   overflow: hidden;
 }
-.host-list .host-header {
+#host-list .host-header {
   border-bottom: 1px solid #f0f0f0;
   padding: 0.8rem;
 }
-.host-list .host-header .status {
+#host-list .host-header .status {
   border-radius: 50%;
   display: inline-block;
   margin-right: 0.4rem;
@@ -68,17 +68,100 @@ ul {
   /* Warning */
   /* Fatal */
 }
-.host-list .host-header .status[data-status="0"] {
+#host-list .host-header .status[data-status="0"] {
   background: #42d767;
 }
-.host-list .host-header .status[data-status="8"] {
+#host-list .host-header .status[data-status="8"] {
   background: #f9c31f;
 }
-.host-list .host-header .status[data-status="16"] {
+#host-list .host-header .status[data-status="16"] {
   background: #e23645;
 }
-.host-list .host-header span:nth-child(2) {
+#host-list .host-header span:nth-child(2) {
   vertical-align: top;
+}
+
+.md-list {
+  display: grid;
+  grid-template-columns: auto auto;
+}
+
+.md-list li {
+  display: inline-grid;
+  /* Warning */
+  /* Fatal */
+}
+.md-list li label {
+  display: block;
+  padding: 0.5rem 0.8rem;
+}
+.md-list li label input[type=checkbox] {
+  border-radius: 0;
+  display: inline-block;
+  border: 1px solid #dfdfdf;
+  height: 0.7rem;
+  width: 0.7rem;
+  margin-right: 0.3rem;
+}
+.md-list li label input[type=checkbox]:checked {
+  border: none;
+}
+.md-list li label .key {
+  color: #aaaaaa;
+  margin-right: 0.3rem;
+}
+.md-list li[data-status="8"] .value {
+  color: #f9c31f;
+  font-weight: bold;
+}
+.md-list li[data-status="16"] .value {
+  color: #e23645;
+  font-weight: bold;
+}
+.md-list li input.series-a {
+  background: #d70206;
+}
+.md-list li input.series-b {
+  background: #f05b4f;
+}
+.md-list li input.series-c {
+  background: #f4c63d;
+}
+.md-list li input.series-d {
+  background: #d17905;
+}
+.md-list li input.series-e {
+  background: #453d3f;
+}
+.md-list li input.series-f {
+  background: #59922b;
+}
+.md-list li input.series-g {
+  background: #0544d3;
+}
+.md-list li input.series-h {
+  background: #6b0392;
+}
+.md-list li input.series-i {
+  background: #f05b4f;
+}
+.md-list li input.series-j {
+  background: #dda458;
+}
+.md-list li input.series-k {
+  background: #eacf7d;
+}
+.md-list li input.series-l {
+  background: #86797d;
+}
+.md-list li input.series-m {
+  background: #b2c326;
+}
+.md-list li input.series-n {
+  background: #6188e2;
+}
+.md-list li input.series-o {
+  background: #a748ca;
 }
 
 .chart:hover .ct-line, .chart.touch .ct-line {
@@ -115,9 +198,8 @@ ul {
 }
 
 .chart {
-  display: none;
   position: relative;
-  height: 9rem;
+  height: 16rem;
   padding: 0.7rem 1.5rem 0.2rem 0.5rem;
 }
 .chart, .chart * {
@@ -125,16 +207,16 @@ ul {
 }
 
 .ct-point {
-  stroke-width: 0.33rem;
-  stroke: rgba(0, 0, 0, 0) !important;
-}
-.ct-point:hover {
-  stroke-width: 0.66rem;
-  stroke: #d70206 !important;
+  stroke-width: 0.42rem;
+  opacity: 0;
 }
 .ct-point[ct|meta^="*"] {
-  stroke-width: 0.5rem;
-  stroke: #d70206 !important;
+  stroke-width: 0.42rem;
+  opacity: 1;
+}
+.ct-point:hover {
+  stroke-width: 0.5rem !important;
+  opacity: 1;
 }
 
 .ct-line {
@@ -144,3 +226,5 @@ ul {
 .chartist-tooltip-meta {
   font-size: 0.7rem;
 }
+
+/*# sourceMappingURL=style.css.map */

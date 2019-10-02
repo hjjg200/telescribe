@@ -21,10 +21,6 @@ const KeyLoadAverage = "general-loadAverage"
 const KeyLoadAveragePerCpu = "general-loadAveragePerCpu"
 const KeyCustomCommand = "custom-command"
 
-// Remove string range part
-// Improve range
-//   3:,:10
-
 var Wrappers = map[string] wrapper {
     KeyCpuCount: wrapper{ GetCpuCount },
     KeyCpuUsage: wrapper{ GetCpuUsage },
@@ -152,6 +148,8 @@ func ParseWrapperKey(key string) (base, param, idx string) {
 }
 
 func (w wrapper) Get(param string) interface{} {
+
+    defer recover()
 
     fn := reflect.ValueOf(w.body)
     ins := make([]reflect.Value, 0)

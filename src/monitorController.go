@@ -72,6 +72,7 @@ func (mdse MonitorDataSliceElem) Y() float64 {
 type MonitorInfo struct {
     FatalRange Range `json:"fatalRange"`
     WarningRange Range `json:"warningRange"`
+    NumeralJSFormat string `json:"numeralJsFormat"`
 }
 
 const (

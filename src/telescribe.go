@@ -90,7 +90,6 @@ var (
     flServer bool
     flServerConfigPath string
 
-    flClient bool
     flClientHostname string
     flClientPort int
     flClientKnownHostsPath string
@@ -105,29 +104,14 @@ func setFlags() {
     flag.BoolVar(&flServer, "server", false, "Run as a server")
     flag.StringVar(&flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.")
 
-    flag.BoolVar(&flClient, "client", false, "Run as a client")
-    flag.StringVar(&flClientHostname, "client-host", "", "(Client) The hostname of the server for the client to connect to")
-    flag.IntVar(&flClientPort, "client-port", 1226, "(Client) The port of the server for the client to connect to")
-    flag.StringVar(&flClientKnownHostsPath, "client-known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
+    flag.StringVar(&flClientHostname, "host", "", "(Client) The hostname of the server for the client to connect to")
+    flag.IntVar(&flClientPort, "port", 1226, "(Client) The port of the server for the client to connect to")
+    flag.StringVar(&flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
     
     flag.BoolVar(&flDebug, "debug", false, "(Debug) verbose")
     flag.Parse()
 
     // Check wrong flags
-    
-    //// Client or server
-    if !flServer && !flClient {
-        fmt.Println("-server or -client must be given\n")
-        flag.PrintDefaults()
-        os.Exit(1)
-    }
-
-    //// Mutually exclusive
-    if flServer && flClient {
-        fmt.Println("-server and -client are mutually exclusive\n")
-        flag.PrintDefaults()
-        os.Exit(1)
-    }
 
     //// Port range
     if flClientPort < 1 || flClientPort > 65535 {
@@ -137,7 +121,7 @@ func setFlags() {
     }
 
     //// Client
-    if flClient {
+    if !flServer {
         if flClientHostname == "" {
             fmt.Println("No hostname was given\n")
             flag.PrintDefaults()
@@ -159,7 +143,7 @@ func main() {
     setFlags()
     log.Debug = flDebug
 
-    // Cache
+    // Executable path
     var err error
     executablePath, err = os.Executable()
     if err != nil {
@@ -171,7 +155,7 @@ func main() {
     }
 
     switch {
-    case flClient:
+    case !flServer:
         addr := fmt.Sprintf("%s:%d", flClientHostname, flClientPort)
         cl := NewClient(addr)
         Logger.Infoln("Starting as a client for", addr)

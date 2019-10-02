@@ -2,20 +2,39 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <!-- development version, includes helpful console warnings -->
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
         <link rel="stylesheet" href="/static/chartist.min.css">
         <link rel="stylesheet" href="/static/chartist-plugin-tooltip.css">
         <script src="/static/chartist.min.js"></script>
         <script src="/static/chartist-plugin-tooltip.js"></script>
-        <script src="/static/numeral.min.js"></script>
         <script src="/static/moment.js"></script>
         <script src="/static/main.js"></script>
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,800&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="/static/style.css">
     </head>
     <body>
-        <div class="main">
-            <ul class="host-list">
+        <div id="app">
+            <ul id="host-list">
+                <li v-for="(cmd, host) in cmdMap" v-bind:data-host="host">
+                    <div class="host-header">
+                        <span class="status" v-bind:data-status="maxStatus(cmsMap[host])"></span>
+                        <span>{{ caMap[host] }} ({{ host }})</span>
+                    </div>
+                    <ul class="md-list">
+                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[host][key]">
+                            <label>
+                                <input type="checkbox" v-on:change="toggleSeries($event, host, key, checked[host][key])" v-model="checked[host][key]">
+                                <span class="key">{{ key }}</span>
+                                <span class="value">{{ cmsMap[host][key].Value }}</span>
+                            </label>
+                        </li>
+                    </ul>
+                    <div class="chart">
+
+                    </div>
+                </li>
             </ul>
         </div>
     </body>

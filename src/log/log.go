@@ -52,10 +52,16 @@ func (lgr *Logger) Infoln(args ...interface{}) {
 }
 
 func (lgr *Logger) Warnln(args ...interface{}) {
+    if Debug {
+        args = append([]interface{}{ lgr.caller(2) }, args...)
+    }
     lgr.println(prefixWarn, args...)
 }
 
 func (lgr *Logger) Fatalln(args ...interface{}) {
+    if Debug {
+        args = append([]interface{}{ lgr.caller(2) }, args...)
+    }
     lgr.println(prefixFatal, args...)
     os.Exit(1)
 }
@@ -66,20 +72,24 @@ func (lgr *Logger) Panicln(args ...interface{}) {
 }
 
 func (lgr *Logger) Debugln(args ...interface{}) {
-    pc, _, _, ok := runtime.Caller(1)
-    if !ok || !Debug {
+    if !Debug {
         return
+    }
+    args = append([]interface{}{ lgr.caller(2) }, args...)
+    lgr.println(prefixDebug, args...)
+}
+
+func (lgr *Logger) caller(skip int) string {
+    pc, _, _, ok := runtime.Caller(skip)
+    if !ok  {
+        return ""
     }
     fn := runtime.FuncForPC(pc)
     f, l := fn.FileLine(pc)
     dir := filepath.Base(filepath.Dir(f))
     f = dir + "/" + filepath.Base(f)
     n := filepath.Base(fn.Name())
-    args = append(
-        []interface{}{ fmt.Sprintf("%s[%s:%d]", n, f, l) },
-        args...,
-   )
-    lgr.println(prefixDebug, args...)
+    return fmt.Sprintf("%s[%s:%d]", n, f, l)
 }
 
 func (lgr *Logger) println(prefix string, args ...interface{}) {

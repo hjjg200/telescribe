@@ -18,21 +18,21 @@ Telescribe is designed in such a way that the only thing you have to worry about
 - **Gob Encoding:** To serialize the monitored data and cache them as files.
 - **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
 
-## TODO
+## TODO (alpha)
 
 Telescribe is currently at alpha stage. When all of the followings get done, it will be its beta stage.
 
 1. ~~Better handling of responses and requests~~
 1. ~~Elliptic curve encryption~~
+1. ~~Host-to-alias-and-role instead of current host-to-role to prevent redundant configs~~
+1. ~~Vue.js~~
 1. Detect config change in server and notify the client
-1. Alias-to-host-and-role instead of current host-to-role to prevent redundant configs
 1. Putting static data into binary
 1. I/O monitoring
 1. Disk monitoring
 1. Per-process monitoring
 1. Network monitoring
 1. JS overhaul
-1. (maybe) React.js
 1. Numeral.js format for monitor data
 1. Combining all the data into one single graph and letting users to select which data to view
 1. Custom bash scripts in client configs

@@ -16,12 +16,16 @@ const defaultHelloRetryInterval = time.Minute * 1
 type Client struct {
     serverAddr string
     s *Session
-    config ClientConfig
+    role ClientRoleConfig
 }
 
-type ClientConfig struct {
+type ClientAliasConfig struct {
     Alias string `json:"alias"`
     Comment string `json:"comment"`
+    Role string `json:"role"`
+}
+
+type ClientRoleConfig struct {
     MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
     MonitorInterval int `json:"monitorInterval"`
 }
@@ -54,8 +58,8 @@ func (cl *Client) hello() (err error) {
 
     switch srvRsp.Name() {
     case "hello":
-        config := srvRsp.Bytes("config")
-        return json.Unmarshal(config, &cl.config)
+        role := srvRsp.Bytes("role")
+        return json.Unmarshal(role, &cl.role)
     case "version-mismatch":
         executable := srvRsp.Bytes("executable")
         return cl.autoUpdate(executable)
@@ -120,7 +124,7 @@ func (cl *Client) Start() error {
 
         Logger.Infoln("SUCCESSFUL HELLO")
         // Config
-        monitorInterval := time.Second * time.Duration(cl.config.MonitorInterval)
+        monitorInterval := time.Second * time.Duration(cl.role.MonitorInterval)
         hri = monitorInterval
         pass := make(chan struct{})
         go func() {
@@ -153,7 +157,7 @@ func (cl *Client) Start() error {
             cl.s.SetConn(conn)
 
             md := make(map[string] interface{})
-            for k := range cl.config.MonitorInfos {
+            for k := range cl.role.MonitorInfos {
                 getter, ok := monitor.Getter(k)
                 if !ok {
                     md[k] = nil
@@ -190,13 +194,8 @@ func (cl *Client) Start() error {
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
                 executable := srvRsp.Bytes("executable")
-        
-                err = cl.autoUpdate(executable)
-                if err != nil {
-                    Logger.Warnln(err)
-                    continue
-                }
-                break MonitorLoop
+
+                Logger.Fatalln(cl.autoUpdate(executable))
             case "session-expired":
                 break MonitorLoop
             }
