@@ -61,21 +61,24 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    serveStatic := func(u string) error {
+    serveStatic := func(u string) {
         if strings.HasPrefix(u, "/static/") {
             fp := u[1:]
             f, err := os.OpenFile(fp, os.O_RDONLY, 0644)
             if err != nil {
-                return err
+                w.WriteHeader(404)
+                return
             }
             st, err := f.Stat()
             if err != nil {
-                return err
+                w.WriteHeader(404)
+                return
             }
             http.ServeContent(w, r, f.Name(), st.ModTime(), f)
             f.Close()
+            return
         }
-        return fmt.Errorf("Not authorized")
+        w.WriteHeader(404)
     }
 
     url := r.URL.Path
@@ -84,17 +87,13 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         // TODO http
         // TODO fatal status webhook
     default:
-        err := serveStatic(url)
-        if err != nil {
-            w.WriteHeader(404)
-            return
-        }
+        serveStatic(url)
+        return
     case "/":
         serveStatic("/static/index.html")
     case "/graphDataComposite.json":
         w.Header().Set("Content-Type", "application/json")
         w.Write(srv.graphDataCompositeJson)
-
     case "/clientMonitorStatus.json":
         cms := make(map[string] map[string] MonitorStatusSliceElem)
         for host, mdsMap := range srv.clientMonitorData {

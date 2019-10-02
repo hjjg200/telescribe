@@ -9,21 +9,22 @@ Telescribe is designed in such a way that the only thing you have to worry about
 ## Components
 
 - **Data Decimation:** For compressing all the monitoring data into a set of the most relevant and concise data
-- **Assymetric Encryption:** To securely interact with each other without worries of others eavesdropping
-- **Hybrid Encryption:** Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
-- **Port Forwarding:** HTTP and telescribe servers run on a random port bound only to 127.0.0.1 and the main controller forwards connections to a relevant port, http or telescribe.
+- **Asymmetric Encryption:** App also uses ECC to simultaenously create master secret for symmertic encryption.
+- **Symmetric Encryption:** App uses AES 256 GCM to encrypt and decrypt packets. Each encrypted packet includes a nonce and encrypted data.
+- **Port Forwarding:** HTTP runs on a random port that is only bound to 127.0.0.1. The main listener recognizes the protocol for each connection and it forwards to HTTP if it is an HTTP request and calls Telescribe methods if it is a relevant request.
 - **Monitoring:** A telescribe client uses files such as `/proc/stat` and `/proc/meminfo` to analyze the current status of the machine
-- **Private Key Signing:** A telescribe server has its own private key to sign data that must not be modified. And the client stores the public key fingerprints of the servers and use them to identify the servers and the data they give.
-- **Packet Packing:** For packing data to send. It puts a varint at the start of a packet to notify the length of the whole data.
+- **Private Key Signing:** App uses ECDSA P256 to sign and verify packets from clients and servers. A telescribe server has its own private key to sign data that must not be modified. And the client stores the public keys of the servers and use them to verify the servers and the data they give.
+- **Packet Packing:** Each packet has a record header and several varints to hint the app how many bytes to read.
 - **Gob Encoding:** To serialize the monitored data and cache them as files.
+- **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
 
 ## TODO
 
 Telescribe is currently at alpha stage. When all of the followings get done, it will be its beta stage.
 
-1. Better handling of responses and requests
+1. ~~Better handling of responses and requests~~
+1. ~~Elliptic curve encryption~~
 1. Putting static data into binary
-1. Elliptic curve encryption
 1. I/O monitoring
 1. Disk monitoring
 1. Per-process monitoring

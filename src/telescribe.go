@@ -83,7 +83,7 @@ Ensure
 // : {
 // :   "name": "session-restarted"
 // : }
-g
+
 const Version = "telescribe-alpha-0.6"
 
 var (

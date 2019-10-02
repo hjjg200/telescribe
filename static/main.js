@@ -4,18 +4,18 @@ let chartList = {}
 document.addEventListener(
     "DOMContentLoaded",
     () => {
-        fetchAndUpdate()
+        fetchAndUpdate();
 
         ["touchstart", "touchmove"].forEach(( typ ) => {
             document.addEventListener( typ, ( ev ) => {
                 ev.target.classList.add( "touch" )
             })
-        })
+        });
         ["touchend"].forEach(( typ ) => {
             document.addEventListener( typ, ( ev ) => {
                 ev.target.classList.remove( "touch" )
             })
-        })
+        });
     }
 )
 
@@ -165,7 +165,7 @@ async function fetchAndUpdate() {
 function processDataSlice( slice, options ) {
 
     let gtht = options.gapThresholdTime * 60
-    let glen = Math.round( slice.length * options.gapPercent / 100 )
+    let glen = Math.round( slice.length * options.gapPercent / 100 ) + 1
     let gapAdded = false
     let labelStep = Math.floor( slice.length / 5 )
     let series = []

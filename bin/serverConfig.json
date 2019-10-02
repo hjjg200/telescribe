@@ -1,7 +1,7 @@
 {
   "authPrivateKeyPath": "./.serverAuth.priv",
   "http.username": "user",
-  "http.password(sha256)": "",
+  "http.password(sha256)": "ba361af430edafd52d7c5055f7562de43157011afee635e1cb4814e01c176b47",
   "http.certFilePath": "",
   "http.keyFilePath": "",
   "monitor.dataCacheInterval(minutes)": 1,
@@ -12,8 +12,8 @@
   "monitor.graphDecimationInterval(minutes)": 10,
   "monitor.graphGapPercent": 5,
   "monitor.graphMomentJsFormat": "MM/DD HH:mm",
-  "network.bind": "127.0.0.1",
-  "network.port": 1226,
+  "network.bind": "0.0.0.0",
+  "network.port": 8081,
   "network.tickrate(hz)": 60,
   "clientConfigs": {
     "127.0.0.1": {
