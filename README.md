@@ -39,6 +39,7 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Overall overhaul
 
 ## External Libraries
+- Vue.js
 - Chartist.js
 - Chartist Tooltip Plugin
 - Numeral.js

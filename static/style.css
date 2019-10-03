@@ -41,7 +41,7 @@ ul {
 
 #app {
   margin: 0 auto;
-  min-width: 33rem;
+  min-width: 46rem;
   max-width: 60rem;
   overflow: hidden;
   overflow-x: auto;
@@ -164,7 +164,7 @@ ul {
   background: #a748ca;
 }
 
-.chart:hover .ct-line, .chart.touch .ct-line {
+.chart g.active .ct-line {
   stroke-width: 2px;
 }
 
@@ -199,7 +199,7 @@ ul {
 
 .chart {
   position: relative;
-  height: 16rem;
+  height: 11rem;
   padding: 0.7rem 1.5rem 0.2rem 0.5rem;
 }
 .chart, .chart * {
@@ -213,6 +213,9 @@ ul {
 .ct-point[ct|meta^="*"] {
   stroke-width: 0.42rem;
   opacity: 1;
+}
+.ct-point[ct|meta=""] {
+  stroke-width: 0 !important;
 }
 .ct-point:hover {
   stroke-width: 0.5rem !important;
