@@ -19,11 +19,7 @@ type Client struct {
     role ClientRoleConfig
 }
 
-type ClientAliasConfig struct {
-    Alias string `json:"alias"`
-    Comment string `json:"comment"`
-    Role string `json:"role"`
-}
+type ClientAliasConfig map[string] string // [alias] = role
 
 type ClientRoleConfig struct {
     MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
@@ -50,6 +46,7 @@ func (cl *Client) hello() (err error) {
     cl.s = s
     clRsp := NewResponse("hello")
     clRsp.Set("version", Version)
+    clRsp.Set("alias", flClientAlias)
     Try(s.WriteResponse(clRsp))
 
     // Config
@@ -172,6 +169,7 @@ func (cl *Client) Start() error {
             // Send to Server
             clRsp := NewResponse("monitor-data")
             clRsp.Set("version", Version)
+            clRsp.Set("alias", flClientAlias)
             clRsp.Set("timestamp", time.Now().Unix())
             clRsp.Set("monitorData", md)
             err = cl.s.WriteResponse(clRsp)

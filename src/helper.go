@@ -7,6 +7,7 @@ import (
     "fmt"
     "io"
     "os"
+    "strings"
     "regexp"
 )
 
@@ -87,4 +88,18 @@ func SplitWhitespaceN(str string, i int) []string {
 var linebreakRegexp = regexp.MustCompile("\\r\\n|\\n")
 func SplitLines(str string) []string {
     return linebreakRegexp.Split(str, -1)
+}
+
+//
+// FULLNAME
+//
+
+func parseFullName(fn string) (string, string) {
+    defer recover() // Possible index panic
+    i := strings.Index(fn, "(")
+    return fn[:i], fn[i + 1:len(fn) - 1]
+}
+
+func formatFullName(host, alias string) string {
+    return alias + "(" + host + ")"
 }

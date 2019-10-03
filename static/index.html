@@ -17,17 +17,17 @@
     <body>
         <div id="app">
             <ul id="host-list">
-                <li v-for="(cmd, host) in cmdMap" v-bind:data-host="host">
+                <li v-for="(cmd, fullName) in cmdMap" v-bind:data-host="fullName">
                     <div class="host-header">
-                        <span class="status" v-bind:data-status="maxStatus(cmsMap[host])"></span>
-                        <span>{{ caMap[host] }} ({{ host }})</span>
+                        <span class="status" v-bind:data-status="maxStatus(cmsMap[fullName])"></span>
+                        <span>{{ fullName }}</span>
                     </div>
                     <ul class="md-list">
-                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[host][key]">
+                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key]">
                             <label>
-                                <input type="checkbox" v-on:change="toggleSeries($event, host, key, checked[host][key])" v-model="checked[host][key]">
+                                <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">
                                 <span class="key">{{ key }}</span>
-                                <span class="value">{{ cmsMap[host][key].Value }}</span>
+                                <span class="value">{{ cmsMap[fullName][key].Value }}</span>
                             </label>
                         </li>
                     </ul>

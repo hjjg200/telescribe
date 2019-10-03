@@ -96,17 +96,17 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         w.Write(srv.graphDataCompositeJson)
     case "/clientMonitorStatus.json":
         cms := make(map[string] map[string] MonitorStatusSliceElem)
-        for host, mdsMap := range srv.clientMonitorData {
-            cms[host] = make(map[string] MonitorStatusSliceElem)
+        for fullName, mdsMap := range srv.clientMonitorData {
+            cms[fullName] = make(map[string] MonitorStatusSliceElem)
             for key, mds := range mdsMap {
 
                 // TODO Avg interval
-                mi := srv.getMonitorInfo(host, key)
+                mi := srv.getMonitorInfo(fullName, key)
                 if len(mds) == 0 {
                     continue
                 }
                 last := mds[len(mds) - 1]
-                cms[host][key] = MonitorStatusSliceElem{
+                cms[fullName][key] = MonitorStatusSliceElem{
                     Timestamp: last.Timestamp,
                     Value: last.Value,
                     Status: mi.StatusOf(last.Value),

@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     await fetchAndUpdate()
 
+    console.log(g_cms);
+
     app = new Vue({
         el: "#app",
         data: {
@@ -21,7 +23,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         computed: {
             gdc: function() { return g_gdc },
             cmdMap: function() { return this.gdc.clientMonitorData },
-            caMap: function() { return this.gdc.clientAliases },
             cmsMap: function() { return g_cms },
             options: function() {
                 let gdc = this.gdc;
@@ -36,8 +37,8 @@ document.addEventListener("DOMContentLoaded", async function() {
             }
         },
         created: function() {
-            for(let host in this.caMap) {
-                this.checked[host] = {};
+            for(let fullName in this.cmsMap) {
+                this.checked[fullName] = {};
             }
         },
         mounted: function() {
@@ -111,6 +112,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                         lineSmooth: false,
                         axisX: {
                             showGrid: false,
+                            showLabel: true,
                             labelInterpolationFnc: (v, idx) => {
                                 if(idx % labelStep == 0 && v != null) {
                                     return getHours(v);

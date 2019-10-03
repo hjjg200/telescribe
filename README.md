@@ -26,6 +26,7 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Elliptic curve encryption~~
 1. ~~Host-to-alias-and-role instead of current host-to-role to prevent redundant configs~~
 1. ~~Vue.js~~
+1. Allow multi clients from same host with host-to-alias-and-role map
 1. Detect config change in server and notify the client
 1. Putting static data into binary
 1. I/O monitoring

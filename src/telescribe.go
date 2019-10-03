@@ -84,13 +84,14 @@ Ensure
 // :   "name": "session-restarted"
 // : }
 
-const Version = "telescribe-alpha-0.6"
+const Version = "telescribe-alpha-0.7"
 
 var (
     flServer bool
     flServerConfigPath string
 
     flClientHostname string
+    flClientAlias string
     flClientPort int
     flClientKnownHostsPath string
 
@@ -105,6 +106,7 @@ func setFlags() {
     flag.StringVar(&flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.")
 
     flag.StringVar(&flClientHostname, "host", "", "(Client) The hostname of the server for the client to connect to")
+    flag.StringVar(&flClientAlias, "alias", "default", "(Client) The alias of the client")
     flag.IntVar(&flClientPort, "port", 1226, "(Client) The port of the server for the client to connect to")
     flag.StringVar(&flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
     

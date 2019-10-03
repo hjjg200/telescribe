@@ -71,7 +71,7 @@ var DefaultServerConfig = ServerConfig{
     MonitorDataCacheDir: "./serverCache.d",
     GapThresholdTime: 30,
     MaxDataLength: 43200, // 30 days for 1-minute interval
-    GraphPointThreshold: 500,
+    GraphPointThreshold: 1500,
     GraphDecimationInterval: 10,
     GraphGapPercent: 5.0,
     GraphMomentJSFormat: "MM/DD HH:mm",
@@ -82,9 +82,8 @@ var DefaultServerConfig = ServerConfig{
     // Client Config
     ClientAliases: map[string] ClientAliasConfig{
         "127.0.0.1": {
-            Alias: "foo",
-            Comment: "This is an example.",
-            Role: "example",
+            "default": "example",
+            "foo": "example",
         },
     },
     ClientRoles: map[string] ClientRoleConfig{
@@ -209,13 +208,11 @@ func (srv *Server) Start() (err error) {
     go func() {
         // graphClientMonitorData
         for {
-            ca := make(map[string] string) // Client aliases
             cmd := make(map[string] map[string] MonitorDataSlice) // Client monitor data
-            for host, mdsMap := range srv.clientMonitorData {
-                ca[host] = srv.config.ClientAliases[host].Alias
-                cmd[host] = make(map[string] MonitorDataSlice)
+            for fullName, mdsMap := range srv.clientMonitorData {
+                cmd[fullName] = make(map[string] MonitorDataSlice)
                 for key, mds := range mdsMap {
-                    cmd[host][key] = LTTBMonitorDataSlice( // Decimate monitor data
+                    cmd[fullName][key] = LTTBMonitorDataSlice( // Decimate monitor data
                         mds, srv.config.GraphPointThreshold,
                    )
                 }
@@ -225,7 +222,6 @@ func (srv *Server) Start() (err error) {
                 GapThresholdTime: srv.config.GapThresholdTime,
                 GapPercent: srv.config.GraphGapPercent,
                 MomentJSFormat: srv.config.GraphMomentJSFormat,
-                ClientAliases: ca,
                 ClientMonitorData: cmd,
             }
             var err2 error
@@ -262,25 +258,25 @@ func (srv *Server) Start() (err error) {
             continue
         }
 
-        host, _ := HostnameOf(conn)
-        rd := bufio.NewReader(conn)
-        startLine, err := rd.ReadString('\n') // Start line
-        if err != nil {
-            Logger.Warnln(err)
-            continue
-        }
+        go func () {
+            host, _ := HostnameOf(conn)
+            rd := bufio.NewReader(conn)
+            startLine, err := rd.ReadString('\n') // Start line
+            if err != nil {
+                Logger.Warnln(err)
+                return
+            }
 
-        rest, err := rd.Peek(rd.Buffered()) // Read rest bytes without advancing the reader
-        if err != nil {
-            Logger.Warnln(err)
-            continue
-        }
+            rest, err := rd.Peek(rd.Buffered()) // Read rest bytes without advancing the reader
+            if err != nil {
+                Logger.Warnln(err)
+                return
+            }
 
-        already := append([]byte(startLine), rest...) // Bytes that are already read
+            already := append([]byte(startLine), rest...) // Bytes that are already read
 
-        switch {
-        case strings.Contains(startLine, "HTTP"):
-            go func() {
+            switch {
+            case strings.Contains(startLine, "HTTP"):
                 proxy, err2 := net.Dial("tcp", srv.httpListener.Addr().String())
                 if err2 != nil {
                     Logger.Warnln(err)
@@ -291,18 +287,17 @@ func (srv *Server) Start() (err error) {
                 proxy.Write(already)
                 go copyIO(proxy, conn)
                 go copyIO(conn, proxy)
-            }()
-        case strings.Contains(startLine, "TELESCRIBE"):
-            go func() {
+            case strings.Contains(startLine, "TELESCRIBE"):
                 s := NewSession(conn)
                 defer s.Close()
                 s.PrependRawInput(bytes.NewReader(already))
-                srv.HandleSession(s)
-            }()
-        default:
-            continue
-        }
-
+                err := srv.HandleSession(s)
+                if err != nil {
+                    Logger.Warnln(err)
+                }
+            default:
+            }
+        }()
     }
 
     err = fmt.Errorf("Server terminated")
@@ -416,12 +411,12 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
 
 }
 
-func (srv *Server) RecordMonitorData(host string, md map[string] interface{}) {
+func (srv *Server) RecordMonitorData(fullName string, md map[string] interface{}) {
 
     //
-    _, ok := srv.clientMonitorData[host]
+    _, ok := srv.clientMonitorData[fullName]
     if !ok {
-        srv.clientMonitorData[host] = make(map[string] MonitorDataSlice)
+        srv.clientMonitorData[fullName] = make(map[string] MonitorDataSlice)
     }
 
     //
@@ -429,7 +424,7 @@ func (srv *Server) RecordMonitorData(host string, md map[string] interface{}) {
     timestamp := time.Now().Unix()
 
     appendValue := func(key string, val float64) {
-        short, ok := srv.clientMonitorData[host][key]
+        short, ok := srv.clientMonitorData[fullName][key]
         if !ok {
             short = initialized
         }
@@ -439,7 +434,7 @@ func (srv *Server) RecordMonitorData(host string, md map[string] interface{}) {
             short = short[start:]
         }
 
-        srv.clientMonitorData[host][key] = append(
+        srv.clientMonitorData[fullName][key] = append(
             short,
             MonitorDataSliceElem{
                 Value: val,
@@ -462,14 +457,15 @@ func (srv *Server) RecordMonitorData(host string, md map[string] interface{}) {
 
 }
 
-func (srv *Server) getMonitorInfo(host, key string) (MonitorInfo) {
+func (srv *Server) getMonitorInfo(fullName, key string) (MonitorInfo) {
 
     aBase, aParam, aIdx := ParseMonitorrKey(key)
     var bpMatch MonitorInfo
 
-    alias := srv.config.ClientAliases[host]
-    role := srv.config.ClientRoles[alias.Role]
-    for b, mi := range role.MonitorInfos {
+    host, alias := parseFullName(fullName)
+    role := srv.config.ClientAliases[host][alias]
+    roleCfg := srv.config.ClientRoles[role]
+    for b, mi := range roleCfg.MonitorInfos {
         bBase, bParam, bIdx := ParseMonitorrKey(b)
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {
@@ -491,18 +487,21 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     //
     host, err := s.RemoteHost()
     Try(err)
-    alias, whitelisted := srv.config.ClientAliases[host]
+    roles, whitelisted := srv.config.ClientAliases[host]
     if !whitelisted {
         srvRsp := NewResponse("not-whitelisted")
         s.WriteResponse(srvRsp)
         return fmt.Errorf("%s [non-whitelisted] tried to establish a connection", host)
     }
 
-    role, ok := srv.config.ClientRoles[alias.Role]
-    Assert(ok, "Client must have its role")
     Logger.Infoln(host, "connected")
     clRsp, err := s.NextResponse()
     Try(err)
+
+    // Role
+    alias := clRsp.String("alias")
+    role, ok := srv.config.ClientRoles[roles[alias]]
+    Assert(ok, "Client must have its role")
 
     // Version Check
     ver := clRsp.String("version")
@@ -534,7 +533,7 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         //
         md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
         Assert(ok, "Malformed monitor data")
-        srv.RecordMonitorData(host, md)
+        srv.RecordMonitorData(formatFullName(host, alias), md)
 
         // OK
         srvRsp := NewResponse("ok")
