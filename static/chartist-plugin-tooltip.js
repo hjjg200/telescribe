@@ -88,9 +88,6 @@
           // meta not empty
           if(meta == "") return;
 
-          // Only y value
-          if(value.indexOf(",") != -1) value = value.split(",")[1]
-
           if (options.transformTooltipTextFnc && typeof options.transformTooltipTextFnc === 'function') {
             value = options.transformTooltipTextFnc(value);
           }

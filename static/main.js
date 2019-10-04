@@ -11,9 +11,7 @@ let app;
 
 document.addEventListener("DOMContentLoaded", async function() {
 
-    await fetchAndUpdate()
-
-    console.log(g_cms);
+    await fetchAndUpdate();
 
     app = new Vue({
         el: "#app",
@@ -43,51 +41,54 @@ document.addEventListener("DOMContentLoaded", async function() {
         },
         mounted: function() {
             let options = this.options
-            for(let host in this.cmdMap) {
+            for(let fullName in this.cmdMap) {
                 let [labels, seriesMap] = processClientMonitorData(
-                    this.cmdMap[host], this.cmsMap[host], options
-                )
-                chartLabelsMap[host] = labels;
-                chartSeriesMap[host] = seriesMap;
-                chartActiveSeriesMap[host] = [];
-                this.drawChart(host, labels);
+                    this.cmdMap[fullName], this.cmsMap[fullName], options
+                );
+                chartLabelsMap[fullName] = labels;
+                chartSeriesMap[fullName] = seriesMap;
+                chartActiveSeriesMap[fullName] = [];
+                this.drawChart(fullName, labels);
             }
         },
         methods: {
-            toggleSeries: function(ev, host, key, toggle) {
+            toggleSeries: function(ev, fullName, key, toggle) {
                 if(toggle) {
-                    chartActiveSeriesMap[host].push({
+                    chartActiveSeriesMap[fullName].push({
                         key: key,
-                        series: chartSeriesMap[host][key]
+                        series: chartSeriesMap[fullName][key]
                     });
-                    let i = getSeriesIdx(chartActiveSeriesMap[host].length);
+                    let i = getSeriesIdx(chartActiveSeriesMap[fullName].length);
                 } else {
                     let tmp = [];
-                    chartActiveSeriesMap[host].forEach(function(val) {
+                    chartActiveSeriesMap[fullName].forEach(function(val) {
                         if(val.key == key) {
                             on = true;
                             return;
                         }
                         tmp.push(val);
                     });
-                    chartActiveSeriesMap[host] = tmp;
+                    chartActiveSeriesMap[fullName] = tmp;
                     ev.target.className = "";
                 }
-                this.updateChart(host);
+                this.updateChart(fullName);
             },
-            updateChart: function(host) {
+            updateChart: function(fullName) {
                 let series = [];
                 let i = 1;
-                chartActiveSeriesMap[host].forEach(function(val) {
-                    let q = formatCheckboxQuery(host, val.key);
+                chartActiveSeriesMap[fullName].forEach(function(val) {
+                    let q = formatCheckboxQuery(fullName, val.key);
                     let a = getSeriesIdx(i++);
                     let cb = document.querySelector(q);
                     cb.className = "";
                     cb.classList.add("series-" + a);
                     series.push(val.series);
                 });
-                chartList[host].data.series = series;
-                chartList[host].update();
+                chartList[fullName].data.series = series;
+                chartList[fullName].update();
+                document.querySelectorAll('.ct-point').forEach(function(el) {
+                    if(el.getAttribute("ct:meta") == "") el.remove();
+                });
             },
             maxStatus: function(cms) {
                 let max = -1;
@@ -97,12 +98,9 @@ document.addEventListener("DOMContentLoaded", async function() {
                 }
                 return max;
             },
-            drawChart: function(host, labels) {
-                let query = formatChartQuery(host);
-                let labelLength = labels.length;
-                let labelStep = Math.floor(labelLength / 7);
-                let gtht = this.options.gapThresholdTime * 60;
-                chartList[host] = new Chartist.Line(
+            drawChart: function(fullName, labels) {
+                let query = formatChartQuery(fullName);
+                chartList[fullName] = new Chartist.Line(
                     query, {
                         series: [],
                         labels: labels
@@ -112,13 +110,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                         lineSmooth: false,
                         axisX: {
                             showGrid: false,
-                            showLabel: true,
-                            labelInterpolationFnc: (v, idx) => {
-                                if(idx % labelStep == 0 && v != null) {
-                                    return getHours(v);
-                                }
-                                return null;
-                            }
+                            showLabel: true
                         },
                         axisY: {
                             labelInterpolationFnc: (v, idx) => {
@@ -137,7 +129,7 @@ document.addEventListener("DOMContentLoaded", async function() {
                             Chartist.plugins.tooltip()
                         ]
                     }
-                )
+                );
             }
         }
     })
@@ -150,15 +142,15 @@ document.addEventListener("DOMContentLoaded", async function() {
                 let g = document.querySelector("g." + series);
                 g.classList.add("active");
             }
-        })
+        });
         el.addEventListener("mouseout", function(ev) {
             if(hasClass(ev.target, "ct-point")) {
                 let series = ev.target.parentElement.getAttribute('class').match(/ct-series-\w/)[0];
                 let g = document.querySelector("g." + series);
                 g.classList.remove("active");
             }
-        })
-    })
+        });
+    });
 
 })
 
@@ -186,15 +178,15 @@ function getSeriesIdx(i) {
     return "abcdefghijklmno".charAt(i - 1);
 }
 
-function formatChartQuery(host) {
-    host = host.replace(/"/g, '\\\"');
-    return `#host-list li[data-host="${host}"] .chart`;
+function formatChartQuery(fullName) {
+    fullName = fullName.replace(/"/g, '\\\"');
+    return `#host-list li[data-host="${fullName}"] .chart`;
 }
 
-function formatCheckboxQuery(host, key) {
-    host = host.replace(/"/g, '\\\"');
+function formatCheckboxQuery(fullName, key) {
+    fullName = fullName.replace(/"/g, '\\\"');
     key = key.replace(/"/g, '\\\"');
-    return `#host-list li[data-host="${host}"] li[data-key="${key}"] input`;
+    return `#host-list li[data-host="${fullName}"] li[data-key="${key}"] input`;
 }
 
 function hasClass(element, className) {
@@ -206,21 +198,34 @@ function processClientMonitorData(cmd, cms, options) {
     let gtht = options.gapThresholdTime * 60;
     let xAxis = [];
     let seriesMap = {};
+    { // Always add the current node
+        for(let key in cmd) {
+            let len = cmd[key].length;
+            let st = cms[key];
+            let last = cmd[key][len - 1];
+            if(len == 0
+            || (last != null && last.Timestamp != st.Timestamp)) {
+                cmd[key].push({
+                    Timestamp: st.Timestamp,
+                    Value: st.Value
+                });
+            }
+        }
+    }
+
+    let rcMap = {};
     { // Get all timestamps
         let tmp = {};
         for(let key in cmd) {
             let slice = cmd[key];
-            // last one
-            if(slice.length == 0 || (slice.length > 0 && slice[slice.length - 1].Timestamp != cms.Timestamp)) {
-                slice.push({
-                    Timestamp: cms.Timestamp,
-                    Value: cms.Value
-                });
-            }
-
+            rcMap[key] = {};
             for(let idx in slice) {
                 let each = slice[idx];
                 tmp[each.Timestamp] = null;
+                rcMap[key][each.Timestamp] = {
+                    value: each.Value,
+                    meta: moment.unix(each.Timestamp).format(options.momentJsFormat)
+                };
             }
         }
         for(let t in tmp) {
@@ -234,17 +239,24 @@ function processClientMonitorData(cmd, cms, options) {
     let glen = Math.round(xAxis.length * options.gapPercent / 100) + 1;
     let labelStep = Math.floor(xAxis.length / 5);
     let gapAdded = false;
+    let labels = [];
     for(let i = 0; i < xAxis.length; i++) {
         let ts = xAxis[i];
-        if(i < xAxis.length - 1 && xAxis[i + 1] - ts > gtht) {// Gap
+        let nextTs = xAxis[i + 1];
+        if(nextTs != null && nextTs - ts > gtht) {// Gap
             gapAdded = true;
+            labels.push(getHours(ts));
+            tmp.push(ts);
             for(let j = 0; j < glen; j++) {
+                labels.push("");
                 tmp.push(null);
             }
         } else if(i % labelStep == 0 || gapAdded) {
             gapAdded = false;
+            labels.push(getHours(ts));
             tmp.push(ts);
         } else {
+            labels.push("");
             tmp.push(ts);
         }
     }
@@ -253,16 +265,8 @@ function processClientMonitorData(cmd, cms, options) {
     // Series
     for(let key in cmd) {
         let slice = cmd[key];
-        let tmp = {};
+        let tmp = rcMap[key];
         let series = [];
-
-        for(let idx in slice) {
-            let each = slice[idx];
-            tmp[each.Timestamp] = {
-                value: each.Value,
-                meta: moment.unix(each.Timestamp).format(options.momentJsFormat)
-            };
-        }
 
         for(let i = 0; i < xAxis.length; i++) {
 
@@ -275,13 +279,12 @@ function processClientMonitorData(cmd, cms, options) {
                 
                 let aI = tmp[aX];
                 series.push({
-                    x: aX,
-                    y: aI.value,
+                    value: aI.value,
                     meta: aI.meta
                 });
 
                 if(tmp[bX] == null) {
-                    let wta = whatToAppend(xAxis.slice(i + 1), aI, tmp, options);
+                    let wta = whatToAppend(xAxis.slice(i + 1), aI, tmp);
                     wta.forEach(function(item) {
                         series.push(item);
                     });
@@ -291,13 +294,11 @@ function processClientMonitorData(cmd, cms, options) {
             } else if(aX != null && tmp[aX] != null) {
                 let aI = tmp[aX];
                 series.push({
-                    x: aX,
-                    y: aI.value,
+                    value: aI.value,
                     meta: aI.meta
                 });
             } else {
                 series.push({
-                    x: null,
                     y: null
                 });
             }
@@ -307,11 +308,11 @@ function processClientMonitorData(cmd, cms, options) {
         seriesMap[key] = series;
     }
 
-    return [xAxis, seriesMap];
+    return [labels, seriesMap];
     
 }
 
-function whatToAppend(axis, start, tmp, options) {
+function whatToAppend(axis, start, tmp) {
 
     let startVal = start.value;
     let count = 0;
@@ -337,14 +338,12 @@ function whatToAppend(axis, start, tmp, options) {
         let x = axis[i];
         if(x == null) {
             ret.push({
-                x: null,
-                y: null
+                value: null
             });
             break;
         }
         ret.push({
-            x: x,
-            y: startVal + step * (i + 1),
+            value: startVal + step * (i + 1),
             meta: ""
         });
     }
@@ -366,153 +365,4 @@ function getHours(t) {
 function isHidden(elem) {
     var style = window.getComputedStyle(elem);
     return (style.display === 'none');
-}
-
-function chartSplitIntoSegments (pathCoordinates, valueData, options) {
-    var defaultOptions = {
-        increasingX: false,
-        fillHoles: false,
-        gapThresholdTime: undefined
-    };
-
-    options = Chartist.extend({}, defaultOptions, options);
-
-    var segments = [];
-    var hole = true;
-    var gtht = options.gapThresholdTime;
-    let lastPointX = undefined;
-
-    for(var i = 0; i < pathCoordinates.length; i += 2) {
-
-        let val = valueData[i / 2].value;
-
-        // If this value is a "hole" we set the hole flag
-        if(Chartist.getMultiValue(valueData[i / 2].value) === undefined) {
-            // if(valueData[i / 2].value === undefined) {
-            if(!options.fillHoles) {
-                hole = true;
-            }
-        } else {
-            if(options.increasingX && i >= 2 && pathCoordinates[i] <= pathCoordinates[i-2]) {
-                // X is not increasing, so we need to make sure we start a new segment
-                hole = true;
-            }
-
-            // If it's a valid value we need to check if we're coming out of a hole and create a new empty segment
-            if(gtht != undefined && lastPointX != undefined) {
-                if(val.x - lastPointX > gtht) {
-                    //hole = true;
-                }
-            }
-
-            if(hole) {
-                segments.push({
-                pathCoordinates: [],
-                valueData: []
-                });
-                // As we have a valid value now, we are not in a "hole" anymore
-                hole = false;
-            }
-
-            // Add to the segment pathCoordinates and valueData
-            segments[segments.length - 1].pathCoordinates.push(pathCoordinates[i], pathCoordinates[i + 1]);
-            segments[segments.length - 1].valueData.push(valueData[i / 2]);
-
-        }
-
-        if(val.y != undefined) {
-            lastPointX = val.x;
-        }
-
-    }
-
-    return segments;
-}
-
-function chartInterpolationCardinal (options) {
-    var defaultOptions = {
-      tension: 0, //1,
-      fillHoles: false,
-      gapThresholdTime: undefined
-    };
-
-    options = Chartist.extend({}, defaultOptions, options);
-
-    var t = Math.min(1, Math.max(0, options.tension)),
-      c = 1 - t;
-
-    return function cardinal(pathCoordinates, valueData) {
-        // First we try to split the coordinates into segments
-        // This is necessary to treat "holes" in line charts
-        var segments = chartSplitIntoSegments(pathCoordinates, valueData, {
-            fillHoles: options.fillHoles,
-            gapThresholdTime: options.gapThresholdTime
-        });
-
-        if(!segments.length) {
-            // If there were no segments return 'Chartist.Interpolation.none'
-            return Chartist.Interpolation.none()([]);
-        } else if(segments.length > 1) {
-            // If the split resulted in more that one segment we need to interpolate each segment individually and join them
-            // afterwards together into a single path.
-            var paths = [];
-            // For each segment we will recurse the cardinal function
-            segments.forEach(function(segment) {
-            paths.push(cardinal(segment.pathCoordinates, segment.valueData));
-            });
-            // Join the segment path data into a single path and return
-            return Chartist.Svg.Path.join(paths);
-        } else {
-            // If there was only one segment we can proceed regularly by using pathCoordinates and valueData from the first
-            // segment
-            pathCoordinates = segments[0].pathCoordinates;
-            valueData = segments[0].valueData;
-
-            // If less than two points we need to fallback to no smoothing
-            if(pathCoordinates.length <= 4) {
-            return Chartist.Interpolation.none()(pathCoordinates, valueData);
-            }
-
-            var path = new Chartist.Svg.Path().move(pathCoordinates[0], pathCoordinates[1], false, valueData[0]),
-            z;
-
-            for (var i = 0, iLen = pathCoordinates.length; iLen - 2 * !z > i; i += 2) {
-            var p = [
-                {x: +pathCoordinates[i - 2], y: +pathCoordinates[i - 1]},
-                {x: +pathCoordinates[i], y: +pathCoordinates[i + 1]},
-                {x: +pathCoordinates[i + 2], y: +pathCoordinates[i + 3]},
-                {x: +pathCoordinates[i + 4], y: +pathCoordinates[i + 5]}
-            ];
-            if (z) {
-                if (!i) {
-                p[0] = {x: +pathCoordinates[iLen - 2], y: +pathCoordinates[iLen - 1]};
-                } else if (iLen - 4 === i) {
-                p[3] = {x: +pathCoordinates[0], y: +pathCoordinates[1]};
-                } else if (iLen - 2 === i) {
-                p[2] = {x: +pathCoordinates[0], y: +pathCoordinates[1]};
-                p[3] = {x: +pathCoordinates[2], y: +pathCoordinates[3]};
-                }
-            } else {
-                if (iLen - 4 === i) {
-                p[3] = p[2];
-                } else if (!i) {
-                p[0] = {x: +pathCoordinates[i], y: +pathCoordinates[i + 1]};
-                }
-            }
-
-            path.curve(
-                (t * (-p[0].x + 6 * p[1].x + p[2].x) / 6) + (c * p[2].x),
-                (t * (-p[0].y + 6 * p[1].y + p[2].y) / 6) + (c * p[2].y),
-                (t * (p[1].x + 6 * p[2].x - p[3].x) / 6) + (c * p[2].x),
-                (t * (p[1].y + 6 * p[2].y - p[3].y) / 6) + (c * p[2].y),
-                p[2].x,
-                p[2].y,
-                false,
-                valueData[(i + 2) / 2]
-            );
-            }
-
-            return path;
-        }
-    }
 }

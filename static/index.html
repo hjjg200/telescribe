@@ -3,7 +3,10 @@
     <head>
         <meta charset="utf-8">
         <!-- development version, includes helpful console warnings -->
-        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <!--<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>-->
+
+        <!-- production version, optimized for size and speed -->
+        <script src="https://cdn.jsdelivr.net/npm/vue"></script>
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
         <link rel="stylesheet" href="/static/chartist.min.css">
         <link rel="stylesheet" href="/static/chartist-plugin-tooltip.css">
@@ -23,12 +26,16 @@
                         <span>{{ fullName }}</span>
                     </div>
                     <ul class="md-list">
-                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key]">
-                            <label>
-                                <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">
-                                <span class="key">{{ key }}</span>
-                                <span class="value">{{ cmsMap[fullName][key].Value }}</span>
-                            </label>
+                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">
+                            <div class="label-wrap">
+                                <label>
+                                    <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">
+                                    <div class="key-value-wrap">
+                                        <span class="key">{{ key }}</span>
+                                        <span class="value">{{ cmsMap[fullName][key].Value }}</span>
+                                    </div>
+                                </label>
+                            </div>
                         </li>
                     </ul>
                     <div class="chart">

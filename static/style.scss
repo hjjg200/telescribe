@@ -8,6 +8,7 @@
     -ms-appearance: none;
     box-sizing: border-box;
     text-size-adjust: none;
+    -webkit-text-size-adjust: 100%;
 
     margin: 0;
     padding: 0;
@@ -51,7 +52,9 @@ ul {
     line-height: 1;
     overflow: hidden;
     .host-header {
-        border-bottom: 1px solid #f0f0f0;
+        border: 1px solid #f0f0f0;
+        border-left: none;
+        border-right: none;
         padding: 0.8rem;
         .status {
             border-radius: 50%;
@@ -71,27 +74,45 @@ ul {
 
 .md-list {
     display: grid;
-    grid-template-columns: auto auto;
+    grid-template-columns: auto auto auto;
 }
 .md-list li {
-    display: inline-grid;
+    display: block;
+    .label-wrap {
+        display: inline-block;
+    }
     label {
-        display: block;
-        padding: 0.5rem 0.8rem;
+        display: grid;
+        margin: 0.25rem 0.4rem;
+        padding: 0.25rem 0.4rem;
+        grid-template-columns: 1.3rem auto;
+        &:hover {
+            background: #f8f8f8;
+        }
+        .key-value-wrap {
+            padding-right: 1.2rem;
+        }
         input[type="checkbox"] {
             border-radius: 0;
             display: inline-block;
             border: 1px solid #dfdfdf;
             height: 0.7rem;
             width: 0.7rem;
-            margin-right: 0.3rem;
+            margin: 0.55rem 0;
             &:checked {
                 border: none;
             }
         }
         .key {
             color: #aaaaaa;
-            margin-right: 0.3rem;
+            display: block;
+            font-size: 0.7rem;
+            line-height: 1;
+            margin-bottom: 0.1rem;
+        }
+        .value {
+            display: block;
+            line-height: 1;
         }
     }
 
@@ -103,81 +124,69 @@ ul {
         color: hsl(355, 75%, 55%);
         font-weight: bold;
     } /* Fatal */
-    input.series-a { background: #d70206; }
-    input.series-b { background: #f05b4f; }
-    input.series-c { background: #f4c63d; }
-    input.series-d { background: #d17905; }
-    input.series-e { background: #453d3f; }
-    input.series-f { background: #59922b; }
-    input.series-g { background: #0544d3; }
-    input.series-h { background: #6b0392; }
-    input.series-i { background: #f05b4f; }
-    input.series-j { background: #dda458; }
-    input.series-k { background: #eacf7d; }
-    input.series-l { background: #86797d; }
-    input.series-m { background: #b2c326; }
-    input.series-n { background: #6188e2; }
-    input.series-o { background: #a748ca; }
+    input { background: white; }
+}
+
+$colors: (
+    "a": hsl(355, 85%, 55%),
+    "b": hsl(25, 85%, 55%),
+    "c": hsl(50, 95%, 55%),
+    "d": hsl(80, 85%, 55%),
+    "e": hsl(135, 85%, 55%),
+    "f": hsl(165, 85%, 55%),
+    "g": hsl(190, 85%, 55%),
+    "h": hsl(210, 76%, 65%),
+    "i": hsl(235, 75%, 55%),
+    "j": hsl(265, 75%, 70%),
+    "k": hsl(295, 65%, 75%),
+    "l": hsl(230, 6%, 75%),
+    "m": hsl(230, 12%, 55%),
+    "n": hsl(355, 11%, 55%),
+    "o": hsl(35, 12%, 55%)
+);
+
+@each $key, $color in $colors {
+    .ct-series-#{$key} {
+        .ct-bar, .ct-line, .ct-point, .ct-slice-donut {
+            stroke: $color;
+        }
+    }
+    .md-list li input.series-#{$key} {
+        background: $color;
+    }
 }
 
 .chart {
+    /* GPU accelerate */
+    /*
+   -webkit-transform: translate3d(0, 0, 0);
+   -moz-transform: translate3d(0, 0, 0);
+   -ms-transform: translate3d(0, 0, 0);
+   transform: translate3d(0, 0, 0);
+
+   -webkit-backface-visibility: hidden;
+   -moz-backface-visibility: hidden;
+   -ms-backface-visibility: hidden;
+   backface-visibility: hidden;
+
+   -webkit-perspective: 1000;
+   -moz-perspective: 1000;
+   -ms-perspective: 1000;
+   perspective: 1000;
+   */
     g.active .ct-line {
         stroke-width: 2px;
     }
 }
 
-.key-header {
-    background: #fafafa;
-    border-bottom: 1px solid white;
-    padding: 0.6rem;
-    &:hover, &.touch {
-        background: #f5f5f5;
-        & + .chart .ct-line {
-            stroke-width: 2px;
-        }
-    }
-    span {
-        display: inline-block;
-    }
-    span:nth-child(1) {
-        color: #aaaaaa;
-        margin-right: 0.7rem;
-    }
-    
-    &[data-status="8"] {
-        span:nth-child(2) {
-            color: hsl(45, 95%, 55%);
-            font-weight: bold;
-        }
-    } /* Warning */
-    &[data-status="16"] {
-        span:nth-child(2) {
-            color: hsl(355, 75%, 55%);
-            font-weight: bold;
-        }
-    } /* Fatal */
-}
-
 .chart {
-    &, * {
-        overflow: visible;
-    }
     position: relative;
     height: 11rem;
     padding: 0.7rem 1.5rem 0.2rem 0.5rem;
 }
 .ct-point {
-    stroke-width: 0.42rem;
     opacity: 0;
-    &[ct|meta^="*"] {
-        stroke-width: 0.42rem;
-        opacity: 1;
-    }
-    &[ct|meta=""] {
-        stroke-width: 0 !important;
-    }
     &:hover {
-        stroke-width: 0.5rem !important;
         opacity: 1;
     }
 }

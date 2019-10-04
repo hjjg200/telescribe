@@ -102,6 +102,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
                 // TODO Avg interval
                 mi := srv.getMonitorInfo(fullName, key)
+                Logger.Debugln(mi, fullName, key)
                 if len(mds) == 0 {
                     continue
                 }

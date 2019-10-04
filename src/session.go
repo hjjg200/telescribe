@@ -550,7 +550,7 @@ func (s *Session) EndHandshake() (err error) {
     defer Catch(&err)
     
     // Only servers end handshake
-    s.isServer = false
+    s.isServer = true
 
     if sessionAuthPriv == nil {
         return fmt.Errorf("Server must have an auth private key.")
