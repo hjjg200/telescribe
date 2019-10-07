@@ -129,16 +129,16 @@ ul {
 
 $colors: (
     "a": hsl(355, 85%, 55%),
-    "b": hsl(25, 85%, 55%),
-    "c": hsl(50, 95%, 52%),
-    "d": hsl(80, 85%, 52%),
-    "e": hsl(135, 85%, 52%),
-    "f": hsl(165, 85%, 52%),
-    "g": hsl(190, 85%, 52%),
-    "h": hsl(210, 76%, 55%),
-    "i": hsl(235, 75%, 55%),
-    "j": hsl(265, 75%, 70%),
-    "k": hsl(295, 65%, 65%),
+    "b": hsl(210, 65%, 62%),
+    "c": hsl(25, 85%, 55%),
+    "d": hsl(235, 55%, 62%),
+    "e": hsl(50, 95%, 52%),
+    "f": hsl(211, 65%, 72%),
+    "g": hsl(265, 75%, 70%),
+    "h": hsl(20, 66%, 55%),
+    "i": hsl(55, 85%, 66%),
+    "j": hsl(295, 65%, 65%),
+    "k": hsl(5, 75%, 55%),
     "l": hsl(230, 6%, 75%),
     "m": hsl(230, 12%, 55%),
     "n": hsl(355, 11%, 55%),
@@ -146,10 +146,11 @@ $colors: (
 );
 
 @each $key, $color in $colors {
-    .ct-series-#{$key} {
-        .ct-bar, .ct-line, .ct-point, .ct-slice-donut {
-            stroke: $color;
-        }
+    path.series-#{$key}, line.series-#{$key} {
+        stroke: $color;
+    }
+    circle.series-#{$key} {
+        fill: $color;
     }
     .md-list li input.series-#{$key} {
         background: $color;
@@ -179,20 +180,61 @@ $colors: (
     }
 }
 
-.chart {
+.chart-wrap {
     position: relative;
-    height: 11rem;
-    padding: 0.7rem 1.5rem 0.2rem 0.5rem;
-}
-.ct-point {
-    opacity: 0;
-    &:hover {
-        opacity: 1;
+    padding: 0.5rem 1.5rem 0.6rem 0.5rem;
+    .chart {
+        overflow: visible;
+        position: relative;
+        height: 11rem;
+        width: 100%;
+        circle {
+            opacity: 0;
+            &:hover {
+                opacity: 1;
+            }
+        }
     }
-}
-.ct-line {
-    stroke-width: 1px;
-}
-.chartist-tooltip-meta {
-    font-size: 0.7rem;
+    .grid {
+        position: relative;
+        &, line {
+            stroke: #eaeaea;
+            stroke-width: 1px;
+            stroke-dasharray: 3px;
+        }
+        path {
+            display: none;
+        }
+    }
+    .axis {
+        font-family: inherit;
+        font-size: 0.6rem;
+        &, path, g, line {
+            fill: #eaeaea;
+            stroke: #eaeaea;
+            stroke-width: 1px;
+        }
+        text {
+            fill: #bbbbbb;
+            stroke-width: 0;
+            user-select: none;
+        }
+    }
+    .hand {
+        stroke: #dadada;
+        stroke-width: 1px;
+        stroke-dasharray: 3px;
+    }
+    .selection {
+        display: none;
+        fill: hsla(220, 100%, 50%, 0.1);
+        &.active {
+            display: block;
+        }
+    }
+    .series:hover {
+        path {
+            stroke-width: 2px;
+        }
+    }
 }

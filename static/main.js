@@ -1,8 +1,9 @@
 
 let chartList = {};
-let chartLabelsMap = {};
+let chartTimestampsMap = {};
 let chartSeriesMap = {};
 let chartActiveSeriesMap = {};
+
 let g_gdc;
 let g_cms;
 let app;
@@ -42,13 +43,13 @@ document.addEventListener("DOMContentLoaded", async function() {
         mounted: function() {
             let options = this.options
             for(let fullName in this.cmdMap) {
-                let [labels, seriesMap] = processClientMonitorData(
+                let [timestamps, seriesMap] = processClientMonitorData(
                     this.cmdMap[fullName], this.cmsMap[fullName], options
                 );
-                chartLabelsMap[fullName] = labels;
+                chartTimestampsMap[fullName] = timestamps;
                 chartSeriesMap[fullName] = seriesMap;
                 chartActiveSeriesMap[fullName] = [];
-                this.drawChart(fullName, labels);
+                this.updateChart(fullName);
             }
         },
         methods: {
@@ -84,11 +85,9 @@ document.addEventListener("DOMContentLoaded", async function() {
                     cb.classList.add("series-" + a);
                     series.push(val.series);
                 });
-                chartList[fullName].data.series = series;
-                chartList[fullName].update();
-                document.querySelectorAll('.ct-point').forEach(function(el) {
-                    if(el.getAttribute("ct:meta") == "") el.remove();
-                });
+                let timestamps = chartTimestampsMap[fullName];
+                let query = formatChartQuery(fullName);
+                drawD3Chart(query, timestamps, series);
             },
             maxStatus: function(cms) {
                 let max = -1;
@@ -98,57 +97,90 @@ document.addEventListener("DOMContentLoaded", async function() {
                 }
                 return max;
             },
-            drawChart: function(fullName, labels) {
-                let query = formatChartQuery(fullName);
-                chartList[fullName] = new Chartist.Line(
-                    query, {
-                        series: [],
-                        labels: labels
-                    }, {
-                        showPoint: true,
-                        fullWidth: true,
-                        lineSmooth: false,
-                        axisX: {
-                            showGrid: false,
-                            showLabel: true
-                        },
-                        axisY: {
-                            labelInterpolationFnc: (v, idx) => {
-                                if(v >= 1e+9 * 0.8) {
-                                    return (Math.round(v / 1e+9 * 10) / 10) + "B";
-                                } else if(v >= 1e+6 * 0.8) {
-                                    return (Math.round(v / 1e+6 * 10) / 10) + "M";
-                                } else if(v >= 1e+3 * 0.8) {
-                                    return (Math.round(v / 1e+3 * 10) / 10) + "K";
-                                } else {
-                                    return v;
-                                }
-                            }
-                        },
-                        plugins: [
-                            Chartist.plugins.tooltip()
-                        ]
-                    }
-                );
+            drawChart: function(fullName, timestamps) {
             }
         }
     })
 
     //
+    let dragged = false;
+    let dragStartT = {};
+    let dragEndT = {};
+    document.addEventListener("mouseup", function(ev) {
+        document.querySelectorAll(".selection.active").forEach(function(el) {
+            let chart = queryParent(el, ".chart");
+            let fullName = chart.getAttribute("data-fullName");
+            el.classList.remove("active");
+            let start = Math.min(dragStartT[fullName], dragEndT[fullName]);
+            let end = Math.max(dragStartT[fullName], dragEndT[fullName]);
+        });
+        dragged = false;
+    });
+
     document.querySelectorAll(".chart").forEach(function(el) {
+        let dragStartX = null;
+        let fullName = el.getAttribute("data-fullName");
+        let idx;
+        let getChart = function() { return chartList[fullName]; }
+
+        el.addEventListener("mousemove", function(ev) {
+            let grid = getChart().grid;
+            let hand = getChart().hand;
+            let selection = getChart().selection;
+            let rect = grid.getBoundingClientRect();
+            let pX = ev.pageX;
+            let absX = pX - rect.x;
+
+            // Only in the grid
+            if(pX > rect.x && pX < rect.x + rect.width) {
+                // Hand
+                hand.setAttribute("x1", absX);
+                hand.setAttribute("x2", absX);
+
+                // Get nearest timestamp
+                let timestamps = chartTimestampsMap[fullName];
+                idx = Math.round(absX / rect.width * timestamps.length);
+
+                // Dragged
+                if(dragged) {
+                    dragEndT[fullName] = idx;
+                    if(pX < dragStartX) {
+                        selection.setAttribute("x", absX);
+                        selection.setAttribute("width", dragStartX - pX);
+                    } else {
+                        selection.setAttribute("width", pX - dragStartX);
+                    }
+                }
+            }
+
+        });
+
+        el.addEventListener("mousedown", function(ev) {
+            let selection = getChart().selection;
+            let grid = getChart().grid;
+            let rect = grid.getBoundingClientRect();
+            let pX = ev.pageX;
+            dragged = true;
+            dragStartX = pX;
+            dragStartT[fullName] = idx;
+            selection.setAttribute("x", pX - rect.x);
+            selection.setAttribute("width", 0);
+            selection.classList.add("active");
+        });
+
         el.addEventListener("mouseover", function(ev) {
-            if(hasClass(ev.target, "ct-point")) {
+            /*if(hasClass(ev.target, "ct-point")) {
                 let series = ev.target.parentElement.getAttribute('class').match(/ct-series-\w/)[0];
                 let g = document.querySelector("g." + series);
                 g.classList.add("active");
-            }
+            }*/
         });
         el.addEventListener("mouseout", function(ev) {
-            if(hasClass(ev.target, "ct-point")) {
+            /*if(hasClass(ev.target, "ct-point")) {
                 let series = ev.target.parentElement.getAttribute('class').match(/ct-series-\w/)[0];
                 let g = document.querySelector("g." + series);
                 g.classList.remove("active");
-            }
+            }*/
         });
     });
 
@@ -193,6 +225,34 @@ function hasClass(element, className) {
     return (' ' + element.getAttribute('class') + ' ').indexOf(' ' + className + ' ') > -1;
 }
 
+function queryParent(elem, query) {
+    while(true) {
+        var elem = elem.parentNode;
+        if(elem === document) {
+            return undefined;
+        }
+        var parentElem = elem.querySelector(query);
+        if(parentElem != undefined) {
+            return parentElem;
+        }
+    }
+    return undefined;
+}
+
+function queryParentAll(elem, query) {
+    while(true) {
+        var elem = elem.parentNode;
+        if(elem === document) {
+            return [];
+        }
+        var parentElems = elem.querySelectorAll(query);
+        if(parentElems.length > 0) {
+            return parentElems;
+        }
+    }
+    return [];
+}
+
 function processClientMonitorData(cmd, cms, options) {
 
     let gtht = options.gapThresholdTime * 60;
@@ -223,8 +283,8 @@ function processClientMonitorData(cmd, cms, options) {
                 let each = slice[idx];
                 tmp[each.Timestamp] = null;
                 rcMap[key][each.Timestamp] = {
-                    value: each.Value,
-                    meta: moment.unix(each.Timestamp).format(options.momentJsFormat)
+                    Value: each.Value,
+                    Timestamp: each.Timestamp
                 };
             }
         }
@@ -234,79 +294,33 @@ function processClientMonitorData(cmd, cms, options) {
         xAxis.sort();
     }
 
-    // Put gaps
-    let tmp = [];
-    let glen = Math.round(xAxis.length * options.gapPercent / 100) + 1;
-    let labelStep = Math.floor(xAxis.length / 5);
-    let gapAdded = false;
-    let labels = [];
-    for(let i = 0; i < xAxis.length; i++) {
-        let ts = xAxis[i];
-        let nextTs = xAxis[i + 1];
-        if(i == 0) {
-            labels.push(getHours(ts));
-            tmp.push(ts);
-        } else if(nextTs != null && nextTs - ts > gtht) {// Gap
-            gapAdded = true;
-            labels.push(getHours(ts));
-            tmp.push(ts);
-            for(let j = 0; j < glen; j++) {
-                labels.push("");
-                tmp.push(null);
-            }
-        } else if(gapAdded) {
-            gapAdded = false;
-            labels.push(getHours(ts));
-            tmp.push(ts);
-        } else if(i % labelStep == 0) {
-            labels.push(null);
-            tmp.push(ts);
-        } else {
-            labels.push("");
-            tmp.push(ts);
-        }
-    }
-    xAxis = tmp;
-
     // Series
     for(let key in cmd) {
         let slice = cmd[key];
         let tmp = rcMap[key];
         let series = [];
 
+        let lastX = null;
         for(let i = 0; i < xAxis.length; i++) {
+            let aX = Number(xAxis[i]);
 
-            let aX = xAxis[i];
-            let bX = (i < xAxis.length - 1) ? xAxis[i + 1] : null;
+            if(tmp[aX] != null) {
 
-            if(aX != null
-            && bX != null
-            && tmp[aX] != null) {
-                
-                let aI = tmp[aX];
-                series.push({
-                    value: aI.value,
-                    meta: aI.meta
-                });
-
-                if(tmp[bX] == null) {
-                    let wta = whatToAppend(xAxis.slice(i + 1), aI, tmp);
-                    wta.forEach(function(item) {
-                        series.push(item);
+                // Put gap
+                if(lastX != null && aX - lastX > gtht) {
+                    series.push({
+                        Value: null,
+                        Timestamp: lastX + (aX - lastX)/2
                     });
-                    i += wta.length;
                 }
 
-            } else if(aX != null && tmp[aX] != null) {
                 let aI = tmp[aX];
                 series.push({
-                    value: aI.value,
-                    meta: aI.meta
+                    Value: aI.Value,
+                    Timestamp: aI.Timestamp
                 });
-            } else {
-                series.push({
-                    y: null
-                });
+                lastX = aX;
+
             }
 
         }
@@ -314,61 +328,186 @@ function processClientMonitorData(cmd, cms, options) {
         seriesMap[key] = series;
     }
 
-    return [labels, seriesMap];
+    return [xAxis, seriesMap];
     
 }
 
-function whatToAppend(axis, start, tmp) {
-
-    let startVal = start.value;
-    let count = 0;
-    let ret = [];
-    let endVal = start.value;
-
-    for(let i = 0; i < axis.length; i++) {
-        count++;
-
-        let x = axis[i];
-        if(x == null) break;
-
-        let item = tmp[x];
-        if(item != null) {
-            endVal = item.value;
-            count -= 1; // Don't add this point
-            break;
-        }
-    }
-
-    let step = (endVal - startVal) / count;
-    for(let i = 0; i < count; i++) {
-        let x = axis[i];
-        if(x == null) {
-            ret.push({
-                value: null
-            });
-            break;
-        }
-        ret.push({
-            value: startVal + step * (i + 1),
-            meta: ""
-        });
-    }
-
-    return ret;
-
-}
-
 function getHours(t) {
-    let now = (new Date()).getTime() / 1000;
-    let diff = now - t;
-    if(diff < 10800) {
-        return Math.floor(diff / 60) + "m";
-    } else {
-        return Math.floor(diff / 3600) + "h";
-    }
+    return moment.unix(t).format("DD HH:mm")
 }
 
 function isHidden(elem) {
     var style = window.getComputedStyle(elem);
     return (style.display === 'none');
+}
+
+//
+// D3.js
+//
+
+function remToPx(rem) {
+    return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+
+function getMaxValue(series) {
+    ret = -Infinity; // minus infinity
+    if(series.length == 0)
+        return 1;
+    series.forEach(function(slice) {
+        for(let i = 0; i < slice.length; i++) {
+            ret = Math.max(ret, slice[i].Value);
+        }
+    });
+    return ret;
+}
+
+function getMinValue(series) {
+    ret = Infinity; // minus infinity
+    if(series.length == 0)
+        return 0;
+    series.forEach(function(slice) {
+        for(let i = 0; i < slice.length; i++) {
+            ret = Math.min(ret, slice[i].Value);
+        }
+    });
+    return ret;
+}
+
+function getMaxTimestamp(ts) {
+    ret = -Infinity;
+    for(let i = 0; i < ts.length; i++) {
+        if(ts[i] == null) continue;
+        ret = Math.max(ret, ts[i]);
+    }
+    return ret;
+}
+
+function getMinTimestamp(ts) {
+    ret = Infinity;
+    for(let i = 0; i < ts.length; i++) {
+        if(ts[i] == null) continue;
+        ret = Math.min(ret, ts[i]);
+    }
+    return ret;
+}
+
+async function drawD3Chart(query, timestamps, series) {
+    let elem = document.querySelector(query);
+    elem.innerHTML = "";
+    let fullName = elem.getAttribute("data-fullName");
+    chartList[fullName] = {};
+    let margin = {top: remToPx(1), left: remToPx(3.5), bottom: remToPx(2) };
+    let height = elem.offsetHeight - margin.bottom - margin.top;
+    let width = elem.offsetWidth - margin.left;
+
+    let svg = d3.select(query)
+        .append("svg")
+            .attr("height", height + margin.bottom + margin.top)
+            .attr("width", width + margin.left)
+            .append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+    // For axis
+    let minY = getMinValue(series);
+    let maxY = getMaxValue(series);
+    let minX = getMinTimestamp(timestamps);
+    let maxX = getMaxTimestamp(timestamps);
+
+    // Add X axis --> it is a date format
+    var x = d3.scaleLinear()
+        .domain([minX, maxX])
+        .range([0, width]);
+    svg.append("g")
+        .attr("transform", "translate(0," + (height+0) + ")")
+        .classed("axis", true)
+        .call(d3.axisBottom(x)
+            .ticks(4)
+            .tickSizeOuter(0)
+            .tickFormat(function(d) { return getHours(d);}))
+        .attr("font-family", "")
+        .attr("font-size", "");
+
+    // Add Y axis
+    var y = d3.scaleLinear()
+        .domain([minY, maxY])
+        .range([height, 0]);
+    svg.append("g")
+        .attr("transform", "translate(0,0)")
+        .classed("axis", true)
+        .call(d3.axisLeft(y).ticks(4).tickSizeOuter(0))
+        .attr("font-family", "")
+        .attr("font-size", "");
+
+    // Y axis grid
+    svg.append("g")
+        .classed("grid", true)
+        .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(""));
+    let grid = elem.querySelector(".grid");
+
+    // Selection
+    svg.append("rect")
+        .attr("x", width/2)
+        .attr("y", 0)
+        .attr("height", height)
+        .classed("selection", true);
+    let selection = elem.querySelector(".selection");
+    
+    // X axis hand
+    svg.append("line")
+        .attr("x1", width/2)
+        .attr("x2", width/2)
+        .attr("y1", 0)
+        .attr("y2", height)
+        .classed("hand", true);
+    let hand = elem.querySelector(".hand");
+    
+    chartList[fullName] = {
+        svg: svg,
+        minY: minY,
+        maxY: maxY,
+        minX: minX,
+        maxX: maxX,
+        xFunc: x,
+        yFunc: y,
+        grid: grid,
+        selection: selection,
+        hand: hand
+    };
+
+    //
+    for(let i = 0; i < series.length; i++) {
+        let slice = series[i];
+        // Trim data out of scope
+        slice = slice.filter(function(v) { return v.Timestamp >= minX && v.Timestamp <= maxX; });
+        let seriesName = "series-" + getSeriesIdx(i + 1);
+        let gaplessSlice = slice.filter(function(v) { return v.Value !== null; });
+
+        //
+        let seriesG = svg.append("g")
+            .classed("series", true);
+        
+        // Add the line
+        seriesG.append("path")
+            .datum(slice)
+            .attr("fill", "none")
+            .attr("stroke-width", 1)
+            .classed(seriesName, true)
+            .attr("d", d3.line()
+                .x(function(d) { return x(d.Timestamp) })
+                .y(function(d) { return y(d.Value) })
+                .defined(function(d) { return d.Value !== null; })
+            );
+
+        // Add the points
+        seriesG.selectAll("circles")
+            .data(gaplessSlice)
+            .enter()
+            .append("circle")
+            .classed(seriesName, true)
+            .attr("stroke", "none")
+            .attr("cx", function(d) { return x(d.Timestamp) })
+            .attr("cy", function(d) { return y(d.Value) })
+            .attr("r", 4);
+    }
+
 }
