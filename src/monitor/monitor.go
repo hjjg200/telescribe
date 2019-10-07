@@ -11,26 +11,80 @@ type wrapper struct {
     body interface{}
 }
 
+// CPU
 const KeyCpuCount = "general-cpuCount"
 const KeyCpuUsage = "general-cpuUsage"
+// Memory
 const KeyMemoryTotal = "general-memoryTotal"
 const KeySwapTotal = "general-swapTotal"
 const KeyMemoryUsage = "general-memoryUsage"
 const KeySwapUsage = "general-swapUsage"
+// Load
 const KeyLoadAverage = "general-loadAverage"
 const KeyLoadAveragePerCpu = "general-loadAveragePerCpu"
+// Disk
+const KeyDiskWrites = "general-diskWrites"
+const KeyMountWrites = "general-mountWrites"
+const KeyDiskReads = "general-diskReads"
+const KeyMountReads  = "general-mountReads"
+const KeyDiskWriteBytes = "general-diskWriteBytes"
+const KeyMountWriteBytes = "general-mountWriteBytes"
+const KeyDiskReadBytes = "general-diskReadBytes"
+const KeyMountReadBytes = "general-mountReadBytes"
+const KeyDiskUsage = "general-diskUsage"
+const KeyMountUsage  = "general-mountUsage"
+const KeyDiskSize = "general-diskSize"
+const KeyMountSize = "general-mountSize"
+// Network
+const KeyNetworkIn = "general-networkIn"
+const KeyNetworkInPackets = "general-networkInPackets"
+const KeyNetworkOut = "general-networkOut"
+const KeyNetworkOutPackets = "general-networkOutPackets"
+// Misc
 const KeyCustomCommand = "custom-command"
 
 var Wrappers = map[string] wrapper {
+    // CPU
     KeyCpuCount: wrapper{ GetCpuCount },
     KeyCpuUsage: wrapper{ GetCpuUsage },
+    // Memory
     KeyMemoryTotal: wrapper{ GetMemoryTotal },
     KeySwapTotal: wrapper{ GetSwapTotal },
     KeyMemoryUsage: wrapper{ GetMemoryUsage },
     KeySwapUsage: wrapper{ GetSwapUsage },
+    // Load
     KeyLoadAverage: wrapper{ GetLoadAverage },
     KeyLoadAveragePerCpu: wrapper{ GetLoadAveragePerCpu },
+    // Disk
+    KeyDiskWrites: wrapper{ GetDiskWrites },
+    KeyMountWrites: wrapper{ GetMountWrites },
+    KeyDiskReads: wrapper{ GetDiskReads },
+    KeyMountReads: wrapper{ GetMountReads },
+    KeyDiskWriteBytes: wrapper{ GetDiskWriteBytes },
+    KeyMountWriteBytes: wrapper{ GetMountWriteBytes },
+    KeyDiskReadBytes: wrapper{ GetDiskReadBytes },
+    KeyMountReadBytes: wrapper{ GetMountReadBytes },
+    KeyDiskUsage: wrapper{ GetDiskUsage },
+    KeyMountUsage: wrapper{ GetMountUsage },
+    KeyDiskSize: wrapper{ GetDiskSize },
+    KeyMountSize: wrapper{ GetMountSize },
+    // Network
+    KeyNetworkIn: wrapper{ GetNetworkIn },
+    KeyNetworkInPackets: wrapper{ GetNetworkInPackets },
+    KeyNetworkOut: wrapper{ GetNetworkOut },
+    KeyNetworkOutPackets: wrapper{ GetNetworkOutPackets },
+   // Misc
     KeyCustomCommand: wrapper{ CustomCommand },
+}
+
+var ErrorCallback = func(err error) {
+    fmt.Println("monitor:", err)
+}
+
+func emitError(err error) {
+    if ErrorCallback != nil {
+        ErrorCallback(err)
+    }
 }
 
 func Getter(longKey string) (func() map[string] float64, bool) {
@@ -159,6 +213,7 @@ func (w wrapper) Get(param string) interface{} {
     outs := fn.Call(ins)
     val := outs[0]
 
+    // Check if it has the second return, which must be error, and it is not nil
     if len(outs) > 1 {
         if outs[1].Interface() != nil {
             return nil

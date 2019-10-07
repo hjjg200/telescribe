@@ -4,7 +4,6 @@ import (
     "bufio"
     "bytes"
     "encoding/gob"
-    "encoding/hex"
     "encoding/json"
     "fmt"
     "io"
@@ -177,7 +176,7 @@ func (srv *Server) Start() (err error) {
     Logger.Infoln("Cached Executable for Auto-Update")
 
     // Read Monitor Data Cache
-    Try(srv.readCachedMonitordItems())
+    Try(srv.readCachedMonitoredItems())
     Logger.Infoln("Read the Cached Monitored Items")
 
     // Ensure Directories
@@ -305,7 +304,7 @@ func (srv *Server) Start() (err error) {
 
 }
 
-func (srv *Server) readCachedMonitordItems() (err error) {
+func (srv *Server) readCachedMonitoredItems() (err error) {
 
     defer func() {
         r := recover()
@@ -326,42 +325,31 @@ func (srv *Server) readCachedMonitordItems() (err error) {
             Logger.Warnln(forErr)
             continue
         }
-        buf := bytes.NewBuffer(nil)
-        io.Copy(buf, f)
+
+        var (
+            fullName, key string
+            cmp []byte
+        )
+
+        dec := gob.NewDecoder(f)
+        dec.Decode(&fullName)
+        dec.Decode(&key)
+        dec.Decode(&cmp)
         f.Close()
 
         //
-        base := filepath.Base(match)
-        ext := filepath.Ext(base)
-        skeyString := base[:len(base) - len(ext)]
-        skey, forErr := hex.DecodeString(skeyString)
+        mds, forErr := DecompressMonitorDataSlice(cmp)
         if forErr != nil {
             Logger.Warnln(forErr)
             continue
         }
 
         //
-        var (
-            host, key string
-       )
-        rd := bytes.NewReader(skey)
-        dec := gob.NewDecoder(rd)
-        dec.Decode(&host)
-        dec.Decode(&key)
-
-        //
-        mds, forErr := DecompressMonitorDataSlice(buf.Bytes())
-        if forErr != nil {
-            Logger.Warnln(forErr)
-            continue
-        }
-
-        //
-        _, ok := srv.clientMonitorData[host]
+        _, ok := srv.clientMonitorData[fullName]
         if !ok {
-            srv.clientMonitorData[host] = make(map[string] MonitorDataSlice)
+            srv.clientMonitorData[fullName] = make(map[string] MonitorDataSlice)
         }
-        srv.clientMonitorData[host][key] = mds
+        srv.clientMonitorData[fullName][key] = mds
 
     }
 
@@ -378,15 +366,12 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
         }
     }()
 
-    for host, mdsMap := range srv.clientMonitorData {
+    for fullName, mdsMap := range srv.clientMonitorData {
         
         for key, mds := range mdsMap {
             
-            skey := bytes.NewBuffer(nil)
-            enc := gob.NewEncoder(skey)
-            enc.Encode(host)
-            enc.Encode(key)
-            fn := srv.config.MonitorDataCacheDir + "/" + fmt.Sprintf("%x", skey.Bytes()) + monitorDataCacheExt
+            h := Sha256Sum([]byte(fullName + key))
+            fn := srv.config.MonitorDataCacheDir + "/" + fmt.Sprintf("%x", h) + monitorDataCacheExt
 
             f, forErr := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644)
             if forErr != nil {
@@ -400,7 +385,10 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
                 continue
             }
 
-            f.Write(cmp)
+            enc := gob.NewEncoder(f)
+            enc.Encode(fullName)
+            enc.Encode(key)
+            enc.Encode(cmp)
             f.Close()
 
         }
@@ -513,8 +501,11 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         // Version match
     default:
         // Version mismatch
-        Logger.Warnln(host, "VERSION MISMATCH")
-        return srv.handleSessionVersionMismatch(s)
+        srvRsp := NewResponse("version-mismatch")
+        srvRsp.Set("executable", srv.cachedExecutable)
+        s.WriteResponse(srvRsp)
+        Logger.Warnln(host, "version mismatch, session terminated")
+        return nil
     }
 
     // Main handling
@@ -543,10 +534,4 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         panic("Unknown response")
     }
 
-}
-
-func (srv *Server) handleSessionVersionMismatch(s *Session) error {
-    srvRsp := NewResponse("version-mismatch")
-    srvRsp.Set("executable", srv.cachedExecutable)
-    return s.WriteResponse(srvRsp)
 }

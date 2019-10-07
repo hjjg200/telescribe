@@ -243,7 +243,10 @@ function processClientMonitorData(cmd, cms, options) {
     for(let i = 0; i < xAxis.length; i++) {
         let ts = xAxis[i];
         let nextTs = xAxis[i + 1];
-        if(nextTs != null && nextTs - ts > gtht) {// Gap
+        if(i == 0) {
+            labels.push(getHours(ts));
+            tmp.push(ts);
+        } else if(nextTs != null && nextTs - ts > gtht) {// Gap
             gapAdded = true;
             labels.push(getHours(ts));
             tmp.push(ts);
@@ -251,9 +254,12 @@ function processClientMonitorData(cmd, cms, options) {
                 labels.push("");
                 tmp.push(null);
             }
-        } else if(i % labelStep == 0 || gapAdded) {
+        } else if(gapAdded) {
             gapAdded = false;
             labels.push(getHours(ts));
+            tmp.push(ts);
+        } else if(i % labelStep == 0) {
+            labels.push(null);
             tmp.push(ts);
         } else {
             labels.push("");

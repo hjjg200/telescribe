@@ -641,12 +641,12 @@ func readNextPacket(r io.Reader) ([]byte, error) {
     if err != nil {
         return nil, err
     }
-    p := make([]byte, n)
-    n2, err := r.Read(p)
-    if err != nil || n != int64(n2) {
+    buf := bytes.NewBuffer(nil)
+    copied, err := io.CopyN(buf, r, n)
+    if err != nil || n != copied {
         return nil, fmt.Errorf("Bad packet")
     }
-    return p, nil
+    return buf.Bytes(), nil
 }
 
 func writeByteSlicePacket(w io.Writer, p []byte) (err error) {
@@ -748,7 +748,6 @@ func WriteResponse(w io.Writer, rp Response) error {
 func ReadResponse(r io.Reader) (Response, error) {
 
     bx, err := readNextPacket(r)
-    Logger.Debugln(string(bx))
     if err != nil {
         return Response{}, err
     }

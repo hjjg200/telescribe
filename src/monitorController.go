@@ -89,6 +89,11 @@ func SplitComma(str string) []string {
 
 func init() {
     parsedRanges = make(map[Range] func(float64) bool)
+
+    // Monitor error callback
+    monitor.ErrorCallback = func(err error) {
+        Logger.Warnln("monitor:", err)
+    }
 }
 
 func ParseMonitorrKey(key string) (base, param, idx string) {

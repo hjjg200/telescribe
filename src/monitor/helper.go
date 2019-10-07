@@ -4,6 +4,7 @@ import (
     "bytes"
     "io"
     "os"
+    "os/exec"
     "regexp"
 )
 
@@ -24,6 +25,15 @@ func readFile(path string) (string, error) {
     // For convenience, returns as string
     return string(buf.Bytes()), nil
 
+}
+
+func commandOutput(cmd string) (string, error) {
+    ex := exec.Command("bash", "-c", cmd)
+    o, err := ex.Output()
+    if err != nil {
+        return "", err
+    }
+    return string(o), nil
 }
 
 var whitespaceRegexp = regexp.MustCompile("\\s+")

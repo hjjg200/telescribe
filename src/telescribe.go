@@ -4,7 +4,10 @@ import (
     "flag"
     "fmt"
     "os"
+    "os/exec"
     "path/filepath"
+    "strconv"
+    "time"
     "./log"
 )
 
@@ -84,7 +87,10 @@ Ensure
 // :   "name": "session-restarted"
 // : }
 
-const Version = "telescribe-alpha-0.7"
+const Version = "telescribe-alpha-0.8"
+const (
+    childSpawnInterval = time.Second * 10
+)
 
 var (
     flServer bool
@@ -94,6 +100,7 @@ var (
     flClientAlias string
     flClientPort int
     flClientKnownHostsPath string
+    flClientDaemon bool
 
     flDebug bool
 
@@ -109,7 +116,8 @@ func setFlags() {
     flag.StringVar(&flClientAlias, "alias", "default", "(Client) The alias of the client")
     flag.IntVar(&flClientPort, "port", 1226, "(Client) The port of the server for the client to connect to")
     flag.StringVar(&flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
-    
+    flag.BoolVar(&flClientDaemon, "daemon", false, "(Client) Whether to run the client as daemon.")
+
     flag.BoolVar(&flDebug, "debug", false, "(Debug) verbose")
     flag.Parse()
 
@@ -157,12 +165,50 @@ func main() {
     }
 
     switch {
-    case !flServer:
-        addr := fmt.Sprintf("%s:%d", flClientHostname, flClientPort)
-        cl := NewClient(addr)
-        Logger.Infoln("Starting as a client for", addr)
-        Logger.Panicln(cl.Start())
-    case flServer:
+    case !flServer: // Client
+        if flClientDaemon {
+            // Daemon
+            Logger.Infoln("Running as daemon...")
+            clArgs := strconv.Quote(executablePath)
+            flag.Visit(func (f *flag.Flag) {
+                if f.Name == "daemon" && f.Value.String() == "true" {
+                    // flag.boolValue.String() returns strconv.FormatBool()
+                    // Exclude daemon true option
+                    return
+                }
+                clArgs += " "
+                clArgs += "-" + f.Name + "="
+                clArgs += strconv.Quote(f.Value.String())
+                // As golang/flag package allows only the non-boolean flags to be in the form below
+                // -flag value
+                // clArgs is formatted in the way in which boolean flags also work
+                // i.e., -flag=value
+            })
+
+            for {
+                Logger.Infoln("Spawning a child process...")
+                    
+                // Spawn Child
+                child := exec.Command("bash", "-c", clArgs)
+                child.Stderr = os.Stderr
+                child.Stdout = os.Stdout
+                child.Stdin = os.Stdin
+                err := child.Start()
+                if err != nil {
+                    Logger.Fatalln(err)
+                }
+                err = child.Wait()
+                Logger.Warnln("The child process exited:", err)
+                time.Sleep(childSpawnInterval)
+            }
+        } else {
+            // Non-daemon
+            addr := fmt.Sprintf("%s:%d", flClientHostname, flClientPort)
+            cl := NewClient(addr)
+            Logger.Infoln("Starting as a client for", addr)
+            Logger.Panicln(cl.Start())
+        }
+    case flServer: // Server
         srv := NewServer()
         Logger.Panicln(srv.Start())
     }

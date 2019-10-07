@@ -160,51 +160,51 @@ ul {
 }
 
 .ct-series-c .ct-bar, .ct-series-c .ct-line, .ct-series-c .ct-point, .ct-series-c .ct-slice-donut {
-  stroke: #f9d51f;
+  stroke: #f9d210;
 }
 
 .md-list li input.series-c {
-  background: #f9d51f;
+  background: #f9d210;
 }
 
 .ct-series-d .ct-bar, .ct-series-d .ct-line, .ct-series-d .ct-point, .ct-series-d .ct-slice-donut {
-  stroke: #adee2b;
+  stroke: #a7ed1d;
 }
 
 .md-list li input.series-d {
-  background: #adee2b;
+  background: #a7ed1d;
 }
 
 .ct-series-e .ct-bar, .ct-series-e .ct-line, .ct-series-e .ct-point, .ct-series-e .ct-slice-donut {
-  stroke: #2bee5b;
+  stroke: #1ded51;
 }
 
 .md-list li input.series-e {
-  background: #2bee5b;
+  background: #1ded51;
 }
 
 .ct-series-f .ct-bar, .ct-series-f .ct-line, .ct-series-f .ct-point, .ct-series-f .ct-slice-donut {
-  stroke: #2beebd;
+  stroke: #1dedb9;
 }
 
 .md-list li input.series-f {
-  background: #2beebd;
+  background: #1dedb9;
 }
 
 .ct-series-g .ct-bar, .ct-series-g .ct-line, .ct-series-g .ct-point, .ct-series-g .ct-slice-donut {
-  stroke: #2bcdee;
+  stroke: #1dcaed;
 }
 
 .md-list li input.series-g {
-  background: #2bcdee;
+  background: #1dcaed;
 }
 
 .ct-series-h .ct-bar, .ct-series-h .ct-line, .ct-series-h .ct-point, .ct-series-h .ct-slice-donut {
-  stroke: #62a6ea;
+  stroke: #358ce3;
 }
 
 .md-list li input.series-h {
-  background: #62a6ea;
+  background: #358ce3;
 }
 
 .ct-series-i .ct-bar, .ct-series-i .ct-line, .ct-series-i .ct-point, .ct-series-i .ct-slice-donut {
@@ -224,11 +224,11 @@ ul {
 }
 
 .ct-series-k .ct-bar, .ct-series-k .ct-line, .ct-series-k .ct-point, .ct-series-k .ct-slice-donut {
-  stroke: #e296e9;
+  stroke: #d66ce0;
 }
 
 .md-list li input.series-k {
-  background: #e296e9;
+  background: #d66ce0;
 }
 
 .ct-series-l .ct-bar, .ct-series-l .ct-line, .ct-series-l .ct-point, .ct-series-l .ct-slice-donut {
