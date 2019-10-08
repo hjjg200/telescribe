@@ -70,6 +70,22 @@ ul {
             vertical-align: top;
         }
     }
+    .timeframe {
+        display: flex;
+        background: #fcfcfc;
+        height: 1.7rem;
+        button {
+            background: none;
+            border: none;
+            border-radius: 0.2rem;
+            display: inline-block;
+            margin: 0.3rem 0 0.3rem 0.3rem;
+            width: 1.8rem;
+            &:hover {
+                background: #eee;
+            }
+        }
+    }
 }
 
 .md-list {

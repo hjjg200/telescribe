@@ -87,7 +87,7 @@ Ensure
 // :   "name": "session-restarted"
 // : }
 
-const Version = "telescribe-alpha-0.8"
+const Version = "telescribe-alpha-0.9"
 const (
     childSpawnInterval = time.Second * 10
 )

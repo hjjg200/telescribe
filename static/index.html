@@ -23,8 +23,11 @@
                         <span>{{ fullName }}</span>
                         <span class="last-access"></span>
                     </div>
+                    <div class="timeframe">
+                        <button v-for="days in [1,7,14,30]">{{ days }}d</button>
+                    </div>
                     <ul class="md-list">
-                        <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">
+                        <li v-for="(_, key) in cmsMap[fullName]" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">
                             <div class="label-wrap">
                                 <label>
                                     <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">

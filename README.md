@@ -37,11 +37,13 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Disk monitoring~~
 1. ~~Network monitoring~~
 1. ~~D3.js~~
-1. Detect config change in server and notify the client
-1. RESTful webhook for fatal status of clients
+1. ~~Detect config change in server and notify the client~~
+1. ~~RESTful webhook for fatal status of clients~~
+1. I/O wait monitoring
 1. Per-process monitoring
 1. Allow users to select time frame of the shown data in web page
 1. Allow users to reset the time frame
+1. Collapse list when there are more than 2 clients
 1. Proper handling of mouse events for mobile devices
 1. JS overhaul
 1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`

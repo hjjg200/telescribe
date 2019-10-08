@@ -8,6 +8,7 @@ import (
     "fmt"
     "io"
     "net"
+    "net/http"
     "os"
     "path/filepath"
     "strings"
@@ -17,11 +18,13 @@ import (
 
 const (
     monitorDataCacheExt = ".cache"
+    clientConfigWatchInterval = time.Second * 5
 )
 
 type Server struct {
     config ServerConfig
     clientConfigCluster ClientConfigCluster
+    clientConfigVersion map[string] string // [fullName] => sha256[:6]
     httpListener net.Listener
     authFingerprint string
 
@@ -54,9 +57,8 @@ type ServerConfig struct {
     Bind string `json:"network.bind"`
     Port int `json:"network.port"`
     Tickrate int `json:"network.tickrate(hz)"` // How many times will the server process connections in a second (Hz)
-    // Client Config
-    ClientAliases map[string] ClientAliasConfig `json:"client.aliases"`
-    ClientRoles map[string] ClientRoleConfig `json:"client.roles"`
+    // Alarm
+    WebhookUrl string `json:"alarm.webhookUrl"`
 }
 
 var DefaultServerConfig = ServerConfig{
@@ -81,11 +83,16 @@ var DefaultServerConfig = ServerConfig{
     Bind: "127.0.0.1",
     Port: 1226,
     Tickrate: 60,
+    // Alarm
+    WebhookUrl: "",
+}
+
+var DefaultClientConfigCluster = ClientConfigCluster{
     // Client Config
     ClientAliases: map[string] ClientAliasConfig{
         "127.0.0.1": {
             "default": "example",
-            "foo": "example",
+            "foo": "bar",
         },
     },
     ClientRoles: map[string] ClientRoleConfig{
@@ -98,9 +105,15 @@ var DefaultServerConfig = ServerConfig{
             },
             MonitorInterval: 60,
         },
+        "bar": {
+            MonitorInfos: map[string] MonitorInfo{
+                "general-swapUsage": MonitorInfo{},
+                "general-memoryUsage": MonitorInfo{},
+            },
+            MonitorInterval: 60,
+        },
     },
 }
-//var DefaultClientConfigCluster
 
 func NewServer() *Server {
     srv := &Server{}
@@ -141,6 +154,60 @@ func (srv *Server) LoadConfig(p string) error {
 
 }
 
+func (srv *Server) loadClientConfigCluster() error {
+
+    fn := srv.config.ClientConfigPath
+    
+    //
+    f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
+    switch {
+    case err != nil && !os.IsNotExist(err):
+        return err
+    case os.IsNotExist(err):
+        // Save default config
+        srv.clientConfigCluster = DefaultClientConfigCluster
+        f2, err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0600)
+        if err != nil {
+            return err
+        }
+        enc := json.NewEncoder(f2)
+        enc.SetIndent("", "  ")
+        err = enc.Encode(DefaultClientConfigCluster)
+        if err != nil {
+            return err
+        }
+        f.Close()
+    default:
+        //
+        dec := json.NewDecoder(f)
+        ccc := ClientConfigCluster{}
+        err = dec.Decode(&ccc)
+        if err != nil {
+            return err
+        }
+        srv.clientConfigCluster = ccc
+    }
+
+    // Version
+    ccv := make(map[string] string)
+    roleVersion := make(map[string] string)
+    for host, aliases := range srv.clientConfigCluster.ClientAliases {
+        for alias, role := range aliases {
+            fullName := formatFullName(host, alias)
+            if _, ok := roleVersion[role]; !ok {
+                j, _ := json.Marshal(srv.clientConfigCluster.ClientRoles[role])
+                roleVersion[role] = fmt.Sprintf("%x", Sha256Sum(j))[:6]
+            }
+            ccv[fullName] = roleVersion[role]
+        }
+    }
+
+    srv.clientConfigVersion = ccv
+    
+    return nil
+
+}
+
 func (srv *Server) cacheExecutable() error {
     
     f, err := os.OpenFile(executablePath, os.O_RDONLY, 0644)
@@ -169,6 +236,8 @@ func (srv *Server) Start() (err error) {
     // Config
     Try(srv.LoadConfig(flServerConfigPath))
     Logger.Infoln("Loaded Config")
+    Try(srv.loadClientConfigCluster())
+    Logger.Infoln("Loaded Client Config Cluster")
 
     //
     Try(srv.checkAuthPrivateKey())
@@ -206,6 +275,35 @@ func (srv *Server) Start() (err error) {
         }
     }()
     Logger.Infoln("Started Monitor Data Caching Thread")
+
+    // Client Config Version Update
+    go func() {
+        ccvp := srv.config.ClientConfigPath
+        st, _ := os.Stat(ccvp)
+        lastMod := st.ModTime()
+        for {
+            time.Sleep(clientConfigWatchInterval)
+
+            // Mod Time Check
+            st, err := os.Stat(ccvp)
+            if err != nil {
+                Logger.Warnln(err)
+                continue
+            }
+            // Changed
+            if lastMod != st.ModTime() {
+                goErr := srv.loadClientConfigCluster()
+                if goErr != nil {
+                    Logger.Warnln(goErr)
+                    continue
+                }
+                Logger.Infoln("Reloaded Client Config Cluster")
+                lastMod = st.ModTime()
+            }
+
+        }
+    }()
+    Logger.Infoln("Started Client Config Cluster Reloading Thread")
 
     // Graph-ready Data Preparing Thread
     go func() {
@@ -413,27 +511,39 @@ func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[st
 
     //
     initialized := make([]MonitorDataSliceElem, 0)
-
+    fatalValues := make(map[string] float64)
     appendValue := func(key string, val float64) {
+
         short, ok := srv.clientMonitorData[fullName][key]
         if !ok {
             short = initialized
         }
+
+        // Trim Data
         if len(short) > srv.config.MaxDataLength {
             // Get MaxLength - 1 items
             start := len(short) - srv.config.MaxDataLength + 1
             short = short[start:]
         }
 
+        // Append
         srv.clientMonitorData[fullName][key] = append(
             short,
             MonitorDataSliceElem{
                 Value: val,
                 Timestamp: timestamp,
             },
-       )
+        )
+
+        // Check Status
+        st := srv.getMonitorInfo(fullName, key).StatusOf(val)
+        if st == MonitorStatusFatal {
+            fatalValues[key] = val
+        }
+
     }
 
+    //
     for key, val := range md {
         switch cast := val.(type) {
         case float64:
@@ -446,6 +556,58 @@ func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[st
         }
     }
 
+    //
+    go func() {
+        err := srv.sendAlarmWebhook(fullName, timestamp, fatalValues)
+        if err != nil {
+            Logger.Warnln("Failed to send webhook:", err)
+        }
+    }()
+
+}
+
+type alarmWebhook struct {
+    FullName string `json:"fullName"`
+    Timestamp int64 `json:"timestamp"`
+    FatalValues map[string] float64 `json:"fatalValues"`
+}
+func (srv *Server) sendAlarmWebhook(fullName string, timestamp int64, fatalValues map[string] float64) error {
+
+    //
+    if len(fatalValues) == 0 {
+        return nil
+    }
+
+    // Empty URL
+    url := srv.config.WebhookUrl
+    if url == "" {
+        return nil
+    }
+
+    // Body
+    aw := alarmWebhook{
+        FullName: fullName,
+        Timestamp: timestamp,
+        FatalValues: fatalValues,
+    }
+    body, _ := json.Marshal(aw)
+
+    // Request
+    rsp, err := http.Post(
+        url, "application/json", bytes.NewReader(body),
+    )
+    if err != nil {
+        return err
+    }
+
+    // Check Response
+    if rsp.StatusCode != 200 {
+        // Webhook Receiver must reply back with 200
+        return fmt.Errorf("status code %d", rsp.StatusCode)
+    }
+
+    return nil
+
 }
 
 func (srv *Server) getMonitorInfo(fullName, key string) (MonitorInfo) {
@@ -454,8 +616,8 @@ func (srv *Server) getMonitorInfo(fullName, key string) (MonitorInfo) {
     var bpMatch MonitorInfo
 
     host, alias := parseFullName(fullName)
-    role := srv.config.ClientAliases[host][alias]
-    roleCfg := srv.config.ClientRoles[role]
+    role := srv.clientConfigCluster.ClientAliases[host][alias]
+    roleCfg := srv.clientConfigCluster.ClientRoles[role]
     for b, mi := range roleCfg.MonitorInfos {
         bBase, bParam, bIdx := ParseMonitorrKey(b)
         if aBase == bBase && aParam == bParam {
@@ -478,7 +640,7 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     //
     host, err := s.RemoteHost()
     Try(err)
-    roles, whitelisted := srv.config.ClientAliases[host]
+    roles, whitelisted := srv.clientConfigCluster.ClientAliases[host]
     if !whitelisted {
         srvRsp := NewResponse("not-whitelisted")
         s.WriteResponse(srvRsp)
@@ -491,7 +653,8 @@ func (srv *Server) HandleSession(s *Session) (err error) {
 
     // Role
     alias := clRsp.String("alias")
-    role, ok := srv.config.ClientRoles[roles[alias]]
+    fullName := formatFullName(host, alias)
+    role, ok := srv.clientConfigCluster.ClientRoles[roles[alias]]
     Assert(ok, "Client must have its role")
 
     // Version Check
@@ -519,6 +682,7 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         Try(err)
         srvRsp := NewResponse("hello")
         srvRsp.Set("role", roleBytes)
+        srvRsp.Set("configVersion", srv.clientConfigVersion[fullName])
         Logger.Infoln(host, "HELLO CLIENT")
         return s.WriteResponse(srvRsp)
 
@@ -528,14 +692,33 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
         Assert(ok, "Malformed monitor data")
         timestamp := clRsp.Int64("timestamp")
-        srv.RecordMonitorData(formatFullName(host, alias), timestamp, md)
-
-        // OK
-        srvRsp := NewResponse("ok")
-        return s.WriteResponse(srvRsp)
+        srv.RecordMonitorData(fullName, timestamp, md)
 
     default:
         panic("Unknown response")
     }
+
+    // Post Handling
+    // # Config Version Check
+    configVersion := clRsp.String("configVersion")
+    switch configVersion {
+    case "":
+        // Version empty
+        panic("Client response does not include config version")
+    case srv.clientConfigVersion[fullName]:
+        // Version match
+    default:
+        // Version mismatch
+        roleBytes, err := json.Marshal(role)
+        Try(err)
+        srvRsp := NewResponse("reconfigure")
+        srvRsp.Set("role", roleBytes)
+        srvRsp.Set("configVersion", srv.clientConfigVersion[fullName])
+        return s.WriteResponse(srvRsp)
+    }
+
+    // # OK
+    srvRsp := NewResponse("ok")
+    return s.WriteResponse(srvRsp)
 
 }

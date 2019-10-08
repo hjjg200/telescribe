@@ -17,6 +17,7 @@ type Client struct {
     serverAddr string
     s *Session
     role ClientRoleConfig
+    configVersion string
 }
 
 type ClientConfigCluster struct {
@@ -58,8 +59,9 @@ func (cl *Client) hello() (err error) {
 
     switch srvRsp.Name() {
     case "hello":
-        role := srvRsp.Bytes("role")
-        return json.Unmarshal(role, &cl.role)
+        return cl.configureRole(
+            srvRsp.String("configVersion"), srvRsp.Bytes("role"), 
+        )
     case "version-mismatch":
         executable := srvRsp.Bytes("executable")
         return cl.autoUpdate(executable)
@@ -67,6 +69,12 @@ func (cl *Client) hello() (err error) {
         return fmt.Errorf("Bad config response")
     }
 
+}
+
+func (cl *Client) configureRole(cv string, role []byte) error {
+    cl.configVersion = cv
+    cl.role = ClientRoleConfig{}
+    return json.Unmarshal(role, &cl.role)
 }
 
 func (cl *Client) checkKnownHosts() error {
@@ -124,8 +132,9 @@ func (cl *Client) Start() error {
 
         Logger.Infoln("SUCCESSFUL HELLO")
         // Config
-        monitorInterval := time.Second * time.Duration(cl.role.MonitorInterval)
-        hri = monitorInterval
+        // Monitor Interval Shorthand Func
+        mrif := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
+        hri = mrif()
         pass := make(chan struct{})
         go func() {
             pass <- struct{}{}
@@ -140,7 +149,7 @@ func (cl *Client) Start() error {
 
             // Sleep
             go func() {
-                time.Sleep(monitorInterval)
+                time.Sleep(mrif())
                 pass <- struct{}{}
             }()
 
@@ -172,6 +181,7 @@ func (cl *Client) Start() error {
             // Send to Server
             clRsp := NewResponse("monitor-data")
             clRsp.Set("version", Version)
+            clRsp.Set("configVersion", cl.configVersion)
             clRsp.Set("alias", flClientAlias)
             clRsp.Set("timestamp", time.Now().Unix())
             clRsp.Set("monitorData", md)
@@ -191,7 +201,15 @@ func (cl *Client) Start() error {
 
             switch srvRsp.Name() {
             case "ok":
-            // case "reconfigure":
+            case "reconfigure":
+                err = cl.configureRole(
+                    srvRsp.String("configVersion"), srvRsp.Bytes("role"), 
+                )
+                if err != nil {
+                    Logger.Warnln(err)
+                    break MonitorLoop
+                }
+                Logger.Infoln("Reconfigured!")
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
                 executable := srvRsp.Bytes("executable")

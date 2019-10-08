@@ -26,7 +26,7 @@ type diskStat struct {
     used int64 // 1024-block
     reads int64
     readSectors int64 // 1 sector is 512 bytes
-    readTicks int64
+    readTicks int64 // millisecond
     writes int64
     writeSectors int64
     writeTicks int64

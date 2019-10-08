@@ -255,6 +255,33 @@ function isHidden(elem) {
     return (style.display === 'none');
 }
 
+Number.prototype.format = function(str) {
+    var fmt = parseNumberFormat(str);
+    var num = this;
+    num = num * Math.pow(10, fmt.exp);
+    // Precision
+    if(!isNaN(fmt.precision)) {
+        var precision = Math.pow(10, fmt.precision);
+        num = Math.round(num * precision) / precision;
+    }
+    return `${fmt.prefix}${formatComma(num)}${fmt.suffix}`;
+};
+
+function parseNumberFormat(str) {
+    var rgx = /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f?\})(.+)?/;
+    var m = str.match(rgx);
+    var [prefix = "", exp = 0, precision = NaN, suffix = ""] = [m[1], m[4], m[6], m[7]];
+    return {
+        prefix, exp: parseInt(exp), precision: parseInt(precision), suffix
+    };
+}
+
+function formatComma(x) {
+    var parts = x.toString().split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
+}
+
 //
 // D3.js
 //
@@ -319,7 +346,7 @@ async function drawD3Chart(query) {
         .range([0, width]);
     svg.append("g")
         .attr("transform", `translate(0, ${height})`)
-        .classed("axis", true)
+        .attr("class", "axis axis-x")
         .call(d3.axisBottom(x)
             .ticks(4)
             .tickSizeOuter(0)
@@ -344,7 +371,7 @@ async function drawD3Chart(query) {
         .range([height, 0]);
     svg.append("g")
         .attr("transform", "translate(0,0)")
-        .classed("axis", true)
+        .attr("class", "axis axis-y")
         .call(d3.axisLeft(y)
             .ticks(4)
             .tickSizeOuter(0)
@@ -358,14 +385,13 @@ async function drawD3Chart(query) {
                 }
                 return d;
             }))
-        .attr("font-family", "")
-        .attr("font-size", "");
+            .attr("font-family", "")
+            .attr("font-size", "");
 
     // Y axis grid
     svg.append("g")
         .classed("grid", true)
         .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(""));
-    let grid = chart.querySelector(".grid");
 
     // Selection
     var selection = svg.append("rect")
@@ -381,10 +407,9 @@ async function drawD3Chart(query) {
         .attr("y1", 0)
         .attr("y2", height)
         .classed("hand", true);
-    let hand = chart.querySelector(".hand");
 
     // Overlay
-    svg.append("rect")
+    var overlay = svg.append("rect")
         .attr("class", "overlay")
         .attr("x", 0)
         .attr("y", 0)
@@ -392,7 +417,6 @@ async function drawD3Chart(query) {
         .attr("width", width)
         .attr("fill", "none")
         .style("pointer-events", "all");
-    let overlay = chart.querySelector(".overlay");
 
 /*
 https://www.d3-graph-gallery.com/graph/line_several_group.html
@@ -517,7 +541,7 @@ https://github.com/d3/d3-shape/blob/v1.3.5/README.md#line_defined
         drawD3Chart(query);
     })
     .on("mousemove", function() {
-        var mouse = d3.mouse(overlay);
+        var mouse = d3.mouse(overlay.node());
         var mouseTimestamp = x.invert(mouse[0]);
         var i = bisect(dataset, mouseTimestamp); // returns the index to the current data item
 
