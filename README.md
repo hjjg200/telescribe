@@ -1,6 +1,6 @@
 # Telescribe
 
-![](https://img.shields.io/badge/created-‘19%20Sep%2016-9cf)
+![](https://img.shields.io/badge/-mini%20project-orange) ![](https://img.shields.io/badge/created-‘19%20Sep%2016-9cf)
 
 Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and send the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each server machine has to have nothing but the executable file.
 
