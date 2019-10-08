@@ -147,7 +147,7 @@ path.series-a, line.series-a {
   stroke: #ee2b3b;
 }
 
-circle.series-a {
+circle.series-a, rect.series-a {
   fill: #ee2b3b;
 }
 
@@ -159,7 +159,7 @@ path.series-b, line.series-b {
   stroke: #5f9edd;
 }
 
-circle.series-b {
+circle.series-b, rect.series-b {
   fill: #5f9edd;
 }
 
@@ -171,7 +171,7 @@ path.series-c, line.series-c {
   stroke: #ee7c2b;
 }
 
-circle.series-c {
+circle.series-c, rect.series-c {
   fill: #ee7c2b;
 }
 
@@ -183,7 +183,7 @@ path.series-d, line.series-d {
   stroke: #6972d3;
 }
 
-circle.series-d {
+circle.series-d, rect.series-d {
   fill: #6972d3;
 }
 
@@ -195,7 +195,7 @@ path.series-e, line.series-e {
   stroke: #f9d210;
 }
 
-circle.series-e {
+circle.series-e, rect.series-e {
   fill: #f9d210;
 }
 
@@ -207,7 +207,7 @@ path.series-f, line.series-f {
   stroke: #89b6e6;
 }
 
-circle.series-f {
+circle.series-f, rect.series-f {
   fill: #89b6e6;
 }
 
@@ -219,7 +219,7 @@ path.series-g, line.series-g {
   stroke: #a979ec;
 }
 
-circle.series-g {
+circle.series-g, rect.series-g {
   fill: #a979ec;
 }
 
@@ -231,7 +231,7 @@ path.series-h, line.series-h {
   stroke: #d87341;
 }
 
-circle.series-h {
+circle.series-h, rect.series-h {
   fill: #d87341;
 }
 
@@ -243,7 +243,7 @@ path.series-i, line.series-i {
   stroke: #f2e65f;
 }
 
-circle.series-i {
+circle.series-i, rect.series-i {
   fill: #f2e65f;
 }
 
@@ -255,7 +255,7 @@ path.series-j, line.series-j {
   stroke: #d66ce0;
 }
 
-circle.series-j {
+circle.series-j, rect.series-j {
   fill: #d66ce0;
 }
 
@@ -267,7 +267,7 @@ path.series-k, line.series-k {
   stroke: #e24536;
 }
 
-circle.series-k {
+circle.series-k, rect.series-k {
   fill: #e24536;
 }
 
@@ -279,7 +279,7 @@ path.series-l, line.series-l {
   stroke: #bbbdc3;
 }
 
-circle.series-l {
+circle.series-l, rect.series-l {
   fill: #bbbdc3;
 }
 
@@ -291,7 +291,7 @@ path.series-m, line.series-m {
   stroke: #7e839a;
 }
 
-circle.series-m {
+circle.series-m, rect.series-m {
   fill: #7e839a;
 }
 
@@ -303,7 +303,7 @@ path.series-n, line.series-n {
   stroke: #998082;
 }
 
-circle.series-n {
+circle.series-n, rect.series-n {
   fill: #998082;
 }
 
@@ -315,7 +315,7 @@ path.series-o, line.series-o {
   stroke: #9a8f7e;
 }
 
-circle.series-o {
+circle.series-o, rect.series-o {
   fill: #9a8f7e;
 }
 
@@ -342,9 +342,6 @@ circle.series-o {
   perspective: 1000;
   */
 }
-.chart g.active .ct-line {
-  stroke-width: 2px;
-}
 
 .chart-wrap {
   position: relative;
@@ -356,11 +353,8 @@ circle.series-o {
   height: 11rem;
   width: 100%;
 }
-.chart-wrap .chart circle {
-  opacity: 0;
-}
-.chart-wrap .chart circle:hover {
-  opacity: 1;
+.chart-wrap .chart * {
+  overflow: visible;
 }
 .chart-wrap .grid {
   position: relative;
@@ -371,6 +365,9 @@ circle.series-o {
   stroke-dasharray: 3px;
 }
 .chart-wrap .grid path {
+  display: none;
+}
+.chart-wrap .domain {
   display: none;
 }
 .chart-wrap .axis {
@@ -393,12 +390,28 @@ circle.series-o {
   stroke-dasharray: 3px;
 }
 .chart-wrap .selection {
-  display: none;
+  pointer-events: none;
   fill: rgba(0, 85, 255, 0.1);
 }
-.chart-wrap .selection.active {
-  display: block;
-}
-.chart-wrap .series:hover path {
+.chart-wrap .paths path.active {
   stroke-width: 2px;
+}
+.chart-wrap .tooltip {
+  font-family: inherit;
+  font-size: 0.6rem;
+  pointer-events: none;
+}
+.chart-wrap .tooltip .background {
+  stroke: #dadada;
+  fill: white;
+}
+.chart-wrap .tooltip text {
+  stroke-width: 0;
+  user-select: none;
+}
+.chart-wrap .tooltip .timestamp {
+  fill: #bbb;
+}
+.chart-wrap .tooltip .value {
+  fill: #777;
 }

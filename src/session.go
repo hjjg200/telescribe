@@ -812,6 +812,11 @@ func (rp *Response) Int(key string) (i int) {
     return
 }
 
+func (rp *Response) Int64(key string) (i int64) {
+    i, _ = rp.args[key].(int64)
+    return
+}
+
 func (rp *Response) Float64(key string) (f float64) {
     f, _ = rp.args[key].(float64)
     return

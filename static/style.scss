@@ -149,7 +149,7 @@ $colors: (
     path.series-#{$key}, line.series-#{$key} {
         stroke: $color;
     }
-    circle.series-#{$key} {
+    circle.series-#{$key}, rect.series-#{$key} {
         fill: $color;
     }
     .md-list li input.series-#{$key} {
@@ -175,9 +175,6 @@ $colors: (
    -ms-perspective: 1000;
    perspective: 1000;
    */
-    g.active .ct-line {
-        stroke-width: 2px;
-    }
 }
 
 .chart-wrap {
@@ -188,11 +185,9 @@ $colors: (
         position: relative;
         height: 11rem;
         width: 100%;
-        circle {
-            opacity: 0;
-            &:hover {
-                opacity: 1;
-            }
+
+        * {
+            overflow: visible;
         }
     }
     .grid {
@@ -205,6 +200,9 @@ $colors: (
         path {
             display: none;
         }
+    }
+    .domain {
+        display: none;
     }
     .axis {
         font-family: inherit;
@@ -226,15 +224,31 @@ $colors: (
         stroke-dasharray: 3px;
     }
     .selection {
-        display: none;
+        pointer-events: none;
         fill: hsla(220, 100%, 50%, 0.1);
-        &.active {
-            display: block;
+    }
+    .paths {
+        path.active {
+            stroke-width: 2px;
         }
     }
-    .series:hover {
-        path {
-            stroke-width: 2px;
+    .tooltip {
+        font-family: inherit;
+        font-size: 0.6rem;
+        pointer-events: none;
+        .background {
+            stroke: #dadada;
+            fill: white;
+        }
+        text {
+            stroke-width: 0;
+            user-select: none;
+        }
+        .timestamp {
+            fill: #bbb;
+        }
+        .value {
+            fill: #777;
         }
     }
 }

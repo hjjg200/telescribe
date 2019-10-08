@@ -1,14 +1,25 @@
 
 let chartList = {};
-let chartTimestampsMap = {};
-let chartSeriesMap = {};
-let chartActiveSeriesMap = {};
+let chartDataset = {};
+let chartActiveKeys = {};
+let chartActiveBoundary = {};
 
 let g_gdc;
 let g_cms;
 let app;
 
 // Put average values instead of null
+
+/*
+
+    For bisecting, data should be like
+    map[timestamp] [
+        {
+            key, value
+        }
+    ]
+
+*/
 
 document.addEventListener("DOMContentLoaded", async function() {
 
@@ -41,53 +52,43 @@ document.addEventListener("DOMContentLoaded", async function() {
             }
         },
         mounted: function() {
-            let options = this.options
+            let options = this.options;
             for(let fullName in this.cmdMap) {
-                let [timestamps, seriesMap] = processClientMonitorData(
+                let dataset = processChartDataset(
                     this.cmdMap[fullName], this.cmsMap[fullName], options
                 );
-                chartTimestampsMap[fullName] = timestamps;
-                chartSeriesMap[fullName] = seriesMap;
-                chartActiveSeriesMap[fullName] = [];
+                chartDataset[fullName] = dataset;
+                chartActiveKeys[fullName] = [];
+                chartActiveBoundary[fullName] = [NaN, NaN];
                 this.updateChart(fullName);
             }
         },
         methods: {
             toggleSeries: function(ev, fullName, key, toggle) {
                 if(toggle) {
-                    chartActiveSeriesMap[fullName].push({
-                        key: key,
-                        series: chartSeriesMap[fullName][key]
-                    });
-                    let i = getSeriesIdx(chartActiveSeriesMap[fullName].length);
+                    chartActiveKeys[fullName].push(key);
                 } else {
-                    let tmp = [];
-                    chartActiveSeriesMap[fullName].forEach(function(val) {
-                        if(val.key == key) {
-                            on = true;
-                            return;
-                        }
-                        tmp.push(val);
+                    let swap = [];
+                    chartActiveKeys[fullName].forEach(function(key2) {
+                        if(key == key2) return;
+                        swap.push(key2);
                     });
-                    chartActiveSeriesMap[fullName] = tmp;
+                    chartActiveKeys[fullName] = swap;
                     ev.target.className = "";
                 }
                 this.updateChart(fullName);
             },
             updateChart: function(fullName) {
-                let series = [];
                 let i = 1;
-                chartActiveSeriesMap[fullName].forEach(function(val) {
-                    let q = formatCheckboxQuery(fullName, val.key);
+                chartActiveKeys[fullName].forEach(function(key) {
+                    let q = formatCheckboxQuery(fullName, key);
                     let a = getSeriesIdx(i++);
                     let cb = document.querySelector(q);
                     cb.className = "";
                     cb.classList.add("series-" + a);
-                    series.push(val.series);
                 });
-                let timestamps = chartTimestampsMap[fullName];
                 let query = formatChartQuery(fullName);
-                drawD3Chart(query, timestamps, series);
+                drawD3Chart(query);
             },
             maxStatus: function(cms) {
                 let max = -1;
@@ -101,88 +102,6 @@ document.addEventListener("DOMContentLoaded", async function() {
             }
         }
     })
-
-    //
-    let dragged = false;
-    let dragStartT = {};
-    let dragEndT = {};
-    document.addEventListener("mouseup", function(ev) {
-        document.querySelectorAll(".selection.active").forEach(function(el) {
-            let chart = queryParent(el, ".chart");
-            let fullName = chart.getAttribute("data-fullName");
-            el.classList.remove("active");
-            let start = Math.min(dragStartT[fullName], dragEndT[fullName]);
-            let end = Math.max(dragStartT[fullName], dragEndT[fullName]);
-        });
-        dragged = false;
-    });
-
-    document.querySelectorAll(".chart").forEach(function(el) {
-        let dragStartX = null;
-        let fullName = el.getAttribute("data-fullName");
-        let idx;
-        let getChart = function() { return chartList[fullName]; }
-
-        el.addEventListener("mousemove", function(ev) {
-            let grid = getChart().grid;
-            let hand = getChart().hand;
-            let selection = getChart().selection;
-            let rect = grid.getBoundingClientRect();
-            let pX = ev.pageX;
-            let absX = pX - rect.x;
-
-            // Only in the grid
-            if(pX > rect.x && pX < rect.x + rect.width) {
-                // Hand
-                hand.setAttribute("x1", absX);
-                hand.setAttribute("x2", absX);
-
-                // Get nearest timestamp
-                let timestamps = chartTimestampsMap[fullName];
-                idx = Math.round(absX / rect.width * timestamps.length);
-
-                // Dragged
-                if(dragged) {
-                    dragEndT[fullName] = idx;
-                    if(pX < dragStartX) {
-                        selection.setAttribute("x", absX);
-                        selection.setAttribute("width", dragStartX - pX);
-                    } else {
-                        selection.setAttribute("width", pX - dragStartX);
-                    }
-                }
-            }
-
-        });
-
-        el.addEventListener("mousedown", function(ev) {
-            let selection = getChart().selection;
-            let grid = getChart().grid;
-            let rect = grid.getBoundingClientRect();
-            let pX = ev.pageX;
-            dragged = true;
-            dragStartX = pX;
-            dragStartT[fullName] = idx;
-            selection.setAttribute("x", pX - rect.x);
-            selection.setAttribute("width", 0);
-            selection.classList.add("active");
-        });
-
-        el.addEventListener("mouseover", function(ev) {
-            /*if(hasClass(ev.target, "ct-point")) {
-                let series = ev.target.parentElement.getAttribute('class').match(/ct-series-\w/)[0];
-                let g = document.querySelector("g." + series);
-                g.classList.add("active");
-            }*/
-        });
-        el.addEventListener("mouseout", function(ev) {
-            /*if(hasClass(ev.target, "ct-point")) {
-                let series = ev.target.parentElement.getAttribute('class').match(/ct-series-\w/)[0];
-                let g = document.querySelector("g." + series);
-                g.classList.remove("active");
-            }*/
-        });
-    });
 
 })
 
@@ -253,11 +172,9 @@ function queryParentAll(elem, query) {
     return [];
 }
 
-function processClientMonitorData(cmd, cms, options) {
+function processChartDataset(cmd, cms, options) {
 
     let gtht = options.gapThresholdTime * 60;
-    let xAxis = [];
-    let seriesMap = {};
     { // Always add the current node
         for(let key in cmd) {
             let len = cmd[key].length;
@@ -273,67 +190,64 @@ function processClientMonitorData(cmd, cms, options) {
         }
     }
 
-    let rcMap = {};
-    { // Get all timestamps
-        let tmp = {};
+    let dataMap = {};
+    let dataset = [];
+    { // Process Dataset
         for(let key in cmd) {
             let slice = cmd[key];
-            rcMap[key] = {};
-            for(let idx in slice) {
-                let each = slice[idx];
-                tmp[each.Timestamp] = null;
-                rcMap[key][each.Timestamp] = {
-                    Value: each.Value,
-                    Timestamp: each.Timestamp
-                };
-            }
-        }
-        for(let t in tmp) {
-            xAxis.push(t);
-        }
-        xAxis.sort();
-    }
+            for(let i = 0; i < slice.length; i++) {
+                let prevItem = slice[i-1];
+                let item = slice[i];
 
-    // Series
-    for(let key in cmd) {
-        let slice = cmd[key];
-        let tmp = rcMap[key];
-        let series = [];
-
-        let lastX = null;
-        for(let i = 0; i < xAxis.length; i++) {
-            let aX = Number(xAxis[i]);
-
-            if(tmp[aX] != null) {
-
-                // Put gap
-                if(lastX != null && aX - lastX > gtht) {
-                    series.push({
-                        Value: null,
-                        Timestamp: lastX + (aX - lastX)/2
-                    });
+                // Gap
+                if(prevItem != null) {
+                    let diff = item.Timestamp - prevItem.Timestamp;
+                    if(diff > gtht) {
+                        let avgTimestamp = prevItem.Timestamp + diff / 2;
+                        let avgMap = dataMap[avgTimestamp];
+                        if(avgMap == null) {
+                            dataMap[avgTimestamp] = {
+                                [key]: NaN
+                            };
+                        } else {
+                            dataMap[avgTimestamp][key] = NaN;
+                        }
+                    }
                 }
 
-                let aI = tmp[aX];
-                series.push({
-                    Value: aI.Value,
-                    Timestamp: aI.Timestamp
-                });
-                lastX = aX;
+                let currMap = dataMap[item.Timestamp];
+                if(currMap == null) {
+                    dataMap[item.Timestamp] = {
+                        [key]: item.Value // [] is needed to use key as variable rather than "key"
+                    };
+                } else {
+                    dataMap[item.Timestamp][key] = item.Value;
+                }
 
             }
-
         }
-        
-        seriesMap[key] = series;
+
+        for(let timestamp in dataMap) {
+            let item = {};
+            let curr = dataMap[timestamp];
+            Object.keys(curr).forEach(function(key) {
+                item[key] = curr[key];
+            });
+            item.timestamp = Number(timestamp);
+            dataset.push(item);
+        }
     }
 
-    return [xAxis, seriesMap];
+    return dataset.sort(function(a, b) {
+        if(a.timestamp > b.timestamp) return 1;
+        if(a.timestamp < b.timestamp) return -1;
+        return 0;
+    });
     
 }
 
 function getHours(t) {
-    return moment.unix(t).format("DD HH:mm")
+    return moment.unix(t).format("DD HH:mm");
 }
 
 function isHidden(elem) {
@@ -349,56 +263,16 @@ function remToPx(rem) {
     return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
-function getMaxValue(series) {
-    ret = -Infinity; // minus infinity
-    if(series.length == 0)
-        return 1;
-    series.forEach(function(slice) {
-        for(let i = 0; i < slice.length; i++) {
-            ret = Math.max(ret, slice[i].Value);
-        }
-    });
-    return ret;
-}
-
-function getMinValue(series) {
-    ret = Infinity; // minus infinity
-    if(series.length == 0)
-        return 0;
-    series.forEach(function(slice) {
-        for(let i = 0; i < slice.length; i++) {
-            ret = Math.min(ret, slice[i].Value);
-        }
-    });
-    return ret;
-}
-
-function getMaxTimestamp(ts) {
-    ret = -Infinity;
-    for(let i = 0; i < ts.length; i++) {
-        if(ts[i] == null) continue;
-        ret = Math.max(ret, ts[i]);
-    }
-    return ret;
-}
-
-function getMinTimestamp(ts) {
-    ret = Infinity;
-    for(let i = 0; i < ts.length; i++) {
-        if(ts[i] == null) continue;
-        ret = Math.min(ret, ts[i]);
-    }
-    return ret;
-}
-
-async function drawD3Chart(query, timestamps, series) {
-    let elem = document.querySelector(query);
-    elem.innerHTML = "";
-    let fullName = elem.getAttribute("data-fullName");
+async function drawD3Chart(query) {
+    let chart = document.querySelector(query);
+    chart.innerHTML = "";
+    let fullName = chart.getAttribute("data-fullName");
     chartList[fullName] = {};
-    let margin = {top: remToPx(1), left: remToPx(3.5), bottom: remToPx(2) };
-    let height = elem.offsetHeight - margin.bottom - margin.top;
-    let width = elem.offsetWidth - margin.left;
+    let activeKeys = chartActiveKeys[fullName];
+    let activeBoundary = chartActiveBoundary[fullName];
+    let margin = {top: remToPx(1), left: remToPx(2.5), bottom: remToPx(2) };
+    let height = chart.offsetHeight - margin.bottom - margin.top;
+    let width = chart.offsetWidth - margin.left;
 
     let svg = d3.select(query)
         .append("svg")
@@ -408,17 +282,43 @@ async function drawD3Chart(query, timestamps, series) {
                 .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
     // For axis
-    let minY = getMinValue(series);
-    let maxY = getMaxValue(series);
-    let minX = getMinTimestamp(timestamps);
-    let maxX = getMaxTimestamp(timestamps);
+    let entireDataset = chartDataset[fullName];
+    let boundarySet = !isNaN(activeBoundary[0]) && !isNaN(activeBoundary[1]);
+    let dataset = entireDataset.filter(function(d) {
+        if(boundarySet) {
+            if(d.timestamp < activeBoundary[0] || d.timestamp > activeBoundary[1]) return false;
+        }
+        for(let key in d) {
+            if(key === "timestamp") continue;
+            if(activeKeys.indexOf(key) !== -1) return true;
+        }
+        return false;
+    });
+    let dataGroups = activeKeys
+        .map(function(key) {
+            return {
+                key: key,
+                values: dataset.map(function(d) {
+                    if(d[key] == null) return null;
+                    return {
+                        timestamp: d.timestamp,
+                        value: d[key]
+                    };
+                }).filter(function(d) { return d !== null; })
+            };
+        });
 
-    // Add X axis --> it is a date format
+    // Map
+    var seriesIndexes = d3.scaleOrdinal()
+        .domain(chartActiveKeys[fullName])
+        .range(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"]);
+
+    // Add X axis
     var x = d3.scaleLinear()
-        .domain([minX, maxX])
+        .domain(d3.extent(dataset, function(d) { return d.timestamp; }))
         .range([0, width]);
     svg.append("g")
-        .attr("transform", "translate(0," + (height+0) + ")")
+        .attr("transform", `translate(0, ${height})`)
         .classed("axis", true)
         .call(d3.axisBottom(x)
             .ticks(4)
@@ -429,12 +329,35 @@ async function drawD3Chart(query, timestamps, series) {
 
     // Add Y axis
     var y = d3.scaleLinear()
-        .domain([minY, maxY])
+        .domain(d3.extent(function() {
+            var arr = [];
+            dataGroups.forEach(function(d) {
+                var values = d.values.filter(function(d) { return !isNaN(d.value); } );
+                d3.extent(values, function(e) {
+                    return e.value;
+                }).forEach(function(f) {
+                    arr.push(f);
+                });
+            });
+            return d3.extent(arr);
+        }()))
         .range([height, 0]);
     svg.append("g")
         .attr("transform", "translate(0,0)")
         .classed("axis", true)
-        .call(d3.axisLeft(y).ticks(4).tickSizeOuter(0))
+        .call(d3.axisLeft(y)
+            .ticks(4)
+            .tickSizeOuter(0)
+            .tickFormat(function(d) {
+                if(d >= 1e+9 * 0.8) {
+                    return (Math.round(d / 1e+9 * 10) / 10) + "B";
+                } else if(d >= 1e+6 * 0.8) {
+                    return (Math.round(d / 1e+6 * 10) / 10) + "M";
+                } else if(d >= 1e+3 * 0.8) {
+                    return (Math.round(d / 1e+3 * 10) / 10) + "K";
+                }
+                return d;
+            }))
         .attr("font-family", "")
         .attr("font-size", "");
 
@@ -442,15 +365,14 @@ async function drawD3Chart(query, timestamps, series) {
     svg.append("g")
         .classed("grid", true)
         .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(""));
-    let grid = elem.querySelector(".grid");
+    let grid = chart.querySelector(".grid");
 
     // Selection
-    svg.append("rect")
+    var selection = svg.append("rect")
         .attr("x", width/2)
         .attr("y", 0)
         .attr("height", height)
         .classed("selection", true);
-    let selection = elem.querySelector(".selection");
     
     // X axis hand
     svg.append("line")
@@ -459,55 +381,188 @@ async function drawD3Chart(query, timestamps, series) {
         .attr("y1", 0)
         .attr("y2", height)
         .classed("hand", true);
-    let hand = elem.querySelector(".hand");
-    
-    chartList[fullName] = {
-        svg: svg,
-        minY: minY,
-        maxY: maxY,
-        minX: minX,
-        maxX: maxX,
-        xFunc: x,
-        yFunc: y,
-        grid: grid,
-        selection: selection,
-        hand: hand
-    };
+    let hand = chart.querySelector(".hand");
 
-    //
-    for(let i = 0; i < series.length; i++) {
-        let slice = series[i];
-        // Trim data out of scope
-        slice = slice.filter(function(v) { return v.Timestamp >= minX && v.Timestamp <= maxX; });
-        let seriesName = "series-" + getSeriesIdx(i + 1);
-        let gaplessSlice = slice.filter(function(v) { return v.Value !== null; });
+    // Overlay
+    svg.append("rect")
+        .attr("class", "overlay")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("height", height)
+        .attr("width", width)
+        .attr("fill", "none")
+        .style("pointer-events", "all");
+    let overlay = chart.querySelector(".overlay");
 
-        //
-        let seriesG = svg.append("g")
-            .classed("series", true);
-        
-        // Add the line
-        seriesG.append("path")
-            .datum(slice)
+/*
+https://www.d3-graph-gallery.com/graph/line_several_group.html
+https://stackoverflow.com/questions/25367987/d3-js-get-nearest-x-y-coordinates-for-area-chart
+http://bl.ocks.org/mikehadlow/93b471e569e31af07cd3
+https://bl.ocks.org/fabiomainardi/00fd581dc5ba92d99eec
+https://github.com/d3/d3-shape/blob/v1.3.5/README.md#line_defined
+*/
+    svg.append("g")
+        .attr("class", "paths")
+        .selectAll("paths")
+        .data(dataGroups)
+        .enter()
+        .append("path")
             .attr("fill", "none")
             .attr("stroke-width", 1)
-            .classed(seriesName, true)
-            .attr("d", d3.line()
-                .x(function(d) { return x(d.Timestamp) })
-                .y(function(d) { return y(d.Value) })
-                .defined(function(d) { return d.Value !== null; })
-            );
+            .attr("class", function(d) { return "series-" + seriesIndexes(d.key); })
+            .attr("d", function(d) {
+                return d3.line()
+                    .defined(function(e) { return !isNaN(e.value); })
+                    .x(function(e) { return x(e.timestamp) })
+                    .y(function(e) { return y(e.value) })
+                    (d.values);
+            });
 
-        // Add the points
-        seriesG.selectAll("circles")
-            .data(gaplessSlice)
-            .enter()
-            .append("circle")
-            .classed(seriesName, true)
+    // X axis hand points
+    var circles = svg.selectAll("circles")
+        .data(dataGroups)
+        .enter()
+        .append("circle")
+            .attr("class", function(d) { return `series-${seriesIndexes(d.key)} point`; })
+            .attr("data-series", function(d) { return seriesIndexes(d.key); })
             .attr("stroke", "none")
-            .attr("cx", function(d) { return x(d.Timestamp) })
-            .attr("cy", function(d) { return y(d.Value) })
-            .attr("r", 4);
+            .attr("cx", function(d) { return x(d.values[0].timestamp) })
+            .attr("cy", function(d) { return y(d.values[0].value) })
+            .attr("r", 4)
+            .style("opacity", 0);
+
+    // Tooltip // no pointer events
+    var tooltipSize = {
+        height: 37,
+        width: 150
+    };
+    var tooltip = svg.append("g")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+    tooltip.append("rect")
+        .attr("class", "background")
+        .attr("height", tooltipSize.height)
+        .attr("width", tooltipSize.width)
+        .attr("x", 0)
+        .attr("y", 0);
+    var tooltipTimestamp = tooltip.append("text")
+        .attr("class", "timestamp")
+        .attr("x", 7)
+        .attr("y", 7)
+        .attr("dy", "0.71em");
+    var tooltipIcon = tooltip.append("rect")
+        .attr("height", 10)
+        .attr("width", 10)
+        .attr("x", 7)
+        .attr("y", 20);
+    var tooltipValue = tooltip.append("text")
+        .attr("class", "value")
+        .attr("x", 22)
+        .attr("y", 21)
+        .attr("dy", "0.71em");
+
+    // EVENTS
+    var circleHandler = function(circle) {
+        tooltipIcon.attr("class", `series-${circle.getAttribute("data-series")}`);
+        tooltipTimestamp.text(getHours(circle.getAttribute("data-timestamp")));
+        tooltipValue.text(circle.getAttribute("data-value"));
     }
+    circles.on("mouseover", function(d) {
+        circleHandler(this);
+        tooltip.style("opacity", 1);
+    })
+    .on("mouseout", function(d) {
+        tooltip.style("opacity", 0);
+    })
+    .on("mousemove", function() {
+        circleHandler(this);
+    });
+
+    // Overlay
+    var dragged = false;
+    var dragStartTimestamp = undefined;
+    var dragEndTimestamp = undefined;
+    var bisect = d3.bisector(function(d) { return d.timestamp; }).left;
+    svg.on("mouseout", function() {
+        svg.selectAll(".point").style("opacity", 0);
+    })
+    .on("mouseover", function() {
+        svg.selectAll(".point").style("opacity", 1);
+    })
+    .on("mousedown", function() {
+        dragged = true;
+        dragEndTimestamp = undefined;
+        selection.attr("opacity", 1);
+    })
+    .on("mouseup", function() {
+        // Filter range
+        chartActiveBoundary[fullName] = d3.extent([dragStartTimestamp, dragEndTimestamp]);
+
+        dragged = false;
+        dragStartTimestamp = undefined;
+        selection.attr("opacity", 0)
+            .attr("width", 0);
+
+        // Filter
+        drawD3Chart(query);
+    })
+    .on("mousemove", function() {
+        var mouse = d3.mouse(overlay);
+        var mouseTimestamp = x.invert(mouse[0]);
+        var i = bisect(dataset, mouseTimestamp); // returns the index to the current data item
+
+        var d0 = dataset[i - 1];
+        var d1 = dataset[i];
+        // work out which date value is closest to the mouse
+        var d;
+        if(d0 == undefined)
+            d = d1;
+        else
+            d = mouseTimestamp - d0.timestamp > d1.timestamp - mouseTimestamp ? d1 : d0;
+
+        var posX = x(d.timestamp);
+
+        // Hand
+        svg.select(".hand")
+            .attr("x1", posX)
+            .attr("x2", posX);
+
+        // Selection
+        if(dragged) {
+            if(dragStartTimestamp === undefined) {
+                selection.attr("x", posX);
+                dragStartTimestamp = d.timestamp;
+            }
+
+            //
+            var dragStartX = x(dragStartTimestamp);
+            dragEndTimestamp = d.timestamp;
+            if(d.timestamp < dragStartTimestamp) {
+                selection.attr("x", posX)
+                    .attr("width", dragStartX - posX);
+            } else {
+                selection.attr("x", dragStartX)
+                    .attr("width", posX - dragStartX);
+            }
+        }
+
+        // Tooltip
+        var tx = mouse[0] - tooltipSize.width / 2;
+        var ty = mouse[1] - tooltipSize.height - 5;
+        tooltip.attr("transform", `translate(${tx} ,${ty})`);
+
+        chartActiveKeys[fullName].forEach(function(key) {
+            let seriesName = "series-" + seriesIndexes(key);
+            var posY;
+            if(d[key] == null || isNaN(d[key])) return;
+            
+            posY = y(d[key]);
+            svg.select(`.point.${seriesName}`)
+                .attr("data-value", d[key])
+                .attr("data-timestamp", d.timestamp)
+                .attr("cx", posX)
+                .attr("cy", posY);
+        });
+    });
 
 }

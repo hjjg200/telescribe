@@ -399,7 +399,7 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
 
 }
 
-func (srv *Server) RecordMonitorData(fullName string, md map[string] interface{}) {
+func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[string] interface{}) {
 
     //
     _, ok := srv.clientMonitorData[fullName]
@@ -409,7 +409,6 @@ func (srv *Server) RecordMonitorData(fullName string, md map[string] interface{}
 
     //
     initialized := make([]MonitorDataSliceElem, 0)
-    timestamp := time.Now().Unix()
 
     appendValue := func(key string, val float64) {
         short, ok := srv.clientMonitorData[fullName][key]
@@ -524,7 +523,8 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         //
         md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
         Assert(ok, "Malformed monitor data")
-        srv.RecordMonitorData(formatFullName(host, alias), md)
+        timestamp := clRsp.Int64("timestamp")
+        srv.RecordMonitorData(formatFullName(host, alias), timestamp, md)
 
         // OK
         srvRsp := NewResponse("ok")
