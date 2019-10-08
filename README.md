@@ -42,13 +42,12 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Allow users to reset the time frame
 1. Proper handling of mouse events for mobile devices
 1. JS overhaul
-1. Custom number format
-1. Custom bash scripts in client configs
+1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
+1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
 1. Overall overhaul
 
 ## External Libraries
 - Vue.js
 - D3.js
-- Numeral.js
 - Moment.js

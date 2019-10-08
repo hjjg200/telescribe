@@ -21,6 +21,7 @@ const (
 
 type Server struct {
     config ServerConfig
+    clientConfigCluster ClientConfigCluster
     httpListener net.Listener
     authFingerprint string
 
@@ -33,6 +34,7 @@ type Server struct {
 type ServerConfig struct {
     // General
     AuthPrivateKeyPath string `json:"authPrivateKeyPath"`
+    ClientConfigPath string `json:"clientConfigPath"`
         // TODO Log latest.log, 20190102.log ...
     // Http
     HttpUsername string `json:"http.username"`
@@ -60,6 +62,7 @@ type ServerConfig struct {
 var DefaultServerConfig = ServerConfig{
     // General
     AuthPrivateKeyPath: "./.serverAuth.priv",
+    ClientConfigPath: "./clientConfig.json",
     // Http
     HttpUsername: "user",
     HttpPassword: "",
@@ -97,6 +100,7 @@ var DefaultServerConfig = ServerConfig{
         },
     },
 }
+//var DefaultClientConfigCluster
 
 func NewServer() *Server {
     srv := &Server{}

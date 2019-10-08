@@ -19,8 +19,11 @@ type Client struct {
     role ClientRoleConfig
 }
 
+type ClientConfigCluster struct {
+    ClientAliases map[string] ClientAliasConfig `json:"aliases"`
+    ClientRoles map[string] ClientRoleConfig `json:"roles"`
+}
 type ClientAliasConfig map[string] string // [alias] = role
-
 type ClientRoleConfig struct {
     MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
     MonitorInterval int `json:"monitorInterval"`
