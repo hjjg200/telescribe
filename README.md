@@ -35,20 +35,20 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Disk monitoring~~
 1. ~~Network monitoring~~
 1. ~~D3.js~~
-1. Show last access time in web if it was more than $gapThresholdTime ago
+1. Detect config change in server and notify the client
+1. RESTful webhook for fatal status of clients
+1. Per-process monitoring
 1. Allow users to select time frame of the shown data in web page
+1. Allow users to reset the time frame
+1. Proper handling of mouse events for mobile devices
 1. JS overhaul
 1. Custom number format
-1. Detect config change in server and notify the client
-1. Per-process monitoring
 1. Custom bash scripts in client configs
-1. RESTful webhook for fatal status of clients
 1. Putting static data into binary
 1. Overall overhaul
 
 ## External Libraries
 - Vue.js
-- Chartist.js
-- Chartist Tooltip Plugin
+- D3.js
 - Numeral.js
 - Moment.js

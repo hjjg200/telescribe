@@ -495,8 +495,18 @@ https://github.com/d3/d3-shape/blob/v1.3.5/README.md#line_defined
         selection.attr("opacity", 1);
     })
     .on("mouseup", function() {
+        var event = d3.event;
+
+        // Return
+        if(dragStartTimestamp == dragEndTimestamp || dragEndTimestamp === undefined) return;
+
         // Filter range
-        chartActiveBoundary[fullName] = d3.extent([dragStartTimestamp, dragEndTimestamp]);
+        if(event.shiftKey) {
+            // Reset
+            chartActiveBoundary[fullName] = [NaN, NaN];
+        } else {
+            chartActiveBoundary[fullName] = d3.extent([dragStartTimestamp, dragEndTimestamp]);
+        }
 
         dragged = false;
         dragStartTimestamp = undefined;

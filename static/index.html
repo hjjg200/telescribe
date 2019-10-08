@@ -8,7 +8,7 @@
 
         <!-- production version, optimized for size and speed -->
         <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-        <script src="https://d3js.org/d3.v4.js"></script>
+        <script src="/static/d3.v4.js"></script>
         <script src="/static/moment.js"></script>
         <script src="/static/main.js"></script>
         <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,800&display=swap" rel="stylesheet">
@@ -21,6 +21,7 @@
                     <div class="host-header">
                         <span class="status" v-bind:data-status="maxStatus(cmsMap[fullName])"></span>
                         <span>{{ fullName }}</span>
+                        <span class="last-access"></span>
                     </div>
                     <ul class="md-list">
                         <li v-for="(slice, key) in cmd" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">

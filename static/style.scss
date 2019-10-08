@@ -41,8 +41,8 @@ ul {
     margin: 0 auto;
     min-width: 46rem;
     max-width: 60rem;
-    overflow: hidden;
-    overflow-x: auto;
+    overflow-x: visible;
+    overflow-y: hiiden;
 }
 
 #host-list {
@@ -50,7 +50,7 @@ ul {
     border: 1px solid #f0f0f0;
     border-top: none;
     line-height: 1;
-    overflow: hidden;
+    overflow-x: visible;
     .host-header {
         border: 1px solid #f0f0f0;
         border-left: none;
