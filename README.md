@@ -9,11 +9,11 @@ Telescribe is designed in such a way that the only thing you have to worry about
 ## Components
 
 - **Data Decimation:** For compressing all the monitoring data into a set of the most relevant and concise data
-- **Asymmetric Encryption:** App also uses ECC to simultaenously create master secret for symmertic encryption.
+- **Elliptic Curve:** App uses elliptic curve to simultaenously create master secret for symmertic encryption.
 - **Symmetric Encryption:** App uses AES 256 GCM to encrypt and decrypt packets. Each encrypted packet includes a nonce and encrypted data.
-- **Port Forwarding:** HTTP runs on a random port that is only bound to 127.0.0.1. The main listener recognizes the protocol for each connection and it forwards to HTTP if it is an HTTP request and calls Telescribe methods if it is a relevant request.
+- **Port Forwarding:** HTTP runs on a random port that is only bound to 127.0.0.1. The main listener recognizes the protocol for each connection and it forwards to HTTP if it is an HTTP request and calls Telescribe methods if it is a telescribe request.
 - **Monitoring:** A telescribe client uses files such as `/proc/stat` and `/proc/meminfo` to analyze the current status of the machine
-- **Private Key Signing:** App uses ECDSA P256 to sign and verify packets from clients and servers. A telescribe server has its own private key to sign data that must not be modified. And the client stores the public keys of the servers and use them to verify the servers and the data they give.
+- **Private Key Signing:** App uses ECDSA P256 to sign and verify packets from clients and servers. A telescribe server has its own private key to sign data whose integrity is crucial. And the client stores the public keys of the servers and use them to verify the servers and the data they give.
 - **Packet Packing:** Each packet has a record header and several varints to hint the app how many bytes to read.
 - **Gob Encoding:** To serialize the monitored data and cache them as files.
 - **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
