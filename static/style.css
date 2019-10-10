@@ -383,7 +383,7 @@ circle.series-o, rect.series-o {
   top: 0;
   left: 0;
 }
-.chart-wrap .chart * {
+.chart-wrap .chart, .chart-wrap .chart * {
   overflow: visible;
 }
 .chart-wrap .chart text {
@@ -398,11 +398,11 @@ circle.series-o, rect.series-o {
 }
 .chart-wrap .background-wrap .focus-date {
   font-weight: bold;
-  fill: rgba(0, 0, 0, 0.03);
+  fill: rgba(0, 0, 0, 0.022);
 }
 .chart-wrap .segments-wrap {
   overflow-x: scroll;
-  overflow-y: hidden;
+  overflow-y: visible;
   white-space: nowrap;
 }
 .chart-wrap .segments-wrap * {
@@ -442,7 +442,7 @@ circle.series-o, rect.series-o {
 }
 .chart-wrap .axis {
   font-family: inherit;
-  font-size: 0.6rem;
+  font-size: 0.8rem;
 }
 .chart-wrap .axis, .chart-wrap .axis path, .chart-wrap .axis g, .chart-wrap .axis line {
   fill: #eaeaea;

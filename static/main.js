@@ -353,6 +353,9 @@ function processChartDataset(cmd, cms, options) {
             // Beyond domain
             return (x - 1) * totalDuration + lastT;
         };
+        xScale.tickValues = function() {
+            return boundaries;
+        };
 
     }
 
@@ -784,8 +787,7 @@ async function drawChartV2(fullName, options) {
         .attr("class", "axis x-axis")
         .attr("transform", `translate(0, ${chartRect.height})`)
         .call(d3.axisBottom(xScale)
-            .ticks(xTicks)
-            .tickSizeOuter(0)
+            .tickValues(xScale.tickValues())
             .tickFormat(function(timestamp) { return timestamp.date(); }))
                 .attr("font-family", "")
                 .attr("font-size", "");*/

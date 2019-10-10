@@ -25,7 +25,7 @@
                     </div>
                     <div class="host-body">
                         <div class="timeframe">
-                            <button v-for="duration in [3*3600, 12*3600, 1*86400, 7*86400, 30*86400]" v-on:click="setDuration(fullName, duration)">{{ shortDate(duration) }}</button>
+                            <button v-for="duration in [12*3600, 3*86400, 7*86400, 30*86400]" v-on:click="setDuration(fullName, duration)">{{ shortDate(duration) }}</button>
                         </div>
                         <ul class="md-list">
                             <li v-for="(_, key) in cmsMap[fullName]" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">

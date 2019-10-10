@@ -211,7 +211,7 @@ $colors: (
             top: 0;
             left: 0;
         }
-        * {
+        &, * {
             overflow: visible;
         }
         text {
@@ -228,12 +228,12 @@ $colors: (
         }
         .focus-date {
             font-weight: bold;
-            fill: rgba(0, 0, 0, 0.03);
+            fill: rgba(0, 0, 0, 0.022);
         }
     }
     .segments-wrap {
         overflow-x: scroll;
-        overflow-y: hidden;
+        overflow-y: visible;
         white-space: nowrap;
         * {
             pointer-events: none;
@@ -273,7 +273,7 @@ $colors: (
     }
     .axis {
         font-family: inherit;
-        font-size: 0.6rem;
+        font-size: 0.8rem;
         &, path, g, line {
             fill: #eaeaea;
             stroke: #eaeaea;
