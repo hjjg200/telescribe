@@ -23,25 +23,27 @@
                         <span>{{ fullName }}</span>
                         <span class="last-access"></span>
                     </div>
-                    <div class="timeframe">
-                        <button v-for="days in [1,7,14,30]">{{ days }}d</button>
-                    </div>
-                    <ul class="md-list">
-                        <li v-for="(_, key) in cmsMap[fullName]" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">
-                            <div class="label-wrap">
-                                <label>
-                                    <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">
-                                    <div class="key-value-wrap">
-                                        <span class="key">{{ key }}</span>
-                                        <span class="value">{{ cmsMap[fullName][key].Value }}</span>
-                                    </div>
-                                </label>
+                    <div class="host-body">
+                        <div class="timeframe">
+                            <button v-for="duration in [3*3600, 12*3600, 1*86400, 7*86400, 30*86400]" v-on:click="setDuration(fullName, duration)">{{ shortDate(duration) }}</button>
+                        </div>
+                        <ul class="md-list">
+                            <li v-for="(_, key) in cmsMap[fullName]" v-bind:data-key="key" v-bind:data-status="cmsMap[fullName][key].Status">
+                                <div class="label-wrap">
+                                    <label>
+                                        <input type="checkbox" v-on:change="toggleSeries($event, fullName, key, checked[fullName][key])" v-model="checked[fullName][key]">
+                                        <div class="key-value-wrap">
+                                            <span class="key">{{ key }}</span>
+                                            <span class="value">{{ cmsMap[fullName][key].Value }}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="chart-wrap">
+                            <div class="chart" v-bind:data-fullName="fullName">
+    
                             </div>
-                        </li>
-                    </ul>
-                    <div class="chart-wrap">
-                        <div class="chart" v-bind:data-fullName="fullName">
-
                         </div>
                     </div>
                 </li>

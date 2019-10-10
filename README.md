@@ -39,17 +39,19 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~D3.js~~
 1. ~~Detect config change in server and notify the client~~
 1. ~~RESTful webhook for fatal status of clients~~
-1. I/O wait monitoring
-1. Per-process monitoring
-1. Allow users to select time frame of the shown data in web page
-1. Allow users to reset the time frame
+1. ~~Allow users to select time frame of the shown data in web page~~
+1. Restore the scrollLeft when changing duration
+1. Make another div for tooltip
 1. Collapse list when there are more than 2 clients
 1. Proper handling of mouse events for mobile devices
+1. I/O wait monitoring
+1. Per-process monitoring
 1. JS overhaul
 1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
 1. Overall overhaul
+1. Protocol documentation
 
 ## External Libraries
 - Vue.js

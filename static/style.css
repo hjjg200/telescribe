@@ -42,23 +42,17 @@ ul {
 
 #app {
   margin: 0 auto;
-  min-width: 46rem;
   max-width: 60rem;
-  overflow-x: visible;
-  overflow-y: hiiden;
+  overflow: hidden;
 }
 
 #host-list {
   background: white;
-  border: 1px solid #f0f0f0;
-  border-top: none;
   line-height: 1;
   overflow-x: visible;
 }
 #host-list .host-header {
-  border: 1px solid #f0f0f0;
-  border-left: none;
-  border-right: none;
+  border: 1px solid #e5e5e5;
   padding: 0.8rem;
 }
 #host-list .host-header .status {
@@ -83,6 +77,11 @@ ul {
 #host-list .host-header span:nth-child(2) {
   vertical-align: top;
 }
+#host-list .host-body {
+  border: 1px solid #f0f0f0;
+  border-top: none;
+  border-bottom: none;
+}
 #host-list .timeframe {
   display: flex;
   background: #fcfcfc;
@@ -103,6 +102,16 @@ ul {
 .md-list {
   display: grid;
   grid-template-columns: auto auto auto;
+}
+@media screen and (max-width: 55rem) {
+  .md-list {
+    grid-template-columns: auto auto;
+  }
+}
+@media screen and (max-width: 40rem) {
+  .md-list {
+    grid-template-columns: auto;
+  }
 }
 
 .md-list li {
@@ -361,7 +370,7 @@ circle.series-o, rect.series-o {
 
 .chart-wrap {
   position: relative;
-  padding: 0.5rem 1.5rem 0.6rem 0.5rem;
+  padding: 0.5rem 1.5rem 1.2rem 0.5rem;
 }
 .chart-wrap .chart {
   overflow: visible;
@@ -369,8 +378,51 @@ circle.series-o, rect.series-o {
   height: 11rem;
   width: 100%;
 }
+.chart-wrap .chart > div {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 .chart-wrap .chart * {
   overflow: visible;
+}
+.chart-wrap .chart text {
+  font-family: inherit;
+  stroke-width: 0;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.chart-wrap .background-wrap, .chart-wrap .background-wrap * {
+  pointer-events: none;
+}
+.chart-wrap .background-wrap .focus-date {
+  font-weight: bold;
+  fill: rgba(0, 0, 0, 0.03);
+}
+.chart-wrap .segments-wrap {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+.chart-wrap .segments-wrap * {
+  pointer-events: none;
+}
+.chart-wrap .segments-wrap .point {
+  pointer-events: all;
+}
+.chart-wrap .segments-wrap .projection-domain {
+  fill: rgba(0, 0, 0, 0);
+}
+.chart-wrap .segments-wrap::-webkit-scrollbar-track {
+  background: #f3f3f3;
+}
+.chart-wrap .segments-wrap::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 0.2rem;
+}
+.chart-wrap .segments-wrap::-webkit-scrollbar {
+  height: 0.4rem;
 }
 .chart-wrap .grid {
   position: relative;
@@ -383,8 +435,10 @@ circle.series-o, rect.series-o {
 .chart-wrap .grid path {
   display: none;
 }
-.chart-wrap .domain {
-  display: none;
+.chart-wrap .hand {
+  stroke: #bbb;
+  stroke-width: 1px;
+  stroke-dasharray: 3px;
 }
 .chart-wrap .axis {
   font-family: inherit;
@@ -397,37 +451,26 @@ circle.series-o, rect.series-o {
 }
 .chart-wrap .axis text {
   fill: #bbbbbb;
-  stroke-width: 0;
-  user-select: none;
 }
-.chart-wrap .hand {
-  stroke: #dadada;
-  stroke-width: 1px;
-  stroke-dasharray: 3px;
-}
-.chart-wrap .selection {
+.chart-wrap .y-axis-wrap, .chart-wrap .y-axis-wrap * {
   pointer-events: none;
-  fill: rgba(0, 85, 255, 0.1);
 }
 .chart-wrap .paths path.active {
   stroke-width: 2px;
 }
-.chart-wrap .tooltip {
-  font-family: inherit;
-  font-size: 0.6rem;
+.chart-wrap .overlay-wrap, .chart-wrap .overlay-wrap * {
   pointer-events: none;
 }
-.chart-wrap .tooltip .background {
+.chart-wrap .overlay-wrap .tooltip {
+  font-size: 0.6rem;
+}
+.chart-wrap .overlay-wrap .tooltip .background {
   stroke: #dadada;
   fill: white;
 }
-.chart-wrap .tooltip text {
-  stroke-width: 0;
-  user-select: none;
-}
-.chart-wrap .tooltip .timestamp {
+.chart-wrap .overlay-wrap .tooltip .timestamp {
   fill: #bbb;
 }
-.chart-wrap .tooltip .value {
+.chart-wrap .overlay-wrap .tooltip .value {
   fill: #777;
 }

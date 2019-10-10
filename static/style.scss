@@ -39,22 +39,16 @@ ul {
 
 #app {
     margin: 0 auto;
-    min-width: 46rem;
     max-width: 60rem;
-    overflow-x: visible;
-    overflow-y: hiiden;
+    overflow: hidden;
 }
 
 #host-list {
     background: white;
-    border: 1px solid #f0f0f0;
-    border-top: none;
     line-height: 1;
     overflow-x: visible;
     .host-header {
-        border: 1px solid #f0f0f0;
-        border-left: none;
-        border-right: none;
+        border: 1px solid #e5e5e5;
         padding: 0.8rem;
         .status {
             border-radius: 50%;
@@ -69,6 +63,11 @@ ul {
         span:nth-child(2) {
             vertical-align: top;
         }
+    }
+    .host-body {
+        border: 1px solid #f0f0f0;
+        border-top: none;
+        border-bottom: none;
     }
     .timeframe {
         display: flex;
@@ -91,6 +90,12 @@ ul {
 .md-list {
     display: grid;
     grid-template-columns: auto auto auto;
+    @media screen and (max-width: 55rem) {
+        grid-template-columns: auto auto;
+    }
+    @media screen and (max-width: 40rem) {
+        grid-template-columns: auto;
+    }
 }
 .md-list li {
     display: block;
@@ -195,15 +200,59 @@ $colors: (
 
 .chart-wrap {
     position: relative;
-    padding: 0.5rem 1.5rem 0.6rem 0.5rem;
+    padding: 0.5rem 1.5rem 1.2rem 0.5rem;
     .chart {
         overflow: visible;
         position: relative;
         height: 11rem;
         width: 100%;
-
+        & > div {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
         * {
             overflow: visible;
+        }
+        text {
+            font-family: inherit;
+            stroke-width: 0;
+            pointer-events: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+    }
+    .background-wrap {
+        &, * {
+            pointer-events: none;
+        }
+        .focus-date {
+            font-weight: bold;
+            fill: rgba(0, 0, 0, 0.03);
+        }
+    }
+    .segments-wrap {
+        overflow-x: scroll;
+        overflow-y: hidden;
+        white-space: nowrap;
+        * {
+            pointer-events: none;
+        }
+        .point {
+            pointer-events: all;
+        }
+        .projection-domain {
+            fill: rgba(0,0,0,0);
+        }
+        &::-webkit-scrollbar-track {
+            background: #f3f3f3;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 0.2rem;
+        }
+        &::-webkit-scrollbar {
+            height: 0.4rem;
         }
     }
     .grid {
@@ -217,8 +266,10 @@ $colors: (
             display: none;
         }
     }
-    .domain {
-        display: none;
+    .hand {
+        stroke: #bbb;
+        stroke-width: 1px;
+        stroke-dasharray: 3px;
     }
     .axis {
         font-family: inherit;
@@ -230,41 +281,34 @@ $colors: (
         }
         text {
             fill: #bbbbbb;
-            stroke-width: 0;
-            user-select: none;
         }
     }
-    .hand {
-        stroke: #dadada;
-        stroke-width: 1px;
-        stroke-dasharray: 3px;
-    }
-    .selection {
-        pointer-events: none;
-        fill: hsla(220, 100%, 50%, 0.1);
+    .y-axis-wrap {
+        &, * {
+            pointer-events: none;
+        }
     }
     .paths {
         path.active {
             stroke-width: 2px;
         }
     }
-    .tooltip {
-        font-family: inherit;
-        font-size: 0.6rem;
-        pointer-events: none;
-        .background {
-            stroke: #dadada;
-            fill: white;
+    .overlay-wrap {
+        &, * {
+            pointer-events: none;
         }
-        text {
-            stroke-width: 0;
-            user-select: none;
-        }
-        .timestamp {
-            fill: #bbb;
-        }
-        .value {
-            fill: #777;
+        .tooltip {
+            font-size: 0.6rem;
+            .background {
+                stroke: #dadada;
+                fill: white;
+            }
+            .timestamp {
+                fill: #bbb;
+            }
+            .value {
+                fill: #777;
+            }
         }
     }
 }
