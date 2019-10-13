@@ -1,6 +1,4 @@
 
-@namespace ct 'http://gionkunz.github.com/chartist-js/ct';
-
 * {
     appearance: none;
     -moz-appearance: none;
@@ -53,7 +51,7 @@ ul {
         .status {
             border-radius: 50%;
             display: inline-block;
-            margin-right: 0.4rem;
+            margin-right: 0;
             width: 1rem;
             height: 1rem;
             &[data-status="0"] { background: hsl(135, 65%, 55%) } /* Normal */
@@ -71,17 +69,22 @@ ul {
     }
     .timeframe {
         display: flex;
-        background: #fcfcfc;
-        height: 1.7rem;
+        background: white;
+        border-top: 1px solid #f6f6f6;
+        border-top-style: dashed;
+        margin-top: 1rem;
+        height: 2rem;
         button {
             background: none;
             border: none;
-            border-radius: 0.2rem;
+            border-radius: 0.1rem;
+            color: #bbb;
             display: inline-block;
+            font-size: 0.75rem;
             margin: 0.3rem 0 0.3rem 0.3rem;
             width: 1.8rem;
             &:hover {
-                background: #eee;
+                background: #fafafa;
             }
         }
     }
@@ -104,8 +107,6 @@ ul {
     }
     label {
         display: grid;
-        margin: 0.25rem 0.4rem;
-        padding: 0.25rem 0.4rem;
         grid-template-columns: 1.3rem auto;
         &:hover {
             background: #f8f8f8;
@@ -119,21 +120,50 @@ ul {
             border: 1px solid #dfdfdf;
             height: 0.7rem;
             width: 0.7rem;
-            margin: 0.55rem 0;
             &:checked {
                 border: none;
             }
         }
-        .key {
-            color: #aaaaaa;
-            display: block;
-            font-size: 0.7rem;
-            line-height: 1;
-            margin-bottom: 0.1rem;
+        /* STANDARD VIEW */
+        @media screen and (min-width: 40rem) {
+            margin: 0.25rem 0.4rem;
+            padding: 0.25rem 0.4rem;
+            input[type="checkbox"] {
+                margin: 0.55rem 0;
+            }
+            .key {
+                color: #aaaaaa;
+                display: block;
+                font-size: 0.7rem;
+                line-height: 1;
+                margin-bottom: 0.1rem;
+            }
+            .value {
+                display: block;
+                line-height: 1;
+            }
         }
-        .value {
-            display: block;
-            line-height: 1;
+        /* COMPACT VIEW */
+        @media screen and (max-width: 40rem) {
+            margin: 0.2rem 0.4rem;
+            padding: 0.2rem 0.4rem;
+            input[type="checkbox"] {
+                margin: 0.15rem 0;
+            }
+            span {
+                display: inline-block;
+                font-size: 0.85rem;
+                line-height: 0;
+                margin: 0.5rem 0;
+                transform: translate(0, -0.05rem);
+            }
+            .key {
+                color: #aaaaaa;
+            }
+            .value {
+                white-space: nowrap;
+                text-overflow: ellipsis;
+            }
         }
     }
 
@@ -179,8 +209,7 @@ $colors: (
 }
 
 .chart {
-    /* GPU accelerate */
-    /*
+    /* GPU accelerate *//*
    -webkit-transform: translate3d(0, 0, 0);
    -moz-transform: translate3d(0, 0, 0);
    -ms-transform: translate3d(0, 0, 0);
@@ -194,8 +223,7 @@ $colors: (
    -webkit-perspective: 1000;
    -moz-perspective: 1000;
    -ms-perspective: 1000;
-   perspective: 1000;
-   */
+   perspective: 1000;*/
 }
 
 .chart-wrap {
@@ -227,7 +255,7 @@ $colors: (
             pointer-events: none;
         }
         .focus-date {
-            font-weight: bold;
+            font-weight: lighter;
             fill: rgba(0, 0, 0, 0.022);
         }
     }
@@ -248,7 +276,7 @@ $colors: (
             background: #f3f3f3;
         }
         &::-webkit-scrollbar-thumb {
-            background: #bbb;
+            background: #ccc;
             border-radius: 0.2rem;
         }
         &::-webkit-scrollbar {
@@ -283,9 +311,20 @@ $colors: (
             fill: #bbbbbb;
         }
     }
+    .x-axis {
+        .tick line {
+            stroke: #ccc;
+        }
+        .domain {
+            display: none;
+        }
+    }
     .y-axis-wrap {
         &, * {
             pointer-events: none;
+        }
+        .tick line {
+            opacity: 0;
         }
     }
     .paths {

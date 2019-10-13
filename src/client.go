@@ -177,6 +177,7 @@ func (cl *Client) Start() error {
                     md[i] = v
                 }
             }
+            Logger.Debugln(md)
 
             // Send to Server
             clRsp := NewResponse("monitor-data")

@@ -12,36 +12,36 @@ type wrapper struct {
 }
 
 // CPU
-const KeyCpuCount = "general-cpuCount"
-const KeyCpuUsage = "general-cpuUsage"
+const KeyCpuCount = "cpu-count"
+const KeyCpuUsage = "cpu-usage"
 // Memory
-const KeyMemoryTotal = "general-memoryTotal"
-const KeySwapTotal = "general-swapTotal"
-const KeyMemoryUsage = "general-memoryUsage"
-const KeySwapUsage = "general-swapUsage"
+const KeyMemoryTotal = "memory-total"
+const KeyMemoryUsage = "memory-usage"
+const KeySwapTotal = "swap-total"
+const KeySwapUsage = "swap-usage"
 // Load
-const KeyLoadAverage = "general-loadAverage"
-const KeyLoadAveragePerCpu = "general-loadAveragePerCpu"
+const KeyLoadAverage = "load"
+const KeyLoadAveragePerCpu = "load-perCpu"
 // Disk
-const KeyDiskWrites = "general-diskWrites"
-const KeyMountWrites = "general-mountWrites"
-const KeyDiskReads = "general-diskReads"
-const KeyMountReads  = "general-mountReads"
-const KeyDiskWriteBytes = "general-diskWriteBytes"
-const KeyMountWriteBytes = "general-mountWriteBytes"
-const KeyDiskReadBytes = "general-diskReadBytes"
-const KeyMountReadBytes = "general-mountReadBytes"
-const KeyDiskUsage = "general-diskUsage"
-const KeyMountUsage  = "general-mountUsage"
-const KeyDiskSize = "general-diskSize"
-const KeyMountSize = "general-mountSize"
+const KeyDiskWrites = "disk-writes"
+const KeyMountWrites = "mount-writes"
+const KeyDiskReads = "disk-reads"
+const KeyMountReads  = "mount-reads"
+const KeyDiskWriteBytes = "disk-writeBytes"
+const KeyMountWriteBytes = "mount-writeBytes"
+const KeyDiskReadBytes = "disk-readBytes"
+const KeyMountReadBytes = "mount-readBytes"
+const KeyDiskUsage = "disk-usage"
+const KeyMountUsage  = "mount-usage"
+const KeyDiskSize = "disk-size"
+const KeyMountSize = "mount-size"
 // Network
-const KeyNetworkIn = "general-networkIn"
-const KeyNetworkInPackets = "general-networkInPackets"
-const KeyNetworkOut = "general-networkOut"
-const KeyNetworkOutPackets = "general-networkOutPackets"
+const KeyNetworkIn = "network-in"
+const KeyNetworkInPackets = "network-inPackets"
+const KeyNetworkOut = "network-out"
+const KeyNetworkOutPackets = "network-outPackets"
 // Misc
-const KeyCustomCommand = "custom-command"
+const KeyCustomCommand = "command"
 
 var Wrappers = map[string] wrapper {
     // CPU

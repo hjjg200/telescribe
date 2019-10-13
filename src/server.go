@@ -98,7 +98,7 @@ var DefaultClientConfigCluster = ClientConfigCluster{
     ClientRoles: map[string] ClientRoleConfig{
         "example": {
             MonitorInfos: map[string] MonitorInfo{
-                "general-cpuUsage": MonitorInfo{
+                "cpu-usage": MonitorInfo{
                     FatalRange: "80:",
                     WarningRange: "50:",
                 },
@@ -107,8 +107,8 @@ var DefaultClientConfigCluster = ClientConfigCluster{
         },
         "bar": {
             MonitorInfos: map[string] MonitorInfo{
-                "general-swapUsage": MonitorInfo{},
-                "general-memoryUsage": MonitorInfo{},
+                "swap-usage": MonitorInfo{},
+                "memory-usage": MonitorInfo{},
             },
             MonitorInterval: 60,
         },

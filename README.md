@@ -40,18 +40,25 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Detect config change in server and notify the client~~
 1. ~~RESTful webhook for fatal status of clients~~
 1. ~~Allow users to select time frame of the shown data in web page~~
-1. Restore the scrollLeft when changing duration
-1. Make another div for tooltip
+1. ~~Make another div for tooltip~~
+1. ~~Proper handling of mouse events for mobile devices~~
+1. ~~Window resize event handler~~
+1. ~~Restore the scrollLeft and the hand location when changing duration~~
+1. ~~JS overhaul~~
+1. ~~Shorten monitor keys~~
+1. ~~Compact view~~
+1. Prevent the server from being shutdown when it is flushing caches
+1. Big data to csv rather than json
 1. Collapse list when there are more than 2 clients
-1. Proper handling of mouse events for mobile devices
+1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
 1. I/O wait monitoring
 1. Per-process monitoring
-1. JS overhaul
-1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
+1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
 1. Overall overhaul
 1. Protocol documentation
+1. Monitor documentation
 
 ## External Libraries
 - Vue.js
