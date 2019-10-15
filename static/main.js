@@ -3,7 +3,7 @@ import {Chart} from "./module/chart.js";
 
 let g_gdc;
 let app;
-let promise = processGraphDataCompositeV2();
+let promise = preProcess();
 let clients = {};
 let rawDataset = {};
 
@@ -61,22 +61,20 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 });
 
-async function processGraphDataCompositeV2() {
-  var gdc = await fetchJson("/graphDataCompositeV2.json");
+async function preProcess() {
+  var abs = await fetchJson("/abstract.json");
+  var opt = await fetchJson("/graphOptions.json");
 
   // Options
-  Chart.options(gdc.options);
+  Chart.options(opt);
 
   // Info
-  for(var fullName in gdc.clients) {
-    var info = gdc.clients[fullName].monitorData;
-    clients[fullName] = new Client(fullName, info);
-    // Prepare
-    rawDataset[fullName] = {};
-    for(var key in info) {
-      rawDataset[fullName][key] = [];
-    }
+  for(var fullName in abs.clients) {
+    var client = abs.clients[fullName];
+    clients[fullName] = new Client(fullName, client);
   }
+
+  return;
 
   // Dataset
   var p = new Promise(resolve => {

@@ -56,6 +56,7 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
+1. Intuitive type names
 1. Overall overhaul
 1. Protocol documentation
 1. Monitor documentation

@@ -6,25 +6,35 @@ let _options = {};
 
 export class Chart {
 
-  constructor(target, dataset) {
+  constructor(target, csv) {
+    var $ = this;
     // Target
     if(typeof target === "string") this.target = document.querySelector(target); // Query
     else this.target = target; // Element
     // Public
-    this.dataset = dataset;
+    this.csv = csv;
+    this.dataset = {};
     // Private
     this._duration = 3 * 3600;
     this._keys = [];
-    // Pre
-    this._xScale = this._scale();
-
-    this._draw();
+    // Timestamps
+    this._timestamps = [];
+    d3.csv(this.csv.timestamps)
+      .row(function(r) {
+        $._timestamps.push(+r.timestamp);
+      })
+      .get(undefined, function() {
+        // Pre
+        $._xScale = $._scale();
+        $._draw();
+      });
   }
 
 // Private
+
   // DRAW
   async _draw() {
-    
+
     // Shorthand access
     var $ = this;
 
@@ -46,7 +56,7 @@ export class Chart {
       height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
     };
     var xScale = this._xScale;
-    var xBoundary = d3.extent(entireDataset, function(each) { return each.timestamp; });
+    var xBoundary = d3.extent(this._timestamps);
     var xDuration = xBoundary[1] - xBoundary[0];
     // Duration too low
     if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
@@ -275,11 +285,21 @@ export class Chart {
       window.addEventListener("resize", handler);
     }
     { // Hand, Points and Tooltip and Touch Interface
-      var bisect = d3.bisector(function(d) { return d.timestamp; }).left;
+      var bisect = function(slice, timestamp, accessor) {
+        var bs = d3.bisector(accessor).left;
+        var i = bs(slice, timestamp);
+        var d0 = slice[i-1];
+        var d1 = slice[i];
+        if(d0 === undefined && d1 === undefined) return undefined;
+        else if(d0 === undefined) return d1;
+        else if(d1 === undefined) return d0;
+        else return timestamp - accessor(d0) > accessor(d1) - timestamp ? d1 : d0;
+      };
       var mouseHandler = function() {
         var event = d3.event;
         var target = event.target;
         var mouse = d3.mouse(projection.node());
+        var timestamps = $._timestamps;
         var timestamp = xScale.invert(mouse[0]);
         var activeKeys = $._keys;
         var activeDataset = $._activeDataset;
@@ -293,31 +313,25 @@ export class Chart {
           overlay.selectAll(".tooltip").style("opacity", 1);
         }
         //
-        var i = bisect(activeDataset, timestamp); // returns the index to the current data item
-        var d0 = activeDataset[i - 1];
-        var d1 = activeDataset[i];
-        var d;
-        if(d0 == undefined && d1 == undefined) return;
-        else if(d0 == undefined) d = d1;
-        else if(d1 == undefined) d = d0;
-        else d = timestamp - d0.timestamp > d1.timestamp - timestamp ? d1 : d0;
-        var posX = xScale(d.timestamp);
+        var nearest = bisect(timestamps, timestamp, function(d) { return d; });
+        if(nearest === undefined) return;
+        var posX = xScale(nearest);
     
         // Hand
         hand.attr("x1", posX).attr("x2", posX);
   
         // Time
-        background.select(".focus-date text").text(d.timestamp.date("MM/DD"));
+        background.select(".focus-date text").text(nearest.date("MM/DD"));
   
         // Points
         activeKeys.forEach(function(key) {
-          var val = d[key];
-          if(val == undefined || isNaN(val)) return;
-          var posY = yScale(val);
+          var elem = bisect(activeDataset[key], timestamp, function(d) { return d.timestamp; });
+          if(elem === undefined || isNaN(elem.value)) return;
+          var posY = yScale(elem.value);
           var series = seriesName(key);
           segments.select(`.point.${series}`)
-            .attr("data-value", val)
-            .attr("data-timestamp", d.timestamp)
+            .attr("data-value", elem.value)
+            .attr("data-timestamp", elem.timestamp)
             .attr("cx", posX)
             .attr("cy", posY);
         });
@@ -391,7 +405,6 @@ export class Chart {
 
     // Chart
     var chart = d3.select(this.target);
-    var entireDataset = this.dataset;
     var activeKeys = this._keys;
 
     var priorActiveKeys = this._priorActiveKeys;
@@ -433,28 +446,38 @@ export class Chart {
       Math.min(xScale.invert(scrollLeft + chartWidth * 2), xBoundary[1])
     ];
 
-    var activeDataset = [];
-    entireDataset.forEach(function(each) {
-      var filtered = {};
-      var add = false;
-      activeKeys.forEach(function(key) {
-        if(each[key] == undefined) return;
-        filtered[key] = each[key];
-        add = true;
-      });
-      if(!add) return;
-      filtered.timestamp = each.timestamp;
-      activeDataset.push(filtered);
-    });
+    var activeDataset = {};
     this._activeDataset = activeDataset;
+    for(let i = 0; i < activeKeys.length; i++) {
+      let key = activeKeys[i];
+      // Process Dataset
+      if($.dataset[key] === undefined) {
+        $.dataset[key] = [];
+        var p = new Promise(resolve => {
+          d3.csv($.csv.monitorDataSlices[key])
+          .row(function(r) {
+            $.dataset[key].push({
+              timestamp: +r.timestamp,
+              value: +r.value
+            });
+          })
+          .get(undefined, function() {
+            resolve();
+          });
+        });
+        await p;
+      }
+      activeDataset[key] = $.dataset[key];
+    }
+    
     var yBoundary = d3.extent(function() {
       var arr = [];
-      activeDataset.forEach(function(each) {
-        for(let key in each) {
-          if(key === "timestamp") continue;
-          arr.push(each[key]);
-        }
-      });
+      for(let key in activeDataset) {
+        var slice = activeDataset[key];
+        slice.forEach(function(each) {
+          arr.push(each.value);
+        });
+      }
       return arr;
     }());
     if(yBoundary[0] == undefined) {
@@ -464,12 +487,15 @@ export class Chart {
     }
 
     // Visible Dataset
-    var visibleDataset = activeDataset.filter(function(each) {
-      if(visibleBoundary[0] <= each.timestamp && each.timestamp <= visibleBoundary[1]) {
-        return true;
-      }
-      return false;
-    });
+    var visibleDataset = {};
+    for(let key in activeDataset) {
+      visibleDataset[key] = activeDataset[key].filter(function(each) {
+        if(visibleBoundary[0] <= each.timestamp && each.timestamp <= visibleBoundary[1]) {
+          return true;
+        }
+        return false;
+      });
+    }
 
     // Update Y Axis
     var yScale = d3.scaleLinear()
@@ -540,24 +566,21 @@ export class Chart {
       }
 
       // Segment Dataset
-      var segDataset = visibleDataset.filter(function(each) {
-        if(start <= each.timestamp && each.timestamp <= end) {
-          return true;
+      var segDataGroups = [];
+      for(let key in visibleDataset) {
+        var values = visibleDataset[key].filter(function(each) {
+          if(start <= each.timestamp && each.timestamp <= end) {
+            return true;
+          }
+          return false;
+        });
+        if(values.length > 0) {
+          segDataGroups.push({
+            key: key,
+            values: values
+          });
         }
-        return false;
-      });
-      var segDataGroups = activeKeys.map(function(key) {
-        return {
-          key: key,
-          values: segDataset.map(function(d) {
-            if(d[key] == null) return null;
-            return {
-              timestamp: d.timestamp,
-              value: d[key]
-            };
-          }).filter(function(d) { return d !== null; })
-        };
-      });
+      }
 
       // If No Data
       if(segDataGroups.length === 0) {
@@ -603,23 +626,21 @@ export class Chart {
   // SCALE
   _scale() {
     let opt = Chart.options();
-    let dataset = this.dataset;
-    let firstT = dataset[0].timestamp;
-    let lastT = dataset[dataset.length - 1].timestamp;
+    let timestamps = this._timestamps;
+    let firstT = timestamps[0];
+    let lastT = timestamps[timestamps.length - 1];
     let duration = lastT - firstT;
     let boundaries = [];
     let gtht = opt.gapThresholdTime * 60;
-    for(let i = 1; i < dataset.length; i++) {
-      let prev = dataset[i-1];
-      let curr = dataset[i];
+    for(let i = 1; i < timestamps.length; i++) {
+      let prev = timestamps[i-1];
+      let curr = timestamps[i];
 
-      if(curr.timestamp - prev.timestamp > gtht) {
+      if(curr - prev > gtht) {
         // Exclude Gap Duration from duration
-        duration -= curr.timestamp - prev.timestamp;
+        duration -= curr - prev;
         // Boundary
-        boundaries.push(
-          prev.timestamp, curr.timestamp
-        );
+        boundaries.push(prev, curr);
       }
     }
     // Wrap

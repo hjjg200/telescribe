@@ -2,28 +2,28 @@ import {Chart} from "./chart.js";
 
 export class Client {
 
-  constructor(fullName, info) {
+  constructor(fullName, abs) {
     this.fullName = fullName;
-    this.info = info;
-    this.keys = Object.keys(info);
+    this.abs = abs;
+    this.keys = Object.keys(abs.latest);
     this.activeKeys = [];
   }
 
   status(key) {
+    let latest = this.abs.latest;
     if(key === undefined) {
       let max = -1;
-      for(let key in this.info) {
-        let st = this.info[key].status;
+      for(let key in latest) {
+        let st = latest[key].status;
         max = st > max ? st : max;
       }
       return max;
     }
-    return this.info[key].status;
+    return latest[key].status;
   }
 
   render() {
-    var dataset = Chart.processDataset(this.rawDataset);
-    var ch = new Chart(this.select(".chart"), dataset);
+    var ch = new Chart(this.select(".chart"), this.abs.csv);
     //
     var $ = this;
     this.chart = ch;
@@ -41,7 +41,7 @@ export class Client {
       let box = this.checkboxes[key];
       var i = this.activeKeys.indexOf(box.value);
       if(i === -1) box.className = "";
-      else box.classList.add(i.toSeries());
+      else box.className = i.toSeries();
     }
     this.chart.keys(this.activeKeys);
   }

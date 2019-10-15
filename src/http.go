@@ -1,35 +1,52 @@
 package main
 
 import (
+    "bytes"
     "crypto/subtle"
     "encoding/json"
     "fmt"
+    "io"
     "net"
     "net/http"
     netUrl "net/url"
     "os"
     "path"
-    "strconv"
     "strings"
 
     . "github.com/hjjg200/go-act"
 )
 
-type GDCMonitorData struct {
-    Format string `json:"format"`
+type MonitorDataTables map[string] MDTClient
+const MDTPrefix = "/monitorDataTables/"
+type MDTClient struct {
+    Timestamps []byte
+    MonitorDataSlices map[string] []byte
+}
+
+type Abstract struct {
+    Clients map[string] ABSClient `json:"clients"`
+}
+type ABSClient struct {
+    Csv ABSCsv `json:"csv"`
+    MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
+    Latest map[string] ABSLatest `json:"latest"`
+}
+type ABSCsv struct {
+    Timestamps string `json:"timestamps"`
+    MonitorDataSlices map[string] string `json:"monitorDataSlices"`
+}
+type ABSLatest struct {
+    Timestamp int64 `json:"timestamp"`
     Status int `json:"status"`
-    LastValue float64 `json:"lastValue"`
+    Value float64 `json:"value"`
 }
-type GDCClient struct {
-    MonitorData map[string] GDCMonitorData `json:"monitorData"`
-}
-type GDCOptions struct {
-    GapThresholdTime int `json:"gapThresholdTime"`
+
+type GraphOptions struct {
+    GapThresholdTime int `json:"gapThresholdTime"` // Two points whose time difference is greater than <threshold> seconds are considered as not connected, thus as having a gap in between
     Durations []int `json:"durations"`
-}
-type GraphDataCompositeV2 struct {
-    Clients map[string] GDCClient `json:"clients"`
-    Options GDCOptions `json:"options"`
+    FormatNumber string `json:"format.number"`
+    FormatDateLong string `json:"format.date.long"`
+    FormatDateShort string `json:"format.date.short"`
 }
 
 func (srv *Server) startHttpServer() error {
@@ -113,119 +130,87 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 
     url := r.URL.Path
+    stripPrefix := func (s string) bool {
+        if strings.HasPrefix(url, s) {
+            url = url[len(s):]
+            return true
+        }
+        return false
+    }
 
     switch {
     default:
         serveStatic(url)
         return
-    case url == "/monitorData.csv":
-
-        Logger.Debugln("monitorData start")
-        w.Header().Set("content-type", "text/csv")
-        fmt.Fprint(w, "FullName,Key,Timestamp,Value\n")
-        for fullName, mdMap := range srv.graphDataComposite.ClientMonitorData {
-            fullName = strconv.Quote(fullName)
-            for key, md := range mdMap {
-                key = strconv.Quote(key)
-                for _, elem := range md {
-                    fmt.Fprintf(w, "%s,%s,%d,%f\n", fullName, key, elem.Timestamp, elem.Value)
-                }
-            }
-        }
-
-    case strings.HasPrefix(url, "/monitorData/"):
-
-        Logger.Debugln("monitorData start")
-        split := strings.Split(url[len("/monitorData/"):], "/")
-        Assert(len(split) == 2, "Wrong monitor data url")
-        fullName, err := netUrl.QueryUnescape(split[0))
-        Try(err)
-        key, err := netUrl.QueryUnescape(split[1])
-        Try(err)
-
-        mds, ok := srv.graphDataComposite.ClientMonitorData[fullName][key]
-        Assert(ok, "Monitor data not found")
-
-        //
-        gtht := srv.config.GapThresholdTime * 60
-        lt := mds[0].Timestamp
-        w.Header().Set("content-type", "text/csv")
-        fmt.Fprint(w, "Timestamp,Value\n")
-        for _, mde := range mds {
-            if mde.Timestamp - lt > gtht {
-                avg := (float64(mde.Timestamp) + float64(lt)) / 2.0
-                fmt.Fprintf(w, "%f,NaN", avg)
-            }
-
-            lt = mde.Timestamp
-            fmt.Fprint(w, "%d,%f\n", mde.Timestamp, mde.Value)
-        }
-        Logger.Debugln("monitorData end")
-
-    case url == "/graphDataCompositeV2.json":
-
-        // Clients
-        clients := make(map[string] GDCClient)
-        for fullName, mdsMap := range srv.clientMonitorData {
-            gdcMd := make(map[string] GDCMonitorData)
-            for key, mds := range mdsMap {
-                mi := srv.getMonitorInfo(fullName, key)
-                vl := mds[len(mds) - 1].Value
-                st := mi.StatusOf(vl)
-                gdcMd[key] = GDCMonitorData{
-                    Status: st,
-                    Format: mi.Format,
-                    LastValue: vl,
-                }
-            }
-            clients[fullName] = GDCClient{
-                MonitorData: gdcMd,
-            }
-        }
-
-        // Form
-        gdc := GraphDataCompositeV2{
-            Clients: clients,
-            Options: GDCOptions{
-                GapThresholdTime: srv.config.GapThresholdTime,
-                Durations: []int{3*3600, 12*3600, 3*86400, 7*86400, 30*86400},
-            },
-        }
-
-        // Write
-        w.Header().Set("Content-Type", "application/json")
-        enc := json.NewEncoder(w)
-        Try(enc.Encode(gdc))
-
     case url == "/":
         serveStatic("/static/index.html")
-    
-    case url == "/graphDataComposite.json":
-        w.Header().Set("Content-Type", "application/json")
-        w.Write(srv.graphDataCompositeJson)
-    case url == "/clientMonitorStatus.json":
-        cms := make(map[string] map[string] MonitorStatusSliceElem)
-        for fullName, mdsMap := range srv.clientMonitorData {
-            cms[fullName] = make(map[string] MonitorStatusSliceElem)
-            for key, mds := range mdsMap {
+    case url == "/abstract.json":
 
-                // TODO Avg interval
-                mi := srv.getMonitorInfo(fullName, key)
-                Logger.Debugln(mi, fullName, key)
-                if len(mds) == 0 {
-                    continue
-                }
-                last := mds[len(mds) - 1]
-                cms[fullName][key] = MonitorStatusSliceElem{
-                    Timestamp: last.Timestamp,
-                    Value: last.Value,
-                    Status: mi.StatusOf(last.Value),
+        w.Header().Set("content-type", "application/json")
+        enc := json.NewEncoder(w)
+        clients := make(map[string] ABSClient)
+        for fullName, mdsMap := range srv.clientMonitorData {
+            mis     := srv.getMonitorInfos(fullName)
+            efn     := netUrl.QueryEscape(fullName)
+            csvTss  := MDTPrefix + efn + "/_timestamps.csv"
+            csvMdss := make(map[string] string)
+            latest  := make(map[string] ABSLatest)
+            for key, mds := range mdsMap {
+                mi := mis[key]
+                le := mds[len(mds) - 1]
+                csvMdss[key] = MDTPrefix + efn + "/" + netUrl.QueryEscape(key) + ".csv"
+                latest[key]  = ABSLatest{
+                    Timestamp: le.Timestamp,
+                    Status: mi.StatusOf(le.Value),
+                    Value: le.Value,
                 }
             }
+            //
+            clients[fullName] = ABSClient{
+                MonitorInfos: mis,
+                Csv: ABSCsv{
+                    Timestamps: csvTss,
+                    MonitorDataSlices: csvMdss,
+                },
+                Latest: latest,
+            }
+        }
+        abs := Abstract{
+            Clients: clients,
+        }
+        enc.Encode(abs)
+
+    case url == "/graphOptions.json":
+
+        w.Header().Set("content-type", "application/json")
+        enc := json.NewEncoder(w)
+        enc.Encode(srv.config.Graph)
+
+    case stripPrefix(MDTPrefix):
+
+        split := strings.Split(url, "/")
+        Assert(len(split) == 2, "Wrong monitor data url")
+        fullName, err := netUrl.QueryUnescape(split[0])
+        Try(err)
+        base, err     := netUrl.QueryUnescape(split[1])
+        Try(err)
+
+        // CSV
+        Assert(path.Ext(base) == ".csv", "Non-csv request")
+        key := base[:len(base) - 4]
+        w.Header().Set("content-type", "text/csv")
+
+        switch key {
+        case "_timestamps":
+            tss := srv.monitorDataTables[fullName].Timestamps
+            rd := bytes.NewReader(tss)
+            io.Copy(w, rd)
+        default:
+            mds, ok := srv.monitorDataTables[fullName].MonitorDataSlices[key]
+            Assert(ok, "Monitor data not found")
+            rd := bytes.NewReader(mds)
+            io.Copy(w, rd)
         }
 
-        w.Header().Set("Content-Type", "application/json")
-        enc := json.NewEncoder(w)
-        enc.Encode(cms)
     }
 }

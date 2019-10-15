@@ -11,6 +11,7 @@ import (
     "net/http"
     "os"
     "path/filepath"
+    "sort"
     "strings"
     "time"
     . "github.com/hjjg200/go-act"
@@ -28,9 +29,9 @@ type Server struct {
     httpListener net.Listener
     authFingerprint string
 
+    //
+    monitorDataTables MonitorDataTables
     clientMonitorData map[string] map[string] MonitorDataSlice
-    graphDataComposite GrpahDataComposite
-    graphDataCompositeJson []byte
     cachedExecutable []byte
 }
 
@@ -47,12 +48,11 @@ type ServerConfig struct {
     // Monitor
     MonitorDataCacheInterval int `json:"monitor.dataCacheInterval(minutes)"`
     MonitorDataCacheDir string `json:"monitor.dataCacheDir"`
-    GapThresholdTime int `json:"monitor.gapThresholdTime(minutes)"` // Two points whose time difference is greater than <threshold> seconds are considered as not connected, thus as having a gap in between
     MaxDataLength int `json:"monitor.maxDataLength"`
     GraphPointThreshold int `json:"monitor.graphThreshold"`
     GraphDecimationInterval int `json:"monitor.graphDecimationInterval(minutes)"`
-    GraphGapPercent float64 `json:"monitor.graphGapPercent"`
-    GraphMomentJSFormat string `json:"monitor.graphMomentJsFormat"`
+    // Graph (HTML)
+    Graph GraphOptions `json:"graph"`
     // Network
     Bind string `json:"network.bind"`
     Port int `json:"network.port"`
@@ -73,18 +73,25 @@ var DefaultServerConfig = ServerConfig{
     // Monitor
     MonitorDataCacheInterval: 1,
     MonitorDataCacheDir: "./serverCache.d",
-    GapThresholdTime: 30,
     MaxDataLength: 43200, // 30 days for 1-minute interval
     GraphPointThreshold: 1500,
     GraphDecimationInterval: 10,
-    GraphGapPercent: 5.0,
-    GraphMomentJSFormat: "MM/DD HH:mm",
+    // Graph (HTML)
+    Graph: DefaultGraphOptions,
     // Network
     Bind: "127.0.0.1",
     Port: 1226,
     Tickrate: 60,
     // Alarm
     WebhookUrl: "",
+}
+
+var DefaultGraphOptions = GraphOptions{
+    GapThresholdTime: 30,
+    Durations: []int{3*3600, 12*3600, 3*86400, 7*86400, 30*86400},
+    FormatNumber: "{e+0.2f}",
+    FormatDateLong: "DD HH:mm",
+    FormatDateShort: "MM/DD",
 }
 
 var DefaultClientConfigCluster = ClientConfigCluster{
@@ -307,31 +314,61 @@ func (srv *Server) Start() (err error) {
 
     // Graph-ready Data Preparing Thread
     go func() {
-        // graphClientMonitorData
+        // monitorDataTables
         for {
-            cmd := make(map[string] map[string] MonitorDataSlice) // Client monitor data
+
+            clients := make(map[string] MDTClient)
             for fullName, mdsMap := range srv.clientMonitorData {
-                cmd[fullName] = make(map[string] MonitorDataSlice)
+                // MonitorData
+                tsMap := make(map[int64] struct{})
+                mdss  := make(map[string] []byte)
                 for key, mds := range mdsMap {
-                    cmd[fullName][key] = LTTBMonitorDataSlice( // Decimate monitor data
+
+                    // Decimate monitor data
+                    decimated := LTTBMonitorDataSlice(
                         mds, srv.config.GraphPointThreshold,
-                   )
+                    )
+                    // Put Gaps
+                    table := bytes.NewBuffer(nil)
+                    gthSec := int64(srv.config.Graph.GapThresholdTime * 60) // To seconds
+                    prevTs := decimated[0].Timestamp
+                    fmt.Fprint(table, "timestamp,value\n")
+                    for _, each := range decimated {
+                        ts := each.Timestamp
+                        if ts - prevTs > gthSec {
+                            avgTs := (ts + prevTs) / 2
+                            tsMap[avgTs] =  struct{}{}
+                            fmt.Fprintf(table, "%d,NaN\n", avgTs)
+                        }
+                        tsMap[ts] =  struct{}{}
+                        fmt.Fprintf(table, "%d,%f\n", ts, each.Value)
+                        prevTs = ts
+                    }
+                    // Assign Csv
+                    mdss[key] = table.Bytes()
+
+                }
+
+                // Timestamps
+                i, ts := 0, make([]int64, len(tsMap))
+                for t := range tsMap {
+                    ts[i] = t
+                    i++
+                }
+                sort.Sort(Int64Slice(ts))
+                tt := bytes.NewBuffer(nil)
+                fmt.Fprint(tt, "timestamp\n")
+                for _, t := range ts {
+                    fmt.Fprintf(tt, "%d\n", t)
+                }
+
+                clients[fullName] = MDTClient{
+                    Timestamps: tt.Bytes(),
+                    MonitorDataSlices: mdss,
                 }
             }
 
-            srv.graphDataComposite = GrpahDataComposite{
-                GapThresholdTime: srv.config.GapThresholdTime,
-                GapPercent: srv.config.GraphGapPercent,
-                MomentJSFormat: srv.config.GraphMomentJSFormat,
-                ClientMonitorData: cmd,
-            }
-            var err2 error
-            srv.graphDataCompositeJson, err2 = json.Marshal(srv.graphDataComposite)
-            if err2 != nil {
-                Logger.Warnln(err2)
-            } else {
-                Logger.Infoln("Cached Graph-ready Data")
-            }
+            srv.monitorDataTables = clients
             time.Sleep(time.Minute * time.Duration(srv.config.GraphDecimationInterval))
         }
     }()
@@ -610,15 +647,20 @@ func (srv *Server) sendAlarmWebhook(fullName string, timestamp int64, fatalValue
 
 }
 
+func (srv *Server) getMonitorInfos(fullName string) map[string] MonitorInfo {
+    host, alias := parseFullName(fullName)
+    role := srv.clientConfigCluster.ClientAliases[host][alias]
+    roleCfg := srv.clientConfigCluster.ClientRoles[role]
+    return roleCfg.MonitorInfos
+}
+
 func (srv *Server) getMonitorInfo(fullName, key string) (MonitorInfo) {
 
     aBase, aParam, aIdx := ParseMonitorrKey(key)
     var bpMatch MonitorInfo
 
-    host, alias := parseFullName(fullName)
-    role := srv.clientConfigCluster.ClientAliases[host][alias]
-    roleCfg := srv.clientConfigCluster.ClientRoles[role]
-    for b, mi := range roleCfg.MonitorInfos {
+    mis := srv.getMonitorInfos(fullName)
+    for b, mi := range mis {
         bBase, bParam, bIdx := ParseMonitorrKey(b)
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {

@@ -25,7 +25,7 @@
           </div>
           <div class="host-body">
             <ul class="md-list">
-              <li v-for="(stat, key) in client.info" v-bind:data-key="key" v-bind:data-status="client.status(key)">
+              <li v-for="(latest, key) in client.abs.latest" v-bind:data-key="key" v-bind:data-status="client.status(key)">
                 <div class="label-wrap">
                   <label>
                     <input type="checkbox"
@@ -33,7 +33,7 @@
                       :value="key" v-model="client.activeKeys">
                     <div class="key-value-wrap">
                       <span class="key">{{ key }}</span>
-                      <span class="value">{{ stat.lastValue.format() }}</span>
+                      <span class="value">{{ latest.value.format() }}</span>
                     </div>
                   </label>
                 </div>
