@@ -47,12 +47,13 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~JS overhaul~~
 1. ~~Shorten monitor keys~~
 1. ~~Compact view~~
-1. Prevent the server from being shutdown when it is flushing caches
-1. Big data to csv rather than json
+1. ~~Big data to csv rather than json~~
+1. Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting
 1. Collapse list when there are more than 2 clients
 1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
 1. I/O wait monitoring
 1. Per-process monitoring
+1. Roles as tags: "bar": "minecraft-server cpu memory"
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary

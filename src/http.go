@@ -16,37 +16,29 @@ import (
     . "github.com/hjjg200/go-act"
 )
 
-type MonitorDataTables map[string] MDTClient
-const MDTPrefix = "/monitorDataTables/"
-type MDTClient struct {
-    Timestamps []byte
-    MonitorDataSlices map[string] []byte
-}
-
-type Abstract struct {
-    Clients map[string] ABSClient `json:"clients"`
-}
-type ABSClient struct {
-    Csv ABSCsv `json:"csv"`
-    MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
-    Latest map[string] ABSLatest `json:"latest"`
-}
-type ABSCsv struct {
-    Timestamps string `json:"timestamps"`
-    MonitorDataSlices map[string] string `json:"monitorDataSlices"`
-}
-type ABSLatest struct {
-    Timestamp int64 `json:"timestamp"`
-    Status int `json:"status"`
-    Value float64 `json:"value"`
-}
-
-type GraphOptions struct {
-    GapThresholdTime int `json:"gapThresholdTime"` // Two points whose time difference is greater than <threshold> seconds are considered as not connected, thus as having a gap in between
+type WebOptions struct {
     Durations []int `json:"durations"`
     FormatNumber string `json:"format.number"`
     FormatDateLong string `json:"format.date.long"`
     FormatDateShort string `json:"format.date.short"`
+}
+
+type WebAbstract struct { // webAbs
+    ClientMap map[string/* fullName */] WebAbsClient `json:"clientMap"`
+}
+type WebAbsClient struct { // absCl
+    CsvBox WebAbsCsvBox `json:"csvBox"`
+    LatestMap map[string/* key */] WebAbsLatest `json:"latestMap"`
+    ConfigMap map[string/* key */] MonitorConfig `json:"configMap"`
+}
+type WebAbsCsvBox struct { // csvBox
+    Boundaries string `json:"boundaries"`
+    DataMap map[string/* key */] string `json:"dataMap"`
+}
+type WebAbsLatest struct { // latest
+    Timestamp int64
+    Value float64
+    Status int
 }
 
 func (srv *Server) startHttpServer() error {
@@ -56,16 +48,15 @@ func (srv *Server) startHttpServer() error {
         return err
     }
 
-    certFile := srv.config.HttpCertFilePath
-    keyFile := srv.config.HttpKeyFilePath
+    certFile   := srv.config.HttpCertFilePath
+    keyFile    := srv.config.HttpKeyFilePath
     httpServer := &http.Server{
         Addr: srv.HttpAddr(),
         Handler: srv,
     }
 
     // Password
-    pwd := srv.config.HttpPassword
-    if pwd == "" {
+    if srv.config.HttpPassword == "" {
         plainPwd := RandomAlphaNum(13)
         srv.config.HttpPassword = fmt.Sprintf("%x", Sha256Sum([]byte(plainPwd)))
         Logger.Warnln("Empty HTTP Password! Setting a Random Password:", plainPwd)
@@ -94,9 +85,8 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }()
 
     // Auth
-    un := srv.config.HttpUsername
+    un  := srv.config.HttpUsername
     pwd := srv.config.HttpPassword
-
     w.Header().Set("WWW-Authenticate", "Basic realm=\"\"")
     hun, hplainPwd, ok := r.BasicAuth()
     authTest := func() int {
@@ -109,24 +99,22 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // Methods
     serveStatic := func(u string) {
-        if strings.HasPrefix(u, "/static/") {
-            fp := u[1:]
-            f, err := os.OpenFile(fp, os.O_RDONLY, 0644)
-            if err != nil {
+        defer func() {
+            r := recover()
+            if r != nil {
                 w.WriteHeader(404)
-                return
             }
-            st, err := f.Stat()
-            if err != nil {
-                w.WriteHeader(404)
-                return
-            }
-            http.ServeContent(w, r, f.Name(), st.ModTime(), f)
-            f.Close()
-            return
-        }
-        w.WriteHeader(404)
+        }()
+        Assert(strings.HasPrefix(u, "/static/"), "Wrong static path")
+        fp := u[1:]
+        f, err := os.OpenFile(fp, os.O_RDONLY, 0644)
+        Try(err)
+        defer f.Close()
+        st, err := f.Stat()
+        Try(err)
+        http.ServeContent(w, r, f.Name(), st.ModTime(), f)
     }
 
     url := r.URL.Path
@@ -138,6 +126,10 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return false
     }
 
+    // Routes
+    const (
+        prefixMdtBox = "/monitorDataTableBox/"
+    )
     switch {
     default:
         serveStatic(url)
@@ -147,46 +139,47 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     case url == "/abstract.json":
 
         w.Header().Set("content-type", "application/json")
-        enc := json.NewEncoder(w)
-        clients := make(map[string] ABSClient)
-        for fullName, mdsMap := range srv.clientMonitorData {
-            mis     := srv.getMonitorInfos(fullName)
+        enc       := json.NewEncoder(w)
+        clientMap := make(map[string/* fullName */] WebAbsClient)
+        for fullName, mdMap := range srv.clientMonitorDataMap {
             efn     := netUrl.QueryEscape(fullName)
-            csvTss  := MDTPrefix + efn + "/_timestamps.csv"
-            csvMdss := make(map[string] string)
-            latest  := make(map[string] ABSLatest)
-            for key, mds := range mdsMap {
-                mi := mis[key]
-                le := mds[len(mds) - 1]
-                csvMdss[key] = MDTPrefix + efn + "/" + netUrl.QueryEscape(key) + ".csv"
-                latest[key]  = ABSLatest{
+            csvBds  := prefixMdtBox + efn + "/_boundaries.csv"
+            csvMap  := make(map[string/* key */] string)
+            latest  := make(map[string/* key */] WebAbsLatest)
+            cfgMap  := make(map[string/* key */] MonitorConfig)
+            for key, md := range mdMap {
+                mCfg := srv.getMonitorConfig(fullName, key)
+                le   := md[len(md) - 1]
+                csvMap[key] = prefixMdtBox + efn + "/" + netUrl.QueryEscape(key) + ".csv"
+                latest[key]  = WebAbsLatest{
                     Timestamp: le.Timestamp,
-                    Status: mi.StatusOf(le.Value),
-                    Value: le.Value,
+                    Status:    mCfg.StatusOf(le.Value),
+                    Value:     le.Value,
                 }
+                cfgMap[key] = mCfg
             }
             //
-            clients[fullName] = ABSClient{
-                MonitorInfos: mis,
-                Csv: ABSCsv{
-                    Timestamps: csvTss,
-                    MonitorDataSlices: csvMdss,
+            clientMap[fullName] = WebAbsClient{
+                CsvBox: WebAbsCsvBox{
+                    Boundaries: csvBds,
+                    DataMap: csvMap,
                 },
-                Latest: latest,
+                LatestMap: latest,
+                ConfigMap: cfgMap,
             }
         }
-        abs := Abstract{
-            Clients: clients,
+        abs := WebAbstract{
+            ClientMap: clientMap,
         }
         enc.Encode(abs)
 
-    case url == "/graphOptions.json":
+    case url == "/options.json":
 
         w.Header().Set("content-type", "application/json")
         enc := json.NewEncoder(w)
-        enc.Encode(srv.config.Graph)
+        enc.Encode(srv.config.Web)
 
-    case stripPrefix(MDTPrefix):
+    case stripPrefix(prefixMdtBox):
 
         split := strings.Split(url, "/")
         Assert(len(split) == 2, "Wrong monitor data url")
@@ -200,15 +193,17 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         key := base[:len(base) - 4]
         w.Header().Set("content-type", "text/csv")
 
+        //
+        mdtBox := srv.clientMonitorDataTableBox[fullName]
         switch key {
-        case "_timestamps":
-            tss := srv.monitorDataTables[fullName].Timestamps
-            rd := bytes.NewReader(tss)
+        case "_boundaries":
+            bds := mdtBox.Boundaries
+            rd  := bytes.NewReader(bds)
             io.Copy(w, rd)
         default:
-            mds, ok := srv.monitorDataTables[fullName].MonitorDataSlices[key]
+            mdt, ok := mdtBox.DataMap[key]
             Assert(ok, "Monitor data not found")
-            rd := bytes.NewReader(mds)
+            rd := bytes.NewReader(mdt)
             io.Copy(w, rd)
         }
 

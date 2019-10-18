@@ -22,43 +22,57 @@ const (
     clientConfigWatchInterval = time.Second * 5
 )
 
-type Server struct {
+type Server struct { // srv
     config ServerConfig
-    clientConfigCluster ClientConfigCluster
-    clientConfigVersion map[string] string // [fullName] => sha256[:6]
+    cachedExecutable []byte
     httpListener net.Listener
     authFingerprint string
-
-    //
-    monitorDataTables MonitorDataTables
-    clientMonitorData map[string] map[string] MonitorDataSlice
-    cachedExecutable []byte
+    clientConfig ClientConfig
+    clientConfigVersion map[string/* fullName */] string
+    clientMonitorDataTableBox map[string/* fullName */] MonitorDataTableBox
+    clientMonitorDataMap map[string/* fullName */] MonitorDataMap
 }
 
-type ServerConfig struct {
+type ServerConfig struct { // srvCfg
     // General
     AuthPrivateKeyPath string `json:"authPrivateKeyPath"`
     ClientConfigPath string `json:"clientConfigPath"`
         // TODO Log latest.log, 20190102.log ...
     // Http
     HttpUsername string `json:"http.username"`
-    HttpPassword string `json:"http.password(sha256)"`
+    HttpPassword string `json:"http.password"` // sha256
     HttpCertFilePath string `json:"http.certFilePath"` // For TLS
     HttpKeyFilePath string `json:"http.keyFilePath"` // For TLS
     // Monitor
-    MonitorDataCacheInterval int `json:"monitor.dataCacheInterval(minutes)"`
+    MonitorDataCacheInterval int `json:"monitor.dataCacheInterval"` // (minutes)
     MonitorDataCacheDir string `json:"monitor.dataCacheDir"`
     MaxDataLength int `json:"monitor.maxDataLength"`
-    GraphPointThreshold int `json:"monitor.graphThreshold"`
-    GraphDecimationInterval int `json:"monitor.graphDecimationInterval(minutes)"`
-    // Graph (HTML)
-    Graph GraphOptions `json:"graph"`
+    GapThresholdTime int `json:"monitor.gapThresholdTime"` // (minutes)
+    DecimationThreshold int `json:"monitor.decimationThreshold"`
+    DecimationInterval int `json:"monitor.decimationInterval"` // (minutes)
+    // Web
+    Web WebOptions `json:"web"`
     // Network
     Bind string `json:"network.bind"`
     Port int `json:"network.port"`
-    Tickrate int `json:"network.tickrate(hz)"` // How many times will the server process connections in a second (Hz)
+    Tickrate int `json:"network.tickrate"` // (hz) How many times will the server process connections in a second (Hz)
     // Alarm
     WebhookUrl string `json:"alarm.webhookUrl"`
+}
+
+type ClientConfig struct { // clCfg
+    Hosts map[string/* host */] map[string/* alias */] string `json:"hosts"`
+    Roles map[string/* alias */] ClientRole `json:"roles"`
+}
+
+type ClientRole struct { // role
+    MonitorConfigMap map[string/* raw key */] MonitorConfig `json:"monitorConfigMap"`
+    MonitorInterval int `json:"monitorInterval"`
+}
+
+func (role ClientRole) Version() string {
+    j, _ := json.Marshal(role)
+    return fmt.Sprintf("%x", Sha256Sum(j))[:6]
 }
 
 var DefaultServerConfig = ServerConfig{
@@ -74,10 +88,11 @@ var DefaultServerConfig = ServerConfig{
     MonitorDataCacheInterval: 1,
     MonitorDataCacheDir: "./serverCache.d",
     MaxDataLength: 43200, // 30 days for 1-minute interval
-    GraphPointThreshold: 1500,
-    GraphDecimationInterval: 10,
-    // Graph (HTML)
-    Graph: DefaultGraphOptions,
+    GapThresholdTime: 15,
+    DecimationThreshold: 1500,
+    DecimationInterval: 10,
+    // Web
+    Web: DefaultWebOptions,
     // Network
     Bind: "127.0.0.1",
     Port: 1226,
@@ -86,36 +101,38 @@ var DefaultServerConfig = ServerConfig{
     WebhookUrl: "",
 }
 
-var DefaultGraphOptions = GraphOptions{
-    GapThresholdTime: 30,
+var DefaultWebOptions = WebOptions{
     Durations: []int{3*3600, 12*3600, 3*86400, 7*86400, 30*86400},
     FormatNumber: "{e+0.2f}",
     FormatDateLong: "DD HH:mm",
     FormatDateShort: "MM/DD",
 }
 
-var DefaultClientConfigCluster = ClientConfigCluster{
+var DefaultClientConfig = ClientConfig{
     // Client Config
-    ClientAliases: map[string] ClientAliasConfig{
+    Hosts: map[string/* host */] map[string/* alias */] string {
         "127.0.0.1": {
             "default": "example",
             "foo": "bar",
         },
     },
-    ClientRoles: map[string] ClientRoleConfig{
+    Roles: map[string/* alias */] ClientRole{
         "example": {
-            MonitorInfos: map[string] MonitorInfo{
-                "cpu-usage": MonitorInfo{
+            MonitorConfigMap: map[string/* raw key */] MonitorConfig{
+                "cpu-usage": MonitorConfig{
                     FatalRange: "80:",
                     WarningRange: "50:",
+                    Format: "{.1f}%",
                 },
             },
             MonitorInterval: 60,
         },
         "bar": {
-            MonitorInfos: map[string] MonitorInfo{
-                "swap-usage": MonitorInfo{},
-                "memory-usage": MonitorInfo{},
+            MonitorConfigMap: map[string/* raw key */] MonitorConfig{
+                "swap-usage": MonitorConfig{},
+                "memory-usage": MonitorConfig{
+                    Format: "Using {.0f}%",
+                },
             },
             MonitorInterval: 60,
         },
@@ -124,7 +141,7 @@ var DefaultClientConfigCluster = ClientConfigCluster{
 
 func NewServer() *Server {
     srv := &Server{}
-    srv.clientMonitorData = make(map[string] map[string] MonitorDataSlice)
+    srv.clientMonitorDataMap = make(map[string/* fullName */] MonitorDataMap)
     return srv
 }
 
@@ -161,54 +178,55 @@ func (srv *Server) LoadConfig(p string) error {
 
 }
 
-func (srv *Server) loadClientConfigCluster() error {
+func (srv *Server) loadClientConfig() error {
 
     fn := srv.config.ClientConfigPath
     
-    //
+    // Open file
     f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
     switch {
     case err != nil && !os.IsNotExist(err):
+        // Unexpected error
         return err
     case os.IsNotExist(err):
-        // Save default config
-        srv.clientConfigCluster = DefaultClientConfigCluster
+        // Does not exist
+        // + Save default config
+        srv.clientConfig = DefaultClientConfig
         f2, err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0600)
         if err != nil {
             return err
         }
         enc := json.NewEncoder(f2)
         enc.SetIndent("", "  ")
-        err = enc.Encode(DefaultClientConfigCluster)
+        err = enc.Encode(srv.clientConfig)
         if err != nil {
             return err
         }
         f.Close()
     default:
-        //
+        // Exists
         dec := json.NewDecoder(f)
-        ccc := ClientConfigCluster{}
-        err = dec.Decode(&ccc)
+        cc  := ClientConfig{}
+        err = dec.Decode(&cc)
         if err != nil {
             return err
         }
-        srv.clientConfigCluster = ccc
+        srv.clientConfig = cc
     }
 
     // Version
     ccv := make(map[string] string)
     roleVersion := make(map[string] string)
-    for host, aliases := range srv.clientConfigCluster.ClientAliases {
-        for alias, role := range aliases {
+    for host, roleMap := range srv.clientConfig.Hosts {
+        for alias, role := range roleMap {
             fullName := formatFullName(host, alias)
             if _, ok := roleVersion[role]; !ok {
-                j, _ := json.Marshal(srv.clientConfigCluster.ClientRoles[role])
-                roleVersion[role] = fmt.Sprintf("%x", Sha256Sum(j))[:6]
+                // Assign version
+                roleVersion[role] = srv.clientConfig.Roles[role].Version()
             }
             ccv[fullName] = roleVersion[role]
         }
     }
-
     srv.clientConfigVersion = ccv
     
     return nil
@@ -236,6 +254,10 @@ func (srv *Server) checkAuthPrivateKey() error {
     return LoadAuthPrivateKey(apk)
 }
 
+func (srv *Server) Addr() string {
+    return fmt.Sprintf("%s:%d", srv.config.Bind, srv.config.Port)
+}
+
 func (srv *Server) Start() (err error) {
 
     defer Catch(&err)
@@ -243,10 +265,10 @@ func (srv *Server) Start() (err error) {
     // Config
     Try(srv.LoadConfig(flServerConfigPath))
     Logger.Infoln("Loaded Config")
-    Try(srv.loadClientConfigCluster())
-    Logger.Infoln("Loaded Client Config Cluster")
+    Try(srv.loadClientConfig())
+    Logger.Infoln("Loaded Client Config")
 
-    //
+    // Private Key
     Try(srv.checkAuthPrivateKey())
     Logger.Infoln("The fingerprint of the authentication public key is:")
     Logger.Infoln(sessionAuthPriv.PublicKey.Fingerprint())
@@ -256,7 +278,7 @@ func (srv *Server) Start() (err error) {
     Logger.Infoln("Cached Executable for Auto-Update")
 
     // Read Monitor Data Cache
-    Try(srv.readCachedMonitoredItems())
+    Try(srv.readCachedClientMonitorDataMap())
     Logger.Infoln("Read the Cached Monitored Items")
 
     // Ensure Directories
@@ -264,7 +286,7 @@ func (srv *Server) Start() (err error) {
     Logger.Infoln("Ensured Necessary Directories")
 
     // Network
-    addr := fmt.Sprintf("%s:%d", srv.config.Bind, srv.config.Port)
+    addr    := srv.Addr()
     ln, err := net.Listen("tcp", addr)
     Try(err)
     Logger.Infoln("Network Configured to Listen at", addr)
@@ -273,104 +295,104 @@ func (srv *Server) Start() (err error) {
     go func() {
         for {
             time.Sleep(time.Minute * time.Duration(srv.config.MonitorDataCacheInterval))
-            goErr := srv.FlushCachedMonitoredItems()
-            if goErr != nil {
-                Logger.Warnln(goErr)
+            err := srv.CacheClientMonitorDataMap()
+            if err != nil {
+                Logger.Warnln(err)
                 continue
             }
-            Logger.Infoln("Flushed Client MonitorData Cache")
+            Logger.Infoln("Cached Client Monitor Data")
         }
     }()
     Logger.Infoln("Started Monitor Data Caching Thread")
 
     // Client Config Version Update
     go func() {
-        ccvp := srv.config.ClientConfigPath
-        st, _ := os.Stat(ccvp)
+        ccvp    := srv.config.ClientConfigPath
+        st, _   := os.Stat(ccvp)
         lastMod := st.ModTime()
-        for {
+        for {func() {
+            // Catch
+            defer CatchFunc(Logger.Warnln)
             time.Sleep(clientConfigWatchInterval)
-
             // Mod Time Check
             st, err := os.Stat(ccvp)
-            if err != nil {
-                Logger.Warnln(err)
-                continue
-            }
+            Try(err)
             // Changed
             if lastMod != st.ModTime() {
-                goErr := srv.loadClientConfigCluster()
-                if goErr != nil {
-                    Logger.Warnln(goErr)
-                    continue
-                }
-                Logger.Infoln("Reloaded Client Config Cluster")
+                err := srv.loadClientConfig()
+                Try(err)
+                Logger.Infoln("Reloaded Client Config")
                 lastMod = st.ModTime()
             }
-
-        }
+        }()}
     }()
-    Logger.Infoln("Started Client Config Cluster Reloading Thread")
+    Logger.Infoln("Started Client Config Reloading Thread")
 
-    // Graph-ready Data Preparing Thread
+    // Chart-ready Data Preparing Thread
     go func() {
-        // monitorDataTables
-        for {
-
-            clients := make(map[string] MDTClient)
-            for fullName, mdsMap := range srv.clientMonitorData {
+        for {func() {
+            defer CatchFunc(Logger.Warnln)
+            tBoxMap := make(map[string/* fullName */] MonitorDataTableBox)
+            gthSec  := int64(srv.config.GapThresholdTime * 60) // To seconds
+            for fullName, mdMap := range srv.clientMonitorDataMap {
                 // MonitorData
-                tsMap := make(map[int64] struct{})
-                mdss  := make(map[string] []byte)
-                for key, mds := range mdsMap {
-
+                tsMap  := make(map[int64/* timestamp */] struct{})
+                mdtMap := make(map[string/* key */] []byte)
+                // Table-writing loop
+                for key, md := range mdMap {
                     // Decimate monitor data
-                    decimated := LTTBMonitorDataSlice(
-                        mds, srv.config.GraphPointThreshold,
+                    decimated := LttbMonitorData(
+                        md, srv.config.DecimationThreshold,
                     )
-                    // Put Gaps
-                    table := bytes.NewBuffer(nil)
-                    gthSec := int64(srv.config.Graph.GapThresholdTime * 60) // To seconds
+                    // Write CSV(table)
+                    table  := bytes.NewBuffer(nil)
                     prevTs := decimated[0].Timestamp
                     fmt.Fprint(table, "timestamp,value\n")
                     for _, each := range decimated {
                         ts := each.Timestamp
                         if ts - prevTs > gthSec {
-                            avgTs := (ts + prevTs) / 2
-                            tsMap[avgTs] =  struct{}{}
-                            fmt.Fprintf(table, "%d,NaN\n", avgTs)
+                            // Put NaN (Gap)
+                            midTs        := (ts + prevTs) / 2
+                            tsMap[midTs]  = struct{}{}
+                            fmt.Fprintf(table, "%d,NaN\n", midTs)
                         }
-                        tsMap[ts] =  struct{}{}
+                        prevTs    = ts
+                        tsMap[ts] = struct{}{}
                         fmt.Fprintf(table, "%d,%f\n", ts, each.Value)
-                        prevTs = ts
                     }
                     // Assign Csv
-                    mdss[key] = table.Bytes()
-
+                    mdtMap[key] = table.Bytes()
                 }
-
-                // Timestamps
-                i, ts := 0, make([]int64, len(tsMap))
+                // Timestamps Slice
+                i, tss := 0, make([]int64, len(tsMap))
                 for t := range tsMap {
-                    ts[i] = t
+                    tss[i] = t
                     i++
                 }
-                sort.Sort(Int64Slice(ts))
-                tt := bytes.NewBuffer(nil)
-                fmt.Fprint(tt, "timestamp\n")
-                for _, t := range ts {
-                    fmt.Fprintf(tt, "%d\n", t)
+                sort.Sort(Int64Slice(tss))
+                // Write boundaries table
+                bds := bytes.NewBuffer(nil)
+                fmt.Fprint(bds, "timestamp\n")
+                fmt.Fprintf(bds, "%d\n", tss[0])
+                for i := 1; i < len(tss); i++ {
+                    prev := tss[i-1]
+                    curr := tss[i]
+                    if curr - prev > gthSec {
+                        fmt.Fprintf(bds, "%d\n", prev)
+                        fmt.Fprintf(bds, "%d\n", curr)
+                    }
                 }
-
-                clients[fullName] = MDTClient{
-                    Timestamps: tt.Bytes(),
-                    MonitorDataSlices: mdss,
+                fmt.Fprintf(bds, "%d\n", tss[len(tss)-1])
+                // Assign
+                tBoxMap[fullName] = MonitorDataTableBox{
+                    Boundaries: bds.Bytes(),
+                    DataMap: mdtMap,
                 }
             }
-
-            srv.monitorDataTables = clients
-            time.Sleep(time.Minute * time.Duration(srv.config.GraphDecimationInterval))
-        }
+            // Assign
+            srv.clientMonitorDataTableBox = tBoxMap
+            time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
+        }()}
     }()
     Logger.Infoln("Started Data Decimation Thread")
 
@@ -380,11 +402,6 @@ func (srv *Server) Start() (err error) {
 
     // Main
     Logger.Infoln("Successfully Started the Server")
-    copyIO := func(dest, src net.Conn) {
-        defer src.Close()
-        defer dest.Close()
-        io.Copy(dest, src)
-    }
     for {
 
         time.Sleep(time.Duration(1000.0 / float64(srv.config.Tickrate)) * time.Millisecond)
@@ -396,43 +413,37 @@ func (srv *Server) Start() (err error) {
             continue
         }
 
-        go func () {
+        go func() {
+            defer CatchFunc(Logger.Warnln)
+
             host, _ := HostnameOf(conn)
-            rd := bufio.NewReader(conn)
-            startLine, err := rd.ReadString('\n') // Start line
-            if err != nil {
-                Logger.Warnln(err)
-                return
-            }
-
-            rest, err := rd.Peek(rd.Buffered()) // Read rest bytes without advancing the reader
-            if err != nil {
-                Logger.Warnln(err)
-                return
-            }
-
-            already := append([]byte(startLine), rest...) // Bytes that are already read
+            rd      := bufio.NewReader(conn)
+            // Start line
+            startLine, err := rd.ReadString('\n')
+            Try(err)
+            // Read rest bytes without advancing the reader
+            rest, err := rd.Peek(rd.Buffered()) 
+            Try(err)
+            // Bytes that are already read
+            already := append([]byte(startLine), rest...)
 
             switch {
             case strings.Contains(startLine, "HTTP"):
-                proxy, err2 := net.Dial("tcp", srv.httpListener.Addr().String())
-                if err2 != nil {
-                    Logger.Warnln(err)
-                    return
-                }
+                // HTTP
+                proxy, err := net.Dial("tcp", srv.HttpAddr())
+                Try(err)
                 startLine = strings.Trim(startLine, "\r\n")
                 Logger.Infoln(host, startLine)
                 proxy.Write(already)
-                go copyIO(proxy, conn)
-                go copyIO(conn, proxy)
+                go connCopy(proxy, conn)
+                go connCopy(conn, proxy)
             case strings.Contains(startLine, "TELESCRIBE"):
+                // TELESCRIBE
                 s := NewSession(conn)
                 defer s.Close()
+                // Prepend raw input
                 s.PrependRawInput(bytes.NewReader(already))
-                err := srv.HandleSession(s)
-                if err != nil {
-                    Logger.Warnln(err)
-                }
+                Try(srv.HandleSession(s))
             default:
             }
         }()
@@ -443,25 +454,20 @@ func (srv *Server) Start() (err error) {
 
 }
 
-func (srv *Server) readCachedMonitoredItems() (err error) {
+func (srv *Server) readCachedClientMonitorDataMap() (err error) {
 
-    defer func() {
-        r := recover()
-        if r != nil {
-            err = fmt.Errorf("%v", r)
-        }
-    }()
+    defer Catch(&err)
 
-    matches, err := filepath.Glob(srv.config.MonitorDataCacheDir + "/*" + monitorDataCacheExt)
-    if err != nil {
-        return
-    }
+    matches, err := filepath.Glob(
+        srv.config.MonitorDataCacheDir + "/*" + monitorDataCacheExt,
+    )
+    Try(err)
 
     for _, match := range matches {
 
-        f, forErr := os.OpenFile(match, os.O_RDONLY, 0644)
-        if forErr != nil {
-            Logger.Warnln(forErr)
+        f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
+        if err2 != nil {
+            Logger.Warnln(err2)
             continue
         }
 
@@ -477,18 +483,18 @@ func (srv *Server) readCachedMonitoredItems() (err error) {
         f.Close()
 
         //
-        mds, forErr := DecompressMonitorDataSlice(cmp)
-        if forErr != nil {
-            Logger.Warnln(forErr)
+        md, err2 := DecompressMonitorData(cmp)
+        if err2 != nil {
+            Logger.Warnln(err2)
             continue
         }
 
         //
-        _, ok := srv.clientMonitorData[fullName]
+        _, ok := srv.clientMonitorDataMap[fullName]
         if !ok {
-            srv.clientMonitorData[fullName] = make(map[string] MonitorDataSlice)
+            srv.clientMonitorDataMap[fullName] = make(MonitorDataMap)
         }
-        srv.clientMonitorData[fullName][key] = mds
+        srv.clientMonitorDataMap[fullName][key] = md
 
     }
 
@@ -496,31 +502,26 @@ func (srv *Server) readCachedMonitoredItems() (err error) {
 
 }
 
-func (srv *Server) FlushCachedMonitoredItems() (err error) {
+func (srv *Server) CacheClientMonitorDataMap() (err error) {
 
-    defer func() {
-        r := recover()
-        if r != nil {
-            err = fmt.Errorf("%v", r)
-        }
-    }()
+    defer Catch(&err)
 
-    for fullName, mdsMap := range srv.clientMonitorData {
+    for fullName, mdMap := range srv.clientMonitorDataMap {
         
-        for key, mds := range mdsMap {
+        for key, md := range mdMap {
             
-            h := Sha256Sum([]byte(fullName + key))
-            fn := srv.config.MonitorDataCacheDir + "/" + fmt.Sprintf("%x", h) + monitorDataCacheExt
+            h  := fmt.Sprintf("%x", Sha256Sum([]byte(fullName + key)))
+            fn := srv.config.MonitorDataCacheDir + "/" + h + monitorDataCacheExt
 
-            f, forErr := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644)
-            if forErr != nil {
-                Logger.Warnln(forErr)
+            f, err2 := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644)
+            if err2 != nil {
+                Logger.Warnln(err2)
                 continue
             }
 
-            cmp, forErr := CompressMonitorDataSlice(mds)
-            if forErr != nil {
-                Logger.Warnln(forErr)
+            cmp, err2 := CompressMonitorData(md)
+            if err2 != nil {
+                Logger.Warnln(err2)
                 continue
             }
 
@@ -538,20 +539,20 @@ func (srv *Server) FlushCachedMonitoredItems() (err error) {
 
 }
 
-func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[string] interface{}) {
+func (srv *Server) RecordValueMap(fullName string, timestamp int64, valMap map[string] interface{}) {
 
     //
-    _, ok := srv.clientMonitorData[fullName]
+    _, ok := srv.clientMonitorDataMap[fullName]
     if !ok {
-        srv.clientMonitorData[fullName] = make(map[string] MonitorDataSlice)
+        srv.clientMonitorDataMap[fullName] = make(MonitorDataMap)
     }
 
     //
-    initialized := make([]MonitorDataSliceElem, 0)
+    initialized := make(MonitorData, 0)
     fatalValues := make(map[string] float64)
     appendValue := func(key string, val float64) {
 
-        short, ok := srv.clientMonitorData[fullName][key]
+        short, ok := srv.clientMonitorDataMap[fullName][key]
         if !ok {
             short = initialized
         }
@@ -560,20 +561,20 @@ func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[st
         if len(short) > srv.config.MaxDataLength {
             // Get MaxLength - 1 items
             start := len(short) - srv.config.MaxDataLength + 1
-            short = short[start:]
+            short  = short[start:]
         }
 
         // Append
-        srv.clientMonitorData[fullName][key] = append(
+        srv.clientMonitorDataMap[fullName][key] = append(
             short,
-            MonitorDataSliceElem{
-                Value: val,
+            MonitorDatum{
                 Timestamp: timestamp,
+                Value: val,
             },
         )
 
         // Check Status
-        st := srv.getMonitorInfo(fullName, key).StatusOf(val)
+        st := srv.getMonitorConfig(fullName, key).StatusOf(val)
         if st == MonitorStatusFatal {
             fatalValues[key] = val
         }
@@ -581,13 +582,13 @@ func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[st
     }
 
     //
-    for key, val := range md {
+    for key, val := range valMap {
         switch cast := val.(type) {
         case float64:
             appendValue(key, cast)
         case map[string] float64:
-            for subKey, subVal := range cast {
-                longKey := fmt.Sprintf("%s[%s]", key, subKey)
+            for idx, subVal := range cast {
+                longKey := FormatMonitorrKey(key, "", idx)
                 appendValue(longKey, subVal)
             }
         }
@@ -606,7 +607,7 @@ func (srv *Server) RecordMonitorData(fullName string, timestamp int64, md map[st
 type alarmWebhook struct {
     FullName string `json:"fullName"`
     Timestamp int64 `json:"timestamp"`
-    FatalValues map[string] float64 `json:"fatalValues"`
+    FatalValues map[string/* key */] float64 `json:"fatalValues"`
 }
 func (srv *Server) sendAlarmWebhook(fullName string, timestamp int64, fatalValues map[string] float64) error {
 
@@ -647,27 +648,23 @@ func (srv *Server) sendAlarmWebhook(fullName string, timestamp int64, fatalValue
 
 }
 
-func (srv *Server) getMonitorInfos(fullName string) map[string] MonitorInfo {
-    host, alias := parseFullName(fullName)
-    role := srv.clientConfigCluster.ClientAliases[host][alias]
-    roleCfg := srv.clientConfigCluster.ClientRoles[role]
-    return roleCfg.MonitorInfos
-}
-
-func (srv *Server) getMonitorInfo(fullName, key string) (MonitorInfo) {
+func (srv *Server) getMonitorConfig(fullName, key string) (MonitorConfig) {
 
     aBase, aParam, aIdx := ParseMonitorrKey(key)
-    var bpMatch MonitorInfo
+    // Base + param match
+    var bpMatch MonitorConfig
 
-    mis := srv.getMonitorInfos(fullName)
-    for b, mi := range mis {
+    host, alias := parseFullName(fullName)
+    role       := srv.clientConfig.Hosts[host][alias]
+    mCfgMap    := srv.clientConfig.Roles[role].MonitorConfigMap
+    for b, mCfg := range mCfgMap {
         bBase, bParam, bIdx := ParseMonitorrKey(b)
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {
                 // Exact match
-                return mi
+                return mCfg
             }
-            bpMatch = mi
+            bpMatch = mCfg
         }
     }
 
@@ -682,7 +679,7 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     //
     host, err := s.RemoteHost()
     Try(err)
-    roles, whitelisted := srv.clientConfigCluster.ClientAliases[host]
+    roleMap, whitelisted := srv.clientConfig.Hosts[host]
     if !whitelisted {
         srvRsp := NewResponse("not-whitelisted")
         s.WriteResponse(srvRsp)
@@ -694,9 +691,9 @@ func (srv *Server) HandleSession(s *Session) (err error) {
     Try(err)
 
     // Role
-    alias := clRsp.String("alias")
+    alias    := clRsp.String("alias")
     fullName := formatFullName(host, alias)
-    role, ok := srv.clientConfigCluster.ClientRoles[roles[alias]]
+    role, ok := srv.clientConfig.Roles[roleMap[alias]]
     Assert(ok, "Client must have its role")
 
     // Version Check
@@ -728,14 +725,12 @@ func (srv *Server) HandleSession(s *Session) (err error) {
         Logger.Infoln(host, "HELLO CLIENT")
         return s.WriteResponse(srvRsp)
 
-    case "monitor-data":
-
+    case "monitor-record":
         //
-        md, ok := clRsp.Args()["monitorData"].(map[string] interface{})
-        Assert(ok, "Malformed monitor data")
+        valMap, ok := clRsp.Args()["valueMap"].(map[string] interface{})
+        Assert(ok, "Malformed value map")
         timestamp := clRsp.Int64("timestamp")
-        srv.RecordMonitorData(fullName, timestamp, md)
-
+        srv.RecordValueMap(fullName, timestamp, valMap)
     default:
         panic("Unknown response")
     }

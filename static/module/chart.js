@@ -18,10 +18,10 @@ export class Chart {
     this._duration = 3 * 3600;
     this._keys = [];
     // Timestamps
-    this._timestamps = [];
-    d3.csv(this.csv.timestamps)
+    this._boundaries = [];
+    d3.csv(this.csv.boundaries)
       .row(function(r) {
-        $._timestamps.push(+r.timestamp);
+        $._boundaries.push(+r.timestamp);
       })
       .get(undefined, function() {
         // Pre
@@ -56,7 +56,7 @@ export class Chart {
       height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
     };
     var xScale = this._xScale;
-    var xBoundary = d3.extent(this._timestamps);
+    var xBoundary = d3.extent(this._boundaries);
     var xDuration = xBoundary[1] - xBoundary[0];
     // Duration too low
     if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
@@ -299,8 +299,8 @@ export class Chart {
         var event = d3.event;
         var target = event.target;
         var mouse = d3.mouse(projection.node());
-        var timestamps = $._timestamps;
-        var timestamp = xScale.invert(mouse[0]);
+        var [mX, mY] = mouse;
+        var timestamp = xScale.invert(mX);
         var activeKeys = $._keys;
         var activeDataset = $._activeDataset;
         var seriesName = $._seriesName;
@@ -313,33 +313,40 @@ export class Chart {
           overlay.selectAll(".tooltip").style("opacity", 1);
         }
         //
-        var nearest = bisect(timestamps, timestamp, function(d) { return d; });
-        if(nearest === undefined) return;
-        var posX = xScale(nearest);
-    
-        // Hand
-        hand.attr("x1", posX).attr("x2", posX);
-  
-        // Time
-        background.select(".focus-date text").text(nearest.date("MM/DD"));
+        var handX;
   
         // Points
         activeKeys.forEach(function(key) {
           var elem = bisect(activeDataset[key], timestamp, function(d) { return d.timestamp; });
           if(elem === undefined || isNaN(elem.value)) return;
-          var posY = yScale(elem.value);
+          var cX = xScale(elem.timestamp);
+          var cY = yScale(elem.value);
           var series = seriesName(key);
           segments.select(`.point.${series}`)
+          .attr("data-timestamp", elem.timestamp)
             .attr("data-value", elem.value)
-            .attr("data-timestamp", elem.timestamp)
-            .attr("cx", posX)
-            .attr("cy", posY);
+            .attr("cx", cX)
+            .attr("cy", cY);
+
+          // Hand X
+          if(handX === undefined) handX =  cX;
+          else if(Math.abs(handX - mX) > Math.abs(cX - mX)) handX = cX;
         });
+
+        // No nearest X
+        if(handX === undefined) return;
+        
+        // Hand
+        hand.attr("x1", handX).attr("x2", handX);
+        var handT = xScale.invert(handX);
+
+        // Time
+        background.select(".focus-date text").text(handT.date("MM/DD"));
   
         // Tooltip
         var [tw, th] = [tooltipSize.width, tooltipSize.height];
-        var tx = Math.min(Math.max(posX - scrollLeft - tw/2, 0), chartRect.width - tw);
-        var ty = mouse[1] < th ? mouse[1] + 5 : mouse[1] - tooltipSize.height - 5;
+        var tx = Math.min(Math.max(mX - scrollLeft - tw/2, 0), chartRect.width - tw);
+        var ty = mY < th ? mY + 5 : mY - tooltipSize.height - 5;
         tooltip.attr("transform", `translate(${tx},${ty})`);
         if(hasClass(target, "point")) {
           //
@@ -625,34 +632,25 @@ export class Chart {
 
   // SCALE
   _scale() {
-    let opt = Chart.options();
-    let timestamps = this._timestamps;
-    let firstT = timestamps[0];
-    let lastT = timestamps[timestamps.length - 1];
-    let duration = lastT - firstT;
-    let boundaries = [];
-    let gtht = opt.gapThresholdTime * 60;
-    for(let i = 1; i < timestamps.length; i++) {
-      let prev = timestamps[i-1];
-      let curr = timestamps[i];
-
-      if(curr - prev > gtht) {
-        // Exclude Gap Duration from duration
-        duration -= curr - prev;
-        // Boundary
-        boundaries.push(prev, curr);
-      }
-    }
-    // Wrap
-    boundaries.unshift(firstT);
-    boundaries.push(lastT);
-
     let epsilon = 1e-5;
+    let opt = Chart.options();
+    let boundaries = this._boundaries;
+    let firstT = boundaries[0];
+    let lastT = boundaries[boundaries.length - 1];
+    let duration = lastT - firstT;
     let segNo = boundaries.length / 2;
     let gapNo = segNo - 1;
-    let gapEachDuration = duration / (30 + gapNo);
     let gapBoundaries = boundaries.slice(1, -1);
+    let gtht = opt.gapThresholdTime * 60;
+    for(let i = 0; i < gapBoundaries.length; i+=2) {
+      let start = gapBoundaries[i];
+      let end = gapBoundaries[i+1];
+      // Exclude Gap Duration from duration
+      duration -= end - start;
+    }
+
     // | duration | gap duration... |
+    let gapEachDuration = duration / (30 + gapNo);
     let totalDuration = gapEachDuration * gapNo + duration;
     let steps = [];
     let lefts = [];

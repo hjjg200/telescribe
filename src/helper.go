@@ -6,6 +6,7 @@ import (
     "crypto/rand"
     "fmt"
     "io"
+    "net"
     "os"
     "strings"
     "regexp"
@@ -90,6 +91,11 @@ func SplitLines(str string) []string {
     return linebreakRegexp.Split(str, -1)
 }
 
+var commaSplitRegexp = regexp.MustCompile("\\s*,\\s*")
+func SplitComma(str string) []string {
+    return commaSplitRegexp.Split(str, -1)
+}
+
 //
 // FULLNAME
 //
@@ -112,3 +118,22 @@ type Int64Slice []int64
 func (s Int64Slice) Len() int { return len(s) }
 func (s Int64Slice) Less(i, j int) bool { return s[i] < s[j] }
 func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+//
+// RECOVER
+//
+
+func CatchFunc(f func(...interface{})) {
+    r := recover()
+    if r != nil { f(r) }
+}
+
+//
+// IO
+//
+
+func connCopy(dest, src net.Conn) {
+    defer src.Close()
+    defer dest.Close()
+    io.Copy(dest, src)
+}

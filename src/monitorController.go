@@ -5,75 +5,13 @@ import (
     "bytes"
     "compress/gzip"
     "encoding/gob"
-    "fmt"
     "math"
     "strconv"
     "strings"
-    "regexp"
     "./monitor"
+
+    . "github.com/hjjg200/go-act"
 )
-
-type Range string
-
-/*
-MonitorInfo
-- Ranges
-MonitorDataSlice
-- Count
-- Elapsed
-- Last
-- Slice
-
-*/
-
-type GrpahDataComposite struct {
-    GapThresholdTime int `json:"options.gapThresholdTime"`
-    GapPercent float64 `json:"options.gapPercent"`
-    MomentJSFormat string `json:"options.momentJsFormat"`
-    ClientAliases map[string] string `json:"clientAliases"`
-    ClientMonitorData map[string] map[string] MonitorDataSlice `json:"clientMonitorData"`
-}
-
-type MonitorDataSlice []MonitorDataSliceElem
-type MonitorDataSliceElem struct {
-    Timestamp int64
-    Value float64
-}
-
-type MonitorStatusSlice []MonitorStatusSliceElem
-type MonitorStatusSliceElem struct {
-    Status int
-    Timestamp int64
-    Value float64
-}
-
-// sort.Interface
-func (mds MonitorDataSlice) Len() int {
-    return len(mds)
-}
-
-func (mds MonitorDataSlice) Less(i, j int) bool {
-    return mds[i].Timestamp < mds[j].Timestamp
-}
-
-func (mds MonitorDataSlice) Swap(i, j int) {
-    mds[i], mds[j] = mds[j], mds[i]
-}
-
-//
-func (mdse MonitorDataSliceElem) X() float64 {
-    return float64(mdse.Timestamp)
-}
-
-func (mdse MonitorDataSliceElem) Y() float64 {
-    return mdse.Value
-}
-
-type MonitorInfo struct {
-    FatalRange Range `json:"fatalRange"`
-    WarningRange Range `json:"warningRange"`
-    Format string `json:"format"`
-}
 
 const (
     MonitorStatusNormal = 8 * iota
@@ -81,10 +19,32 @@ const (
     MonitorStatusFatal
 )
 
-var parsedRanges map[Range] func(float64) bool
-var commaSplitRegexp = regexp.MustCompile("\\s*,\\s*")
-func SplitComma(str string) []string {
-    return commaSplitRegexp.Split(str, -1)
+type Range string
+
+type MonitorDataTableBox struct {
+    Boundaries []byte
+    DataMap map[string/* key */] []byte
+}
+
+type MonitorDataMap map[string/* key */] MonitorData
+type MonitorData []MonitorDatum
+type MonitorDatum struct {
+    Timestamp int64
+    Value float64
+}
+
+// sort.Interface
+func (md MonitorData) Len() int { return len(md) }
+func (md MonitorData) Less(i, j int) bool { return md[i].Timestamp < md[j].Timestamp }
+func (md MonitorData) Swap(i, j int) { md[i], md[j] = md[j], md[i] }
+// For LTTB
+func (datum MonitorDatum) X() float64 { return float64(datum.Timestamp) }
+func (datum MonitorDatum) Y() float64 { return datum.Value }
+
+type MonitorConfig struct {
+    FatalRange Range `json:"fatalRange"`
+    WarningRange Range `json:"warningRange"`
+    Format string `json:"format"`
 }
 
 func init() {
@@ -96,23 +56,20 @@ func init() {
     }
 }
 
-func ParseMonitorrKey(key string) (base, param, idx string) {
-    return monitor.ParseWrapperKey(key)
-}
-
-func FormatMonitorrKey(base, param, idx string) string {
-    return monitor.FormatWrapperKey(base, param, idx)
-}
+//
+// RANGES
+//
+var parsedRanges map[Range] func(float64) bool
 
 func (r Range) Parse() {
 
     // Prepare Splits
     commaSplits := SplitComma(string(r))
-    numSplits := make([][]float64, len(commaSplits))
+    numSplits   := make([][]float64, len(commaSplits))
     for i := range commaSplits {
 
         isRanged := strings.Contains(commaSplits[i], ":")
-        splits := strings.Split(commaSplits[i], ":")
+        splits   := strings.Split(commaSplits[i], ":")
 
         if len(splits) == 1 && isRanged  {
             splits = append(splits, "")
@@ -146,7 +103,6 @@ func (r Range) Parse() {
 
     // Assign
     parsedRanges[r] = func(val float64) bool {
-
         //
         for _, split := range numSplits {
             if len(split) == 1 {
@@ -160,7 +116,6 @@ func (r Range) Parse() {
             }
         }
         return false
-
     }
 
 }
@@ -174,24 +129,33 @@ func (r Range) Includes(val float64) bool {
     return pr(val)
 }
 
-func (mi MonitorInfo) StatusOf(val float64) int {
+func (mCfg MonitorConfig) StatusOf(val float64) int {
     switch {
-    case mi.FatalRange.Includes(val):
+    case mCfg.FatalRange.Includes(val):
         return MonitorStatusFatal
-    case mi.WarningRange.Includes(val):
+    case mCfg.WarningRange.Includes(val):
         return MonitorStatusWarning
     }
     return MonitorStatusNormal
 }
 
-func CompressMonitorDataSlice(mds MonitorDataSlice) (cmp []byte, err error) {
+//
+// Monitor Keys
+//
+func ParseMonitorrKey(key string) (base, param, idx string) {
+    return monitor.ParseWrapperKey(key)
+}
 
-    defer func() {
-        r := recover()
-        if r != nil {
-            err = fmt.Errorf("%v", r)
-        }
-    }()
+func FormatMonitorrKey(base, param, idx string) string {
+    return monitor.FormatWrapperKey(base, param, idx)
+}
+
+//
+// Compression
+//
+func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
+
+    defer Catch(&err)
 
     buf := bytes.NewBuffer(nil)
     gzw := gzip.NewWriter(buf)
@@ -199,16 +163,16 @@ func CompressMonitorDataSlice(mds MonitorDataSlice) (cmp []byte, err error) {
 
     // | type | timestamps | values | 
 
-    if len(mds) > 0 {
+    if len(md) > 0 {
         enc.Encode("float64")
-        timestamps := make([]int64, len(mds))
-        slice := make([]float64, len(mds))
-        for i := range mds {
-            slice[i] = mds[i].Value
-            timestamps[i] = mds[i].Timestamp
+        timestamps := make([]int64, len(md))
+        values     := make([]float64, len(md))
+        for i := range md {
+            timestamps[i] = md[i].Timestamp
+            values[i] = md[i].Value
         }
         enc.Encode(timestamps)
-        enc.Encode(slice)
+        enc.Encode(values)
     } else {
         enc.Encode("nil")
     }
@@ -220,45 +184,40 @@ func CompressMonitorDataSlice(mds MonitorDataSlice) (cmp []byte, err error) {
 
 }
 
-func DecompressMonitorDataSlice(b []byte) (mds MonitorDataSlice, err error) {
+func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
 
-    defer func() {
-        r := recover()
-        if r != nil {
-            err = fmt.Errorf("%v", r)
-        }
-    }()
+    defer Catch(&err)
 
-    rd := bytes.NewReader(b)
+    rd       := bytes.NewReader(cmp)
     gzr, err := gzip.NewReader(bufio.NewReader(rd))
-    if err != nil {
-        return
-    }
-    dec := gob.NewDecoder(gzr)
+    Try(err)
+    dec      := gob.NewDecoder(gzr)
 
     //
-    var t string
+    var typ string
     timestamps := make([]int64, 0)
-    put := func(slice []float64) {
-        mds = make([]MonitorDataSliceElem, len(slice))
+    put        := func(slice []float64) {
+        md = make(MonitorData, len(slice))
         for i := 0; i < len(slice); i++ {
-            mds[i] = MonitorDataSliceElem{
+            md[i] = MonitorDatum{
                 Timestamp: timestamps[i],
                 Value: slice[i],
             }
         }
     }
     // Type
-    dec.Decode(&t)
+    dec.Decode(&typ)
     // Timestamp
     dec.Decode(&timestamps)
     // Value
-    switch t {
+    switch typ {
     case "float64":
-        slice := make([]float64, 0)
-        dec.Decode(&slice)
-        put(slice)
+        values := make([]float64, 0)
+        dec.Decode(&values)
+        put(values)
     case "nil":
+        // Return empty
+        md = make(MonitorData, 0)
         return
     }
 
@@ -268,18 +227,18 @@ func DecompressMonitorDataSlice(b []byte) (mds MonitorDataSlice, err error) {
 
 // Implementation of Largest-Triangle-Three-Buckets down-sampling algorithm
 // https://github.com/dgryski/go-lttb
-func LTTBMonitorDataSlice(mds MonitorDataSlice, threshold int) MonitorDataSlice {
+func LttbMonitorData(md MonitorData, threshold int) MonitorData {
 
-    if threshold >= len(mds) || threshold == 0 {
-        return mds
+    if threshold >= len(md) || threshold == 0 {
+        return md
     }
 
-    sampled := make(MonitorDataSlice, 0, threshold)
+    sampled := make(MonitorData, 0, threshold)
 
     // Bucket size. Leave room for start and end data points
-    every := float64(len(mds) - 2) / float64(threshold - 2)
+    every := float64(len(md) - 2) / float64(threshold - 2)
 
-    sampled = append(sampled, mds[0]) // Always add the first point
+    sampled = append(sampled, md[0]) // Always add the first point
 
     bucketStart := 1
     bucketCenter := int(math.Floor(every)) + 1
@@ -294,16 +253,16 @@ func LTTBMonitorDataSlice(mds MonitorDataSlice, threshold int) MonitorDataSlice 
         avgRangeStart := bucketCenter
         avgRangeEnd := bucketEnd
 
-        if avgRangeEnd >= len(mds) {
-            avgRangeEnd = len(mds)
+        if avgRangeEnd >= len(md) {
+            avgRangeEnd = len(md)
         }
 
         avgRangeLength := float64(avgRangeEnd - avgRangeStart)
 
         var avgX, avgY float64
         for ; avgRangeStart < avgRangeEnd; avgRangeStart++ {
-            avgX += mds[avgRangeStart].X()
-            avgY += mds[avgRangeStart].Y()
+            avgX += md[avgRangeStart].X()
+            avgY += md[avgRangeStart].Y()
         }
         avgX /= avgRangeLength
         avgY /= avgRangeLength
@@ -313,16 +272,16 @@ func LTTBMonitorDataSlice(mds MonitorDataSlice, threshold int) MonitorDataSlice 
         rangeTo := bucketCenter
 
         // Point a
-        pointAX := mds[a].X()
-        pointAY := mds[a].Y()
+        pointAX := md[a].X()
+        pointAY := md[a].Y()
 
         maxArea := -1.0
 
         var nextA int
         for ; rangeOffs < rangeTo; rangeOffs++ {
             // Calculate triangle area over three buckets
-            area := (pointAX - avgX) * (mds[rangeOffs].Y() - pointAY) -
-                (pointAX - mds[rangeOffs].X()) * (avgY - pointAY)
+            area := (pointAX - avgX) * (md[rangeOffs].Y() - pointAY) -
+                (pointAX - md[rangeOffs].X()) * (avgY - pointAY)
             // We only care about the relative area here.
             // Calling math.Abs() is slower than squaring
             area *= area
@@ -332,14 +291,14 @@ func LTTBMonitorDataSlice(mds MonitorDataSlice, threshold int) MonitorDataSlice 
             }
         }
 
-        sampled = append(sampled, mds[nextA]) // Pick this point from the bucket
+        sampled = append(sampled, md[nextA]) // Pick this point from the bucket
         a = nextA                               // This a is the next a (chosen b)
 
         bucketStart = bucketCenter
         bucketCenter = bucketEnd
     }
 
-    sampled = append(sampled, mds[len(mds) - 1]) // Always add last
+    sampled = append(sampled, md[len(md) - 1]) // Always add last
 
     return sampled
 }

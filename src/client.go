@@ -9,6 +9,7 @@ import (
     "./monitor"
 
     . "github.com/hjjg200/go-act"
+    "github.com/hjjg200/go-together"
 )
 
 const defaultHelloRetryInterval = time.Minute * 1
@@ -16,18 +17,8 @@ const defaultHelloRetryInterval = time.Minute * 1
 type Client struct {
     serverAddr string
     s *Session
-    role ClientRoleConfig
+    role ClientRole
     configVersion string
-}
-
-type ClientConfigCluster struct {
-    ClientAliases map[string] ClientAliasConfig `json:"aliases"`
-    ClientRoles map[string] ClientRoleConfig `json:"roles"`
-}
-type ClientAliasConfig map[string] string // [alias] = role
-type ClientRoleConfig struct {
-    MonitorInfos map[string] MonitorInfo `json:"monitorInfos"`
-    MonitorInterval int `json:"monitorInterval"`
 }
 
 func NewClient(serverAddr string) *Client {
@@ -43,9 +34,10 @@ func (cl *Client) hello() (err error) {
     // Connection
     conn, err := net.Dial("tcp", cl.serverAddr)
     Try(err)
+    defer conn.Close()
     Logger.Infoln("HELLO SERVER")
 
-    defer conn.Close()
+    // Session
     s := NewSession(conn)
     cl.s = s
     clRsp := NewResponse("hello")
@@ -60,11 +52,11 @@ func (cl *Client) hello() (err error) {
     switch srvRsp.Name() {
     case "hello":
         return cl.configureRole(
-            srvRsp.String("configVersion"), srvRsp.Bytes("role"), 
+            srvRsp.String("configVersion"),
+            srvRsp.Bytes("role"), 
         )
     case "version-mismatch":
-        executable := srvRsp.Bytes("executable")
-        return cl.autoUpdate(executable)
+        return cl.autoUpdate(srvRsp.Bytes("executable"))
     default:
         return fmt.Errorf("Bad config response")
     }
@@ -73,7 +65,7 @@ func (cl *Client) hello() (err error) {
 
 func (cl *Client) configureRole(cv string, role []byte) error {
     cl.configVersion = cv
-    cl.role = ClientRoleConfig{}
+    cl.role = ClientRole{}
     return json.Unmarshal(role, &cl.role)
 }
 
@@ -86,7 +78,7 @@ func (cl *Client) autoUpdate(executable []byte) error {
     Logger.Infoln("Started Auto Update Procedure.")
     Logger.Infoln("The service must be set to automatically restart.")
 
-    // Remove
+    // Remove the current executable
     err := os.Remove(executablePath)
     if err != nil {
         return err
@@ -101,12 +93,12 @@ func (cl *Client) autoUpdate(executable []byte) error {
     if err != nil {
         return err
     }
-
     f.Close()
 
     Logger.Infoln("Successfully updated the executable.")
     Logger.Infoln("Exiting the application...")
     os.Exit(1)
+    // APP EXITED
     return nil
 
 }
@@ -132,26 +124,17 @@ func (cl *Client) Start() error {
 
         Logger.Infoln("SUCCESSFUL HELLO")
         // Config
-        // Monitor Interval Shorthand Func
-        mrif := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
-        hri = mrif()
-        pass := make(chan struct{})
-        go func() {
-            pass <- struct{}{}
-        }()
+        // + Monitor Interval Shorthand Func
+        mrif   := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
+        hri     = mrif()
+        passer := together.NewPasser(mrif())
 
         // Loop
         MonitorLoop:
         for {
 
             var conn net.Conn
-            <- pass // Wait
-
-            // Sleep
-            go func() {
-                time.Sleep(mrif())
-                pass <- struct{}{}
-            }()
+            passer.Pass()
 
             // Connection
             if conn != nil {
@@ -165,27 +148,27 @@ func (cl *Client) Start() error {
             }
             cl.s.SetConn(conn)
 
-            md := make(map[string] interface{})
-            for k := range cl.role.MonitorInfos {
-                getter, ok := monitor.Getter(k)
+            // Monitored values
+            valMap := make(map[string] interface{})
+            for key := range cl.role.MonitorConfigMap {
+                getter, ok := monitor.Getter(key)
                 if !ok {
-                    md[k] = nil
+                    valMap[key] = nil
                     continue
                 }
                 got := getter()
-                for i, v := range got {
-                    md[i] = v
+                for key2, val := range got {
+                    valMap[key2] = val
                 }
             }
-            Logger.Debugln(md)
 
             // Send to Server
-            clRsp := NewResponse("monitor-data")
+            clRsp := NewResponse("monitor-record")
             clRsp.Set("version", Version)
             clRsp.Set("configVersion", cl.configVersion)
             clRsp.Set("alias", flClientAlias)
             clRsp.Set("timestamp", time.Now().Unix())
-            clRsp.Set("monitorData", md)
+            clRsp.Set("valueMap", valMap)
             err = cl.s.WriteResponse(clRsp)
             if err != nil {
                 Logger.Warnln(err)
@@ -193,7 +176,7 @@ func (cl *Client) Start() error {
             }
             Logger.Infoln("Sent Data")
 
-            //
+            // Get response
             srvRsp, err := cl.s.NextResponse()
             if err != nil {
                 Logger.Warnln(err)
@@ -204,7 +187,8 @@ func (cl *Client) Start() error {
             case "ok":
             case "reconfigure":
                 err = cl.configureRole(
-                    srvRsp.String("configVersion"), srvRsp.Bytes("role"), 
+                    srvRsp.String("configVersion"),
+                    srvRsp.Bytes("role"), 
                 )
                 if err != nil {
                     Logger.Warnln(err)
@@ -213,9 +197,7 @@ func (cl *Client) Start() error {
                 Logger.Infoln("Reconfigured!")
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
-                executable := srvRsp.Bytes("executable")
-
-                Logger.Fatalln(cl.autoUpdate(executable))
+                cl.autoUpdate(srvRsp.Bytes("executable"))
             case "session-expired":
                 break MonitorLoop
             }
