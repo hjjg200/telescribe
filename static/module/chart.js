@@ -6,20 +6,20 @@ let _options = {};
 
 export class Chart {
 
-  constructor(target, csv) {
+  constructor(target, csvBox) {
     var $ = this;
     // Target
     if(typeof target === "string") this.target = document.querySelector(target); // Query
     else this.target = target; // Element
     // Public
-    this.csv = csv;
+    this.csvBox = csvBox;
     this.dataset = {};
     // Private
     this._duration = 3 * 3600;
     this._keys = [];
     // Timestamps
     this._boundaries = [];
-    d3.csv(this.csv.boundaries)
+    d3.csv(this.csvBox.boundaries)
       .row(function(r) {
         $._boundaries.push(+r.timestamp);
       })
@@ -461,7 +461,7 @@ export class Chart {
       if($.dataset[key] === undefined) {
         $.dataset[key] = [];
         var p = new Promise(resolve => {
-          d3.csv($.csv.monitorDataSlices[key])
+          d3.csv($.csvBox.dataMap[key])
           .row(function(r) {
             $.dataset[key].push({
               timestamp: +r.timestamp,
@@ -789,65 +789,6 @@ export class Chart {
         if(a[i] !== b[i]) return false;
     }
     return true;
-  }
-  static processDataset(rawDataset) {
-    let opt = Chart.options();
-    let gtht = opt.gapThresholdTime * 60;
-    let dataMap = {};
-    let dataset = [];
-    { // Process Dataset
-      for(let key in rawDataset) {
-        let rows = rawDataset[key];
-        for(let i = 0; i < rows.length; i++) {
-          let prevRow = rows[i-1];
-          let row = rows[i];
-          // Gap
-          if(prevRow !== undefined) {
-            let diff = row.Timestamp - prevRow.Timestamp;
-            if(diff > gtht) {
-              // Put NaN
-              let avgTimestamp = prevRow.Timestamp + diff / 2;
-              let avgMap = dataMap[avgTimestamp];
-              if(avgMap == null) {
-                dataMap[avgTimestamp] = {
-                  [key]: NaN
-                };
-              } else {
-                dataMap[avgTimestamp][key] = NaN;
-              }
-            }
-          }
-
-          let currMap = dataMap[row.Timestamp];
-          if(currMap == null) {
-            dataMap[row.Timestamp] = {
-              [key]: row.Value // [] is needed to use key as variable rather than "key"
-            };
-          } else {
-            dataMap[row.Timestamp][key] = row.Value;
-          }
-        }
-      }
-  
-      for(let timestamp in dataMap) {
-        let item = {};
-        let curr = dataMap[timestamp];
-        Object.keys(curr).forEach(function(key) {
-          item[key] = curr[key];
-        });
-        item.timestamp = Number(timestamp);
-        dataset.push(item);
-      }
-    }
-  
-    // Sort
-    dataset.sort(function(a, b) {
-      if(a.timestamp > b.timestamp) return 1;
-      if(a.timestamp < b.timestamp) return -1;
-      return 0;
-    });
-  
-    return dataset;
   }
 
 }

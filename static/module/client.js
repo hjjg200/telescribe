@@ -5,28 +5,26 @@ export class Client {
   constructor(fullName, abs) {
     this.fullName = fullName;
     this.abs = abs;
-    this.keys = Object.keys(abs.latest);
+    this.keys = Object.keys(abs.latestMap);
     this.activeKeys = [];
   }
 
   status(key) {
-    let latest = this.abs.latest;
+    let ltMap = this.abs.latestMap;
     if(key === undefined) {
       let max = -1;
-      for(let key in latest) {
-        let st = latest[key].status;
+      for(let key in ltMap) {
+        let st = ltMap[key].status;
         max = st > max ? st : max;
       }
       return max;
     }
-    return latest[key].status;
+    return ltMap[key].status;
   }
 
   render() {
-    var ch = new Chart(this.select(".chart"), this.abs.csv);
-    //
     var $ = this;
-    this.chart = ch;
+    this.chart = new Chart(this.select(".chart"), this.abs.csvBox);
     this.checkboxes = function() {
       var obj = {};
       $.keys.forEach(function(key) {

@@ -1,11 +1,9 @@
 import {Client} from "./module/client.js";
 import {Chart} from "./module/chart.js";
 
-let g_gdc;
 let app;
 let promise = preProcess();
 let clients = {};
-let rawDataset = {};
 
 /*
 
@@ -13,25 +11,6 @@ the darn javascript compatibility taught me
 
 - safari ios atm does not support static variables in classes, it gave me unexpected "=" (expecting ( before method)
 - while desktop chrome does not require crossorigin in the script tag, safari required it
-
-*//*
-
-New graph data composite structure
-
-{
-  "clients": {
-    "fullName": {
-      "monitorData": {
-        "key": {
-          "format": "..."
-          "status": 8
-          "csv": "..."
-        }
-      }
-    }
-  },
-  "options": ...
-}
 
 */
 
@@ -42,16 +21,24 @@ document.addEventListener("DOMContentLoaded", async function() {
   app = new Vue({
     el: "#app",
     data: {
+      abstract: undefined,
+      options: undefined,
       clients: clients
     },
     computed: {},
-    created: function() {},
+    created: function() {
+      this.fetch();
+    },
     mounted: function() {
       for(let fullName in this.clients) {
         this.clients[fullName].render();
       }
     },
     methods: {
+      fetch: async function() {
+        this.abstract = await fetchJson("/abstract.json");
+        this.options = await fetchJson("/options.json");
+      },
       shortDate: function(t) {
         if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
         else return Math.round(t / 86400) + "d";
@@ -63,55 +50,17 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 async function preProcess() {
   var abs = await fetchJson("/abstract.json");
-  var opt = await fetchJson("/graphOptions.json");
+  var opt = await fetchJson("/options.json");
 
   // Options
   Chart.options(opt);
 
   // Info
-  for(var fullName in abs.clients) {
-    var client = abs.clients[fullName];
+  for(var fullName in abs.clientMap) {
+    var client = abs.clientMap[fullName];
     clients[fullName] = new Client(fullName, client);
+    console.log(client);
   }
 
   return;
-
-  // Dataset
-  var p = new Promise(resolve => {
-    d3.csv("/monitorData.csv")
-    .row(function(r) {
-      rawDataset[r.FullName][r.Key].push({
-        Timestamp: Number(r.Timestamp),
-        Value: Number(r.Value)
-      });
-    })
-    .get(undefined, function() {
-      resolve();
-    });
-  });
-
-  await p;
-  // Assign
-  for(var fullName in clients) {
-    clients[fullName].rawDataset = rawDataset[fullName];
-  }
-}
-
-async function fetchAndUpdate() {
-  
-  let gdcResponse = await fetch(
-    "graphDataComposite.json", {
-    method: "GET",
-    cache: "no-cache"
-  });
-
-  let cmsResponse = await fetch(
-    "clientMonitorStatus.json", {
-    method: "GET",
-    cache: "no-cache"
-  });
-
-  g_gdc = await gdcResponse.json();
-  g_cms = await cmsResponse.json();
-
 }

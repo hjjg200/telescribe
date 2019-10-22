@@ -149,16 +149,16 @@ func (cl *Client) Start() error {
             cl.s.SetConn(conn)
 
             // Monitored values
-            valMap := make(map[string] interface{})
-            for key := range cl.role.MonitorConfigMap {
-                getter, ok := monitor.Getter(key)
+            valMap := make(map[string/* key */] interface{})
+            for rawKey := range cl.role.MonitorConfigMap {
+                getter, ok := monitor.Getter(rawKey)
                 if !ok {
-                    valMap[key] = nil
+                    valMap[rawKey] = nil
                     continue
                 }
                 got := getter()
-                for key2, val := range got {
-                    valMap[key2] = val
+                for key, val := range got {
+                    valMap[key] = val
                 }
             }
 

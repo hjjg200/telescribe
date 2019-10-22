@@ -18,7 +18,7 @@ import (
 )
 
 const (
-    monitorDataCacheExt = ".cache"
+    dataCacheExt = ".cache"
     clientConfigWatchInterval = time.Second * 5
 )
 
@@ -37,15 +37,14 @@ type ServerConfig struct { // srvCfg
     // General
     AuthPrivateKeyPath string `json:"authPrivateKeyPath"`
     ClientConfigPath string `json:"clientConfigPath"`
-        // TODO Log latest.log, 20190102.log ...
     // Http
     HttpUsername string `json:"http.username"`
-    HttpPassword string `json:"http.password"` // sha256
+    HttpPassword string `json:"http.password"` // lowercase sha256
     HttpCertFilePath string `json:"http.certFilePath"` // For TLS
     HttpKeyFilePath string `json:"http.keyFilePath"` // For TLS
     // Monitor
-    MonitorDataCacheInterval int `json:"monitor.dataCacheInterval"` // (minutes)
-    MonitorDataCacheDir string `json:"monitor.dataCacheDir"`
+    DataCacheInterval int `json:"monitor.dataCacheInterval"` // (minutes)
+    DataCacheDir string `json:"monitor.dataCacheDir"`
     MaxDataLength int `json:"monitor.maxDataLength"`
     GapThresholdTime int `json:"monitor.gapThresholdTime"` // (minutes)
     DecimationThreshold int `json:"monitor.decimationThreshold"`
@@ -85,8 +84,8 @@ var DefaultServerConfig = ServerConfig{
     HttpCertFilePath: "",
     HttpKeyFilePath: "",
     // Monitor
-    MonitorDataCacheInterval: 1,
-    MonitorDataCacheDir: "./serverCache.d",
+    DataCacheInterval: 1,
+    DataCacheDir: "./serverCache.d",
     MaxDataLength: 43200, // 30 days for 1-minute interval
     GapThresholdTime: 15,
     DecimationThreshold: 1500,
@@ -282,7 +281,7 @@ func (srv *Server) Start() (err error) {
     Logger.Infoln("Read the Cached Monitored Items")
 
     // Ensure Directories
-    Try(EnsureDirectory(srv.config.MonitorDataCacheDir))
+    Try(EnsureDirectory(srv.config.DataCacheDir))
     Logger.Infoln("Ensured Necessary Directories")
 
     // Network
@@ -294,7 +293,7 @@ func (srv *Server) Start() (err error) {
     // Flush cache thread
     go func() {
         for {
-            time.Sleep(time.Minute * time.Duration(srv.config.MonitorDataCacheInterval))
+            time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
             err := srv.CacheClientMonitorDataMap()
             if err != nil {
                 Logger.Warnln(err)
@@ -459,7 +458,7 @@ func (srv *Server) readCachedClientMonitorDataMap() (err error) {
     defer Catch(&err)
 
     matches, err := filepath.Glob(
-        srv.config.MonitorDataCacheDir + "/*" + monitorDataCacheExt,
+        srv.config.DataCacheDir + "/*" + dataCacheExt,
     )
     Try(err)
 
@@ -511,7 +510,7 @@ func (srv *Server) CacheClientMonitorDataMap() (err error) {
         for key, md := range mdMap {
             
             h  := fmt.Sprintf("%x", Sha256Sum([]byte(fullName + key)))
-            fn := srv.config.MonitorDataCacheDir + "/" + h + monitorDataCacheExt
+            fn := srv.config.DataCacheDir + "/" + h + dataCacheExt
 
             f, err2 := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644)
             if err2 != nil {

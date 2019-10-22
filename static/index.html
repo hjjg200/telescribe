@@ -25,7 +25,7 @@
           </div>
           <div class="host-body">
             <ul class="md-list">
-              <li v-for="(latest, key) in client.abs.latest" v-bind:data-key="key" v-bind:data-status="client.status(key)">
+              <li v-for="(latest, key) in client.abs.latestMap" v-bind:data-key="key" v-bind:data-status="client.status(key)">
                 <div class="label-wrap">
                   <label>
                     <input type="checkbox"

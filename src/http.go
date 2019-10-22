@@ -36,9 +36,9 @@ type WebAbsCsvBox struct { // csvBox
     DataMap map[string/* key */] string `json:"dataMap"`
 }
 type WebAbsLatest struct { // latest
-    Timestamp int64
-    Value float64
-    Status int
+    Timestamp int64 `json:"timestamp"`
+    Value float64 `json:"value"`
+    Status int `json:"status"`
 }
 
 func (srv *Server) startHttpServer() error {

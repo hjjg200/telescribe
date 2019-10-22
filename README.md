@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/badge/-mini%20project-orange) ![](https://img.shields.io/badge/created-‘19%20Sep%2016-9cf)
 
-Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and send the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each server machine has to have nothing but the executable file.
+Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and send the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each client machine has to have nothing but the executable file.
 
 And when it acts as a server, it handles connections from telescribe clients and general http clients, handling both connections on the same port. When you use a browser to connect, you'll see graphs and status of the monitored clients.
 
@@ -48,19 +48,21 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Shorten monitor keys~~
 1. ~~Compact view~~
 1. ~~Big data to csv rather than json~~
+1. Web: Collapse list when there are more than 2 clients
+1. Web: Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
+1. App.vue implementation
 1. Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting
-1. Collapse list when there are more than 2 clients
-1. Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
 1. I/O wait monitoring
 1. Per-process monitoring
-1. Roles as tags: "bar": "minecraft-server cpu memory"
-1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
 1. Intuitive type names
 1. Overall overhaul
 1. Protocol documentation
 1. Monitor documentation
+1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
+1. Roles as tags: "bar": "minecraft-server cpu memory"
+1. Log files like latest.log, 20191210.1.log.gz...
 
 ## External Libraries
 - Vue.js
