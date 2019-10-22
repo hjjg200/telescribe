@@ -4,6 +4,8 @@
 
 <script>
 
+import * as d3 from '@/include/d3.v4.js';
+
 // Static functions
 function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -25,15 +27,12 @@ function keysEqual(a, b) {
 export default {
   name: "Chart",
   data() {
-    return {
-      // public
-      client: this.$parent,
-      // private
-      _keys: [],
-      _duration: this.options.durations[0]
-    };
+    return {};
   },
   computed: {
+    client: function() {
+      return this.$parent;
+    },
     options: function() {
       return this.client.app.options
     },
@@ -41,8 +40,12 @@ export default {
       return this.client.csvBox;
     }
   },
-  beforeCreate: function() {
+  created: function() {
+    this.client.chart = this;
+    this.dataset = {};
     this._promise = this._fetch();
+    this._keys = [];
+    this._duration = this.options.durations[0];
   },
   mounted: function() {
     this._draw();
@@ -65,6 +68,8 @@ export default {
       });
       //
       await p;
+      // Scale
+      this._xScale = this._scale();
     },
 
     _draw: async function() {
@@ -81,9 +86,9 @@ export default {
       var chart = d3.select(this.$el);
       var chartDuration = this._duration;
       var chartMargin = {
-        top: Chart.remToPx(0.5),
-        left: Chart.remToPx(2.5),
-        bottom: Chart.remToPx(2)
+        top: remToPx(0.5),
+        left: remToPx(2.5),
+        bottom: remToPx(2)
       };
       var chartNode = chart.node();
       var chartRect = {
@@ -344,7 +349,7 @@ export default {
           //
           segments.selectAll(".point").style("opacity", 1);
           background.select(".focus-date text").style("opacity", 1);
-          if(hasClass(event.target, "point")) {
+          if(event.target.hasClass("point")) {
             overlay.selectAll(".tooltip").style("opacity", 1);
           }
           //
@@ -383,7 +388,7 @@ export default {
           var tx = Math.min(Math.max(mX - scrollLeft - tw/2, 0), chartRect.width - tw);
           var ty = mY < th ? mY + 5 : mY - tooltipSize.height - 5;
           tooltip.attr("transform", `translate(${tx},${ty})`);
-          if(hasClass(target, "point")) {
+          if(target.hasClass("point")) {
             //
             tooltipValue.text(target.getAttribute("data-value"));
             tooltipTimestamp.text(
@@ -431,7 +436,7 @@ export default {
         .on("mouseout", function() {
           var event = d3.event;
           background.select(".focus-date text").style("opacity", 0);
-          if(hasClass(event.target, "point")) {
+          if(event.target.hasClass("point")) {
             overlay.selectAll(".tooltip").style("opacity", 0);
           }
         })
@@ -589,7 +594,7 @@ export default {
       var projection = this._projection;
 
       // Check Changes
-      var keysChanged = !Chart.keysEqual(activeKeys, priorActiveKeys);
+      var keysChanged = !keysEqual(activeKeys, priorActiveKeys);
 
       // Info Set
       this._priorActiveKeys = activeKeys.slice(0);
