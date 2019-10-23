@@ -23,6 +23,6 @@ export default {
 </script>
 
 <style lang="scss">
-@import url('//fonts.googleapis.com/css?family=Open+Sans:400,800&display=swap"');
+@import url(//fonts.googleapis.com/css?family=Open+Sans:400,800&display=swap);
 </style>
 <style lang="scss" src="./style.scss"></style>

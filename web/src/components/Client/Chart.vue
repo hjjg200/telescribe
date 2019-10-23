@@ -106,7 +106,7 @@ export default {
       };
       var xScale = this._xScale;
       var xBoundary = d3.extent(this._boundaries);
-      var xDuration = xBoundary[1] - xBoundary[0];
+      var xDuration = xScale.duration;
       // Duration too low
       if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
       var dataWidth = chartRect.width * xDuration / chartDuration;
@@ -504,6 +504,7 @@ export default {
         $ = function(timestamp) {
           return $._(timestamp) * ($._range[1] - $._range[0]) + $._range[0];
         };
+        // Private
         $._steps = steps;
         $._lefts = lefts;
         $._boundaries = boundaries;
@@ -524,6 +525,8 @@ export default {
           // Beyond domain
           return 1 + (timestamp - $._lastT) / $._totalDuration;
         };
+        // Public
+        $.duration = duration;
         $.copy = function() {
           var copy = create();
           copy.range($._range);
