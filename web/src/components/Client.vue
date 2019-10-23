@@ -23,7 +23,7 @@
       <div class="timeframe">
         <button v-for="duration in app.options.durations"
           :key="duration" 
-          @click="chart.duration(duration)">{{ duration }}</button>
+          @click="chart.duration(duration)">{{ _shortDuration(duration) }}</button>
       </div>
       <div class="chart-wrap">
         <Chart :abstract="abstract"/>
@@ -60,6 +60,11 @@ export default {
     }();
   },
   methods: {
+
+    _shortDuration: function(t) {
+      if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
+      else return Math.round(t / 86400) + "d";
+    },
 
     status: function(key) {
       let map = this.latestMap;

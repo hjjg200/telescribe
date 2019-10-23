@@ -48,15 +48,15 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Shorten monitor keys~~
 1. ~~Compact view~~
 1. ~~Big data to csv rather than json~~
+1. ~~App.vue implementation~~
+1. ~~Intuitive type names~~
 1. Web: Collapse list when there are more than 2 clients
 1. Web: Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
-1. App.vue implementation
 1. Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting
 1. I/O wait monitoring
 1. Per-process monitoring
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Putting static data into binary
-1. Intuitive type names
 1. Overall overhaul
 1. Protocol documentation
 1. Monitor documentation

@@ -40,14 +40,24 @@ export default {
       return this.client.csvBox;
     }
   },
-  created: function() {
+  created: async function() {
+    // Public
     this.client.chart = this;
     this.dataset = {};
-    this._promise = this._fetch();
+    // Promise
+    var r;
+    this._promise = new Promise(resolve => {
+      r = resolve;
+    });
+    // Data
+    await this._fetch();
     this._keys = [];
     this._duration = this.options.durations[0];
+    // Resolve
+    r();
   },
-  mounted: function() {
+  mounted: async function() {
+    await this._promise;
     this._draw();
   },
   methods: {
@@ -73,7 +83,6 @@ export default {
     },
 
     _draw: async function() {
-      await this._promise;
 
       // Shorthand access
       var $ = this;
