@@ -1,11 +1,19 @@
 ### Alpha 0.12
 
-- [ ] **Added:** per-key format
+Focuses on the overall change of looks
+
 - [x] **Fixed:** font import error in css
 - [x] **Fixed:** x-axis tick size
 - [x] **Changed:** overall change of web layout and design
 - [x] **Changed:** web page title
+- [ ] **Changed:** web uses per-key format
 - [x] **Deprecated:** plain web resources are replaced with Vue
+
+### Alpha 0.11
+
+Focuses on more extensive use of Vue.js
+
+- [x] **Changed:** now using vue SFC
 
 ### Alpha 0.10
 
@@ -20,8 +28,11 @@
 
 - [x] **Added:** RESTful webhook about fatal status
 - [x] **Changed:** server notifies its clients when the config is changed
+- [x] **Changed:** separated client config from server config struct
 
 ### Alpha 0.8
+
+Focuses on the imporvement of chart performance by using D3.js
 
 - [x] **Added:** network metrics
 - [x] **Added:** disk metrics
@@ -33,9 +44,12 @@
 
 ### Alpha 0.6
 
+Focuses on better handling of packets and encryption
+
 - [x] **Added:** custom session protocol and handlers
 - [x] **Changed:** `package secret` now using elliptic curve and aes256gcm
 - [x] **Deprecated:** hybrid encryption with RSA and AES
+- [x] **Deprecated:** plain json packet
 
 ### Alpha 0.5
 
