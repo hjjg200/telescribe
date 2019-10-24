@@ -1,12 +1,9 @@
 {
-  "name": "webapp",
-  "version": "1.0.0",
+  "name": "telescribe",
   "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "build": "vue-cli-service build --mode production"
   },
   "keywords": [],
   "author": "",

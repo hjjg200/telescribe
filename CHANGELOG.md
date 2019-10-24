@@ -1,4 +1,7 @@
-### Alpha 0.12
+### *# Alpha 0.12*
 
-- [x] *Fixed:* font import error in css
-- [ ] *Changed:* overall change of web layout and design
+- [ ] **Added:** per-key format
+- [x] **Fixed:** font import error in css
+- [x] **Fixed:** x-axis tick size
+- [ ] **Changed:** overall change of web layout and design
+- [ ] **Changed:** web page title

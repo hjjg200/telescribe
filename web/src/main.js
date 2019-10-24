@@ -1,7 +1,14 @@
-import * as moment from '@/include/moment.js';
+
+import * as d3 from '@/lib/d3.v4.js';
+import * as moment from '@/lib/moment.js';
 
 import Vue from 'vue';
 import App from './App.vue';
+
+Vue.prototype.$d3 = d3;
+Vue.prototype.$moment = moment;
+
+//
 
 Number.prototype.date = function(str) {
   if(str === undefined) str = "DD HH:mm";

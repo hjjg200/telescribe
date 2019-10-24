@@ -4,8 +4,6 @@
 
 <script>
 
-import * as d3 from '@/include/d3.v4.js';
-
 // Static functions
 function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -68,7 +66,7 @@ export default {
       // Get boundaries
       $._boundaries = [];
       var p = new Promise(resolve => {
-        d3.csv(this.csvBox.boundaries)
+        $.$d3.csv(this.csvBox.boundaries)
           .row(function(r) {
             $._boundaries.push(+r.timestamp);
           })
@@ -92,7 +90,7 @@ export default {
       var entireDataset = this.dataset;
     
     // Vars
-      var chart = d3.select(this.$el);
+      var chart = this.$d3.select(this.$el);
       var chartDuration = this._duration;
       var chartMargin = {
         top: remToPx(0.5),
@@ -105,14 +103,15 @@ export default {
         height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
       };
       var xScale = this._xScale;
-      var xBoundary = d3.extent(this._boundaries);
-      var xDuration = xScale.duration;
+      var xBoundary = this.$d3.extent(this._boundaries);
+      var xDuration = xScale.totalDuration;
       // Duration too low
       if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
       var dataWidth = chartRect.width * xDuration / chartDuration;
-      var segNo = Math.ceil(dataWidth / chartRect.width);
       var dataHeight = chartRect.height;
-      var xTicks = segNo * 4;
+      var dw_cw = dataWidth / chartRect.width;
+      var segNo = Math.ceil(dw_cw);
+      var xTicks = Math.round(dw_cw * 4);
       var yTicks = 4;
       this._priorActiveKeys = null;
       this._dataWidth = dataWidth;
@@ -212,7 +211,7 @@ export default {
       var xAxis = segments.append("g")
         .attr("class", "axis x-axis")
         .attr("transform", `translate(0, ${chartRect.height})`)
-        .call(d3.axisBottom(xScale)
+        .call(this.$d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
           .tickFormat(function(timestamp) { return timestamp.date(); }))
@@ -335,7 +334,7 @@ export default {
       }
       { // Hand, Points and Tooltip and Touch Interface
         var bisect = function(slice, timestamp, accessor) {
-          var bs = d3.bisector(accessor).left;
+          var bs = $.$d3.bisector(accessor).left;
           var i = bs(slice, timestamp);
           var d0 = slice[i-1];
           var d1 = slice[i];
@@ -345,9 +344,9 @@ export default {
           else return timestamp - accessor(d0) > accessor(d1) - timestamp ? d1 : d0;
         };
         var mouseHandler = function() {
-          var event = d3.event;
+          var event = $.$d3.event;
           var target = event.target;
-          var mouse = d3.mouse(projection.node());
+          var mouse = $.$d3.mouse(projection.node());
           var [mX, mY] = mouse;
           var timestamp = xScale.invert(mX);
           var activeKeys = $._keys;
@@ -430,7 +429,7 @@ export default {
               event.clientX = (handX - left) + (left - lastLeft) + rect.left;
               event.clientY = rect.top + rect.height / 2;
               lastLeft = left;
-              d3.customEvent(event, mouseHandler);
+              $.$d3.customEvent(event, mouseHandler);
             }
             // Post
             setTimeout(function() {
@@ -443,7 +442,7 @@ export default {
         // Add Handlers
         chart.on("mouseover", mouseHandler)
         .on("mouseout", function() {
-          var event = d3.event;
+          var event = $.$d3.event;
           background.select(".focus-date text").style("opacity", 0);
           if(event.target.hasClass("point")) {
             overlay.selectAll(".tooltip").style("opacity", 0);
@@ -511,7 +510,6 @@ export default {
         $._tickValues = boundaries; // Default tick values
         $._firstT = firstT;
         $._lastT = lastT;
-        $._totalDuration = totalDuration;
         $._ = function(timestamp) {
           for(let i = 0; i < $._boundaries.length - 1; i++) {
             let step = $._steps[i];
@@ -519,14 +517,15 @@ export default {
             let leftT = $._boundaries[i];
             let rightT = $._boundaries[i+1];
             if(timestamp <= rightT) {
-              return (timestamp - leftT) * step / $._totalDuration + left;
+              return (timestamp - leftT) * step / $.totalDuration + left;
             }
           }
           // Beyond domain
-          return 1 + (timestamp - $._lastT) / $._totalDuration;
+          return 1 + (timestamp - $._lastT) / $.totalDuration;
         };
         // Public
         $.duration = duration;
+        $.totalDuration = totalDuration;
         $.copy = function() {
           var copy = create();
           copy.range($._range);
@@ -552,11 +551,11 @@ export default {
             let right = $._lefts[i + 1];
             let leftT = $._boundaries[i];
             if(base <= right) {
-              return (base - left) / step * $._totalDuration + leftT;
+              return (base - left) / step * $.totalDuration + leftT;
             }
           }
           // Beyond domain
-          return (x - 1) * $._totalDuration + $._lastT;
+          return (x - 1) * $.totalDuration + $._lastT;
         };
         $.ticks = function(n) {
           var tv = [];
@@ -588,7 +587,7 @@ export default {
       var $ = this;
 
       // Chart
-      var chart = d3.select(this.$el);
+      var chart = this.$d3.select(this.$el);
       var activeKeys = this._keys;
 
       var priorActiveKeys = this._priorActiveKeys;
@@ -616,7 +615,7 @@ export default {
       var scrollLeft = segmentsWrap.node().scrollLeft;
 
       // Dataset
-      var seriesName = d3.scaleOrdinal()
+      var seriesName = this.$d3.scaleOrdinal()
         .domain(activeKeys)
         .range("abcdefghijklmno".split("").map(function(a) {
           return "series-" + a;
@@ -639,7 +638,7 @@ export default {
         if($.dataset[key] === undefined) {
           $.dataset[key] = [];
           var p = new Promise(resolve => {
-            d3.csv($.csvBox.dataMap[key])
+            $.$d3.csv($.csvBox.dataMap[key])
             .row(function(r) {
               $.dataset[key].push({
                 timestamp: +r.timestamp,
@@ -655,7 +654,7 @@ export default {
         activeDataset[key] = $.dataset[key];
       }
       
-      var yBoundary = d3.extent(function() {
+      var yBoundary = this.$d3.extent(function() {
         var arr = [];
         for(let key in activeDataset) {
           var slice = activeDataset[key];
@@ -683,7 +682,7 @@ export default {
       }
 
       // Update Y Axis
-      var yScale = d3.scaleLinear()
+      var yScale = this.$d3.scaleLinear()
         .domain(yBoundary)
         .range([dataHeight, 0]);
       this._yScale = yScale;
@@ -699,7 +698,7 @@ export default {
             .append("g")
               .attr("class", "axis y-axis")
               .attr("transform", `translate(${chartMargin.left}, ${chartMargin.top})`)
-              .call(d3.axisLeft(yScale)
+              .call(this.$d3.axisLeft(yScale)
                 .ticks(yTicks)
                 .tickSize(5)
                 .tickSizeOuter(0)
@@ -720,7 +719,7 @@ export default {
       chart.select(".grid").remove();
       var grid = projection.append("g")
         .attr("class", "grid")
-        .call(d3.axisLeft(yScale)
+        .call(this.$d3.axisLeft(yScale)
           .ticks(yTicks)
           .tickSize(-dataWidth)
           .tickFormat(""));
@@ -733,7 +732,7 @@ export default {
         scrollLeft - chartWidth, scrollLeft + chartWidth
       ];
       segmentNodes.forEach(function(node) {
-        var seg = d3.select(node);
+        var seg = $.$d3.select(node);
         var start = Number(node.getAttribute("data-start"));
         var end = Number(node.getAttribute("data-end"));
         var left = Number(node.getAttribute("data-left"));
@@ -781,7 +780,7 @@ export default {
             .attr("stroke-width", 1)
             .attr("class", function(d) { return seriesName(d.key); })
             .attr("d", function(d) {
-              return d3.line()
+              return $.$d3.line()
                 .defined(function(e) { return !isNaN(e.value); })
                 .x(function(e) { return xScale(e.timestamp) })
                 .y(function(e) { return yScale(e.value) })

@@ -62,7 +62,8 @@ export default {
   methods: {
 
     _shortDuration: function(t) {
-      if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
+      if(t <= 3600) return Math.round(t / 60) + "m";
+      else if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
       else return Math.round(t / 86400) + "d";
     },
 

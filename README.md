@@ -50,7 +50,6 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Big data to csv rather than json~~
 1. ~~App.vue implementation~~
 1. ~~Intuitive type names~~
-1. Web: Collapse list when there are more than 2 clients
 1. Web: Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
 1. Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting
 1. I/O wait monitoring
