@@ -1,8 +1,7 @@
 <template>
   <li class="client">
     <div class="client-header">
-      <span class="status" :data-status="status()"></span>
-      <span>{{ fullName }}</span>
+      <span class="name">{{ fullName }}</span>
     </div>
     <div class="client-body">
       <ul class="md-list">
@@ -48,6 +47,12 @@ export default {
       latestMap: this.abstract.latestMap,
       configMap: this.abstract.configMap
     };
+  },
+  created: function() {
+    // Due to the limitations of modern JavaScript (and the abandonment of Object.observe),
+    // Vue cannot detect property addition or deletion.
+    // Vue.set or Vue.prototype.$set is required
+    this.$set(this.app.clientMap, this.fullName, this);
   },
   mounted: function() {
     var $ = this;

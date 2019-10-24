@@ -66,7 +66,7 @@ export default {
       // Get boundaries
       $._boundaries = [];
       var p = new Promise(resolve => {
-        $.$d3.csv(this.csvBox.boundaries)
+        $.$d3.csv(TELESCRIBE_HOST + this.csvBox.boundaries)
           .row(function(r) {
             $._boundaries.push(+r.timestamp);
           })
@@ -638,7 +638,7 @@ export default {
         if($.dataset[key] === undefined) {
           $.dataset[key] = [];
           var p = new Promise(resolve => {
-            $.$d3.csv($.csvBox.dataMap[key])
+            $.$d3.csv(TELESCRIBE_HOST + $.csvBox.dataMap[key])
             .row(function(r) {
               $.dataset[key].push({
                 timestamp: +r.timestamp,

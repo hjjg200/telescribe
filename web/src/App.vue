@@ -1,20 +1,27 @@
 <template>
   <div id="app">
-    <ul class="client-list">
-      <Client v-for="(client, fullName) in abstract.clientMap"
-        :key="fullName"
-        :abstract="client"/>
-    </ul>
+    <Sidebar/>
+    <div class="client-container">
+      <ul class="client-list">
+        <Client v-for="(client, fullName) in abstract.clientMap"
+          :key="fullName"
+          :abstract="client"/>
+      </ul>
+    </div>
   </div>
 </template>
 
 <script>
 import Client from './components/Client.vue';
+import Sidebar from './components/Sidebar.vue';
 export default {
   name: "App",
-  components: { Client },
+  components: {
+    Client, Sidebar
+  },
   data() {
     return {
+      clientMap: {},
       abstract: this.$root.abstract,
       options: this.$root.options
     };

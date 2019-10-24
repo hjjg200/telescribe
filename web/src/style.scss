@@ -1,4 +1,18 @@
 
+$cl-status-normal: hsl(135, 65%, 55%); /* Normal */
+$cl-status-warning: hsl(45, 95%, 55%); /* Warning */
+$cl-status-fatal: hsl(355, 75%, 55%); /* Fatal */
+
+$hue-accent1: 220;
+$cl-accent1: hsl($hue-accent1, 70%, 55%);
+$cl-control: hsl($hue-accent1, 15%, 98.5%);
+
+/* sidebar */
+$sb-zi: 1000;
+$sb-pad: 1rem;
+$sb-width: 4rem;
+$sb-width-full: 14rem;
+
 * {
     appearance: none;
     -moz-appearance: none;
@@ -14,15 +28,12 @@
 
 html, body {
     font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
-    @media screen and (max-width: 1500px) {
-        font-size: 16px;
-    }
-    @media screen and (min-width: 1500px) and (max-width: 2200px) and (min-height: 600px) {
+    font-size: 24px;
+    @media screen and (max-width: 2200px) and (min-height: 600px) {
         font-size: 20px;
     }
-    @media screen and (min-width: 2200px) and (min-height: 600px) {
-        font-size: 24px;
+    @media screen and (max-width: 1500px) {
+        font-size: 16px;
     }
     line-height: 1.5;
     margin: 0;
@@ -37,54 +48,182 @@ ul {
 
 #app {
     margin: 0 auto;
-    max-width: 60rem;
     overflow: hidden;
+    position: relative;
 }
 
-.client-list {
-    background: white;
-    line-height: 1;
-    overflow-x: visible;
-    .client-header {
-        border: 1px solid #e5e5e5;
-        padding: 0.8rem;
-        .status {
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 0;
-            width: 1rem;
-            height: 1rem;
-            &[data-status="0"] { background: hsl(135, 65%, 55%) } /* Normal */
-            &[data-status="8"] { background: hsl(45, 95%, 55%) } /* Warning */
-            &[data-status="16"] { background: hsl(355, 75%, 55%) } /* Fatal */
-        }
-        span:nth-child(2) {
-            vertical-align: top;
+/* sidebar visibility */
+#app {
+    padding-left: $sb-width;
+}
+@media screen and (max-width: 40rem) {
+    #app {
+        padding-left: 0;
+    }
+}
+
+.sidebar-wrap {
+    $h4-sz: 0.8rem;
+    /* icon size */
+    $i-sz: $sb-width - ($sb-pad * 2);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: $sb-zi;
+
+    .toggle {
+        color: darken($cl-control, 9%);
+        cursor: pointer;
+        position: absolute;
+        left: 0.5rem + $sb-width;
+        top: 0.5rem;
+        svg {
+            width: 1.3rem;
+            height: 1.3rem;
         }
     }
-    .client-body {
-        border: 1px solid #f0f0f0;
-        border-top: none;
-        border-bottom: none;
+
+    .sidebar {
+        background: #fff;
+        border-right: 1px solid darken($cl-control, 0%);
+        position: relative;
+        height: 100vh;
+        padding: $sb-pad;
+    
+        h4 {
+            color: darken($cl-control, 20%);
+            font-weight: bold;
+            font-size: $h4-sz;
+            line-height: $h4-sz;
+            letter-spacing: 0.1rem;
+            text-transform: uppercase;
+        }
+        .client-list {
+            $cl-pad-tb: 0.3rem;
+            $cl-pad-lr: $sb-pad;
+            margin-top: 0.5rem;
+            .client {
+                cursor: pointer;
+                padding: $cl-pad-tb $cl-pad-lr;
+                margin: 0 (-$sb-pad);
+                position: relative;
+    
+                &[data-status="0"] .status { background: $cl-status-normal; }
+                &[data-status="8"] .status { background: $cl-status-warning; }
+                &[data-status="16"] .status { background: $cl-status-fatal; }
+    
+                &.selected {
+                    background: $cl-accent1;
+                    color: white;
+                }
+            }
+            span {
+                line-height: $i-sz;
+            }
+            .icon {
+                background: #55bbff;
+                border-radius: 50%;
+                color: white;
+                display: inline-block;
+                width: $i-sz;
+                height: $i-sz;
+                text-align: center;
+            }
+            .status {
+                $st-sz: 0.6rem;
+                border-radius: 50%;
+                display: inline-block;
+                width: $st-sz;
+                height: $st-sz;
+                top: $cl-pad-tb + $i-sz - $st-sz;
+                left: $cl-pad-lr + $i-sz - $st-sz;
+                position: absolute;
+            }
+            .name {
+                display: inline-block;
+                margin-left: 0.5rem;
+            }
+        }
+    }
+
+    &:not(.full) {
+        .toggle {
+            left: 0.5rem + $sb-width;
+        }
+        .sidebar {
+            width: $sb-width;
+        }
+        h4 {
+            border-bottom: 1px solid darken($cl-control, 9%);
+            color: rgba(0,0,0,0);
+            line-height: 0;
+            padding-top: $h4-sz / 2;
+            margin: 0 (($sb-width - $sb-pad * 2) / 4);
+            margin-bottom: $h4-sz;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .client-list {
+            .name {
+                display: none;
+            }
+        }
+        @media screen and (max-width: 40rem) {
+            .toggle {
+                left: 0.5rem;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+    }
+    &.full {
+        .toggle {
+            left: 0.5rem + $sb-width-full;
+        }
+        .sidebar {
+            width: $sb-width-full;
+        }
+    }
+}
+
+.client-container {
+    margin-top: 2.5rem;
+    position: relative;
+    .client-list {
+        line-height: 1;
+    }
+    .client {
+        background: white;
+        &:not(.visible) {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+        }
+    }
+    .client-header {
+        padding-left: 1rem;
+        font-size: 1.5rem;
+        line-height: 2.5rem;
     }
     .timeframe {
         display: flex;
         background: white;
-        border-top: 1px solid #f6f6f6;
+        border-top: 1px solid darken($cl-control, 3%);
         border-top-style: dashed;
-        margin-top: 1rem;
         height: 2rem;
         button {
             background: none;
             border: none;
             border-radius: 0.1rem;
-            color: #bbb;
+            color: darken($cl-control, 20%);
             display: inline-block;
             font-size: 0.75rem;
             margin: 0.3rem 0 0.3rem 0.3rem;
             width: 1.8rem;
             &:hover {
-                background: #fafafa;
+                background: darken($cl-control, 1%);
             }
         }
     }
@@ -92,7 +231,11 @@ ul {
 
 .md-list {
     display: grid;
-    grid-template-columns: auto auto auto;
+    padding: 1rem 0.5rem;
+    grid-template-columns: auto auto auto auto;
+    @media screen and (max-width: 70rem) {
+        grid-template-columns: auto auto auto;
+    }
     @media screen and (max-width: 55rem) {
         grid-template-columns: auto auto;
     }
@@ -109,7 +252,7 @@ ul {
         display: grid;
         grid-template-columns: 1.3rem auto;
         &:hover {
-            background: #f8f8f8;
+            background: darken($cl-control, 1%);
         }
         .key-value-wrap {
             padding-right: 1.2rem;
@@ -117,12 +260,15 @@ ul {
         input[type="checkbox"] {
             border-radius: 0;
             display: inline-block;
-            border: 1px solid #dfdfdf;
+            border: 1px solid darken($cl-control, 3%);
             height: 0.7rem;
             width: 0.7rem;
             &:checked {
                 border: none;
             }
+        }
+        .key {
+            color: darken($cl-control, 25%);
         }
         /* STANDARD VIEW */
         @media screen and (min-width: 40rem) {
@@ -132,7 +278,6 @@ ul {
                 margin: 0.55rem 0;
             }
             .key {
-                color: #aaaaaa;
                 display: block;
                 font-size: 0.7rem;
                 line-height: 1;
@@ -156,9 +301,6 @@ ul {
                 line-height: 0;
                 margin: 0.5rem 0;
                 transform: translate(0, -0.05rem);
-            }
-            .key {
-                color: #aaaaaa;
             }
             .value {
                 white-space: nowrap;
@@ -273,10 +415,10 @@ $colors: (
             fill: rgba(0,0,0,0);
         }
         &::-webkit-scrollbar-track {
-            background: #f3f3f3;
+            background: darken($cl-control, 1%);
         }
         &::-webkit-scrollbar-thumb {
-            background: #ccc;
+            background: darken($cl-control, 6%);
             border-radius: 0.2rem;
         }
         &::-webkit-scrollbar {
@@ -286,7 +428,7 @@ $colors: (
     .grid {
         position: relative;
         &, line {
-            stroke: #eaeaea;
+            stroke: darken($cl-control, 3%);
             stroke-width: 1px;
             stroke-dasharray: 3px;
         }
@@ -295,7 +437,7 @@ $colors: (
         }
     }
     .hand {
-        stroke: #bbb;
+        stroke: darken($cl-control, 16%);
         stroke-width: 1px;
         stroke-dasharray: 3px;
     }
@@ -303,17 +445,17 @@ $colors: (
         font-family: inherit;
         font-size: 0.8rem;
         &, path, g, line {
-            fill: #eaeaea;
-            stroke: #eaeaea;
+            fill: darken($cl-control, 3%);
+            stroke: darken($cl-control, 3%);
             stroke-width: 1px;
         }
         text {
-            fill: #bbbbbb;
+            fill: darken($cl-control, 15%);
         }
     }
     .x-axis {
         .tick line {
-            stroke: #ccc;
+            stroke: darken($cl-control, 10%);
         }
         .domain {
             display: none;
@@ -339,14 +481,14 @@ $colors: (
         .tooltip {
             font-size: 0.6rem;
             .background {
-                stroke: #dadada;
+                stroke: darken($cl-control, 12%);
                 fill: white;
             }
             .timestamp {
-                fill: #bbb;
+                fill: darken($cl-control, 26%);
             }
             .value {
-                fill: #777;
+                fill: darken($cl-control, 35%);
             }
         }
     }

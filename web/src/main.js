@@ -4,9 +4,22 @@ import * as moment from '@/lib/moment.js';
 
 import Vue from 'vue';
 import App from './App.vue';
+// Font Awesome
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faArrowRight, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+library.add(faArrowRight, faArrowLeft);
+Vue.component('font-awesome-icon', FontAwesomeIcon);
 
 Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
+
+// Global
+
+// + Host for telescribe resources
+// + empty host is the same host as web
+// + this variable is for development purpose to separate npm server and telescribe server
+window.TELESCRIBE_HOST = process.env.VUE_APP_TELESCRIBE_HOST;
 
 //
 
@@ -69,13 +82,16 @@ function formatComma(x) {
 
 // MAIN
 (async function() {
-  var abstract = await fetchJson("/abstract.json");
-  var options = await fetchJson("/options.json");
+  var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
+  var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
 
   new Vue({
     data: {
       abstract: abstract,
       options: options
+    },
+    created: function() {
+      document.title = "Telescribe";
     },
     render: h => h(App)
   }).$mount("#app");
