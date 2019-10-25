@@ -147,6 +147,10 @@ export default {
           // Scroll Left and Hand X
           handX = priorHandXPercent * dataWidth;
           scrollLeft = Math.max(0, handX - chartRect.width * priorHandXEnRectPercent);
+          if(!(scrollLeft <= handX && handX <= scrollLeft + chartRect.width)) {
+            // When the hand is outside the chart
+            handX = scrollLeft + chartRect.width / 2;
+          }
         }
       }
     
@@ -638,14 +642,17 @@ export default {
         if($.dataset[key] === undefined) {
           $.dataset[key] = [];
           var p = new Promise(resolve => {
+            // Make buf so as not to invoke watchers
+            let buf = [];
             $.$d3.csv(TELESCRIBE_HOST + $.csvBox.dataMap[key])
             .row(function(r) {
-              $.dataset[key].push({
+              buf.push({
                 timestamp: +r.timestamp,
                 value: +r.value
               });
             })
             .get(undefined, function() {
+              $.dataset[key] = buf;
               resolve();
             });
           });

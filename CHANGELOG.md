@@ -2,8 +2,13 @@
 
 Focuses on the overall change of looks
 
+- [ ] **TODO:** wrap icon and status togeether
 - [x] **Fixed:** font import error in css
 - [x] **Fixed:** x-axis tick size
+- [ ] **Fixed:** made the hand to be reset to the middle, when the hand is outside the chart rect
+- [ ] **Fixed:** EOF errors
+- [ ] **Fixed:** infinite re-render bug
+- [ ] **Changed:** when writing cache files, write to temp files and rename them to minimalize the odds of files being corrupted
 - [x] **Changed:** overall change of web layout and design
 - [x] **Changed:** web page title
 - [ ] **Changed:** web uses per-key format

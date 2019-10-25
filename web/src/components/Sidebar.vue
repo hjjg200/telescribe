@@ -18,8 +18,10 @@
           :data-fullName="fullName"
           :data-status="client.status()"
           @click="select(fullName)">
-          <span class="icon">{{ fullName.substr(0, 2) }}</span>
-          <span class="status"></span>
+          <span class="icon-wrap">
+            <span class="icon">{{ fullName.substr(0, 2) }}</span>
+            <span class="status"></span>
+          </span>
           <span class="name">{{ fullName }}</span>
         </li>
       </ul>

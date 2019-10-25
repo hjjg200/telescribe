@@ -78,15 +78,12 @@ ul {
         position: absolute;
         left: 0.5rem + $sb-width;
         top: 0.5rem;
-        svg {
-            width: 1.3rem;
-            height: 1.3rem;
-        }
+        font-size: 1.3rem;
     }
 
     .sidebar {
         background: #fff;
-        border-right: 1px solid darken($cl-control, 0%);
+        border-right: 1px solid darken($cl-control, 2%);
         position: relative;
         height: 100vh;
         padding: $sb-pad;
@@ -96,7 +93,7 @@ ul {
             font-weight: bold;
             font-size: $h4-sz;
             line-height: $h4-sz;
-            letter-spacing: 0.1rem;
+            letter-spacing: 0.05rem;
             text-transform: uppercase;
         }
         .client-list {
@@ -121,6 +118,10 @@ ul {
             span {
                 line-height: $i-sz;
             }
+            .icon-wrap {
+                display: inline-block;
+                position: relative;
+            }
             .icon {
                 background: #55bbff;
                 border-radius: 50%;
@@ -136,8 +137,8 @@ ul {
                 display: inline-block;
                 width: $st-sz;
                 height: $st-sz;
-                top: $cl-pad-tb + $i-sz - $st-sz;
-                left: $cl-pad-lr + $i-sz - $st-sz;
+                bottom: 0;
+                right: 0;
                 position: absolute;
             }
             .name {
