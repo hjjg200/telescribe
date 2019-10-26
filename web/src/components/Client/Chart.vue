@@ -39,20 +39,33 @@ export default {
     }
   },
   created: async function() {
+
+    //
+    var $ = this;
+
     // Public
     this.client.chart = this;
     this.dataset = {};
+
     // Promise
     var r;
     this._promise = new Promise(resolve => {
       r = resolve;
     });
+
+    // Global Event
+    window.addEventListener("resize", function() {
+      $._resize_handler();
+    });
+
     // Data
     await this._fetch();
     this._keys = [];
     this._duration = this.options.durations[0];
+
     // Resolve
     r();
+
   },
   mounted: async function() {
     await this._promise;
@@ -326,15 +339,12 @@ export default {
         bind("scroll", segmentsWrap.node());
       }
       { // Window Resize
-        var handler;
-        var timer;
-        handler = function() {
-          clearTimeout(timer);
-          timer = setTimeout(function() {
+        $._resize_handler = function() {
+          clearTimeout($._resize_timer);
+          $._resize_timer = setTimeout(function() {
             $._draw();
-          }, 500);
+          }, 100);
         };
-        window.addEventListener("resize", handler);
       }
       { // Hand, Points and Tooltip and Touch Interface
         var bisect = function(slice, timestamp, accessor) {
@@ -421,7 +431,7 @@ export default {
           var node = segmentsWrap.node();
           var lastLeft = node.scrollLeft;
           var interval = 1;
-          handler = function(event) {
+          var handler = function handler(event) {
             // Pre
             node.removeEventListener("scroll", handler);
             // Main

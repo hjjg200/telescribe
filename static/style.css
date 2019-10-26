@@ -45,16 +45,16 @@ ul {
   overflow: hidden;
 }
 
-#host-list {
+#client-list {
   background: white;
   line-height: 1;
   overflow-x: visible;
 }
-#host-list .host-header {
+#client-list .client-header {
   border: 1px solid #e5e5e5;
   padding: 0.8rem;
 }
-#host-list .host-header .status {
+#client-list .client-header .status {
   border-radius: 50%;
   display: inline-block;
   margin-right: 0;
@@ -64,24 +64,24 @@ ul {
   /* Warning */
   /* Fatal */
 }
-#host-list .host-header .status[data-status="0"] {
+#client-list .client-header .status[data-status="0"] {
   background: #42d767;
 }
-#host-list .host-header .status[data-status="8"] {
+#client-list .client-header .status[data-status="8"] {
   background: #f9c31f;
 }
-#host-list .host-header .status[data-status="16"] {
+#client-list .client-header .status[data-status="16"] {
   background: #e23645;
 }
-#host-list .host-header span:nth-child(2) {
+#client-list .client-header span:nth-child(2) {
   vertical-align: top;
 }
-#host-list .host-body {
+#client-list .client-body {
   border: 1px solid #f0f0f0;
   border-top: none;
   border-bottom: none;
 }
-#host-list .timeframe {
+#client-list .timeframe {
   display: flex;
   background: white;
   border-top: 1px solid #f6f6f6;
@@ -89,7 +89,7 @@ ul {
   margin-top: 1rem;
   height: 2rem;
 }
-#host-list .timeframe button {
+#client-list .timeframe button {
   background: none;
   border: none;
   border-radius: 0.1rem;
@@ -99,7 +99,7 @@ ul {
   margin: 0.3rem 0 0.3rem 0.3rem;
   width: 1.8rem;
 }
-#host-list .timeframe button:hover {
+#client-list .timeframe button:hover {
   background: #fafafa;
 }
 

@@ -19,10 +19,11 @@
           </div>
         </li>
       </ul>
-      <div class="timeframe">
-        <button v-for="duration in app.options.durations"
-          :key="duration" 
-          @click="chart.duration(duration)">{{ _shortDuration(duration) }}</button>
+      <div class="chart-options">
+        <Dropdown category="Duration"
+          :items="durations"
+          :default="durations[0]"
+          @select="chart.duration($event)"/>
       </div>
       <div class="chart-wrap">
         <Chart :abstract="abstract"/>
@@ -32,10 +33,11 @@
 </template>
 
 <script>
-import Chart from './Client/Chart.vue';
+import Chart from '@/components/Client/Chart.vue';
+import Dropdown from '@/components/Dropdown.vue';
 export default {
   name: "Client",
-  components: { Chart },
+  components: { Chart, Dropdown },
   props: ['abstract'],
   data() {
     return {
@@ -47,6 +49,14 @@ export default {
       latestMap: this.abstract.latestMap,
       configMap: this.abstract.configMap
     };
+  },
+  computed: {
+    durations() {
+      var $ = this;
+      return this.app.options.durations.map(function(i) {
+        return {label: $._shortDuration(i), value: i}
+      });
+    }
   },
   created: function() {
     // Due to the limitations of modern JavaScript (and the abandonment of Object.observe),

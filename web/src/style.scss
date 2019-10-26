@@ -4,8 +4,10 @@ $cl-status-warning: hsl(45, 95%, 55%); /* Warning */
 $cl-status-fatal: hsl(355, 75%, 55%); /* Fatal */
 
 $hue-accent1: 220;
+$hue-accent2: 14;
 $cl-accent1: hsl($hue-accent1, 70%, 55%);
 $cl-control: hsl($hue-accent1, 15%, 98.5%);
+$cl-accent2: hsl($hue-accent2, 90%, 54%);
 
 /* sidebar */
 $sb-zi: 1000;
@@ -66,6 +68,7 @@ ul {
     $h4-sz: 0.8rem;
     /* icon size */
     $i-sz: $sb-width - ($sb-pad * 2);
+    $tgl-left: 0.5rem;
 
     position: fixed;
     top: 0;
@@ -76,7 +79,7 @@ ul {
         color: darken($cl-control, 9%);
         cursor: pointer;
         position: absolute;
-        left: 0.5rem + $sb-width;
+        left: $tgl-left + $sb-width;
         top: 0.5rem;
         font-size: 1.3rem;
     }
@@ -150,7 +153,7 @@ ul {
 
     &:not(.full) {
         .toggle {
-            left: 0.5rem + $sb-width;
+            left: $tgl-left + $sb-width;
         }
         .sidebar {
             width: $sb-width;
@@ -172,7 +175,7 @@ ul {
         }
         @media screen and (max-width: 40rem) {
             .toggle {
-                left: 0.5rem;
+                left: $tgl-left;
             }
             .sidebar {
                 display: none;
@@ -181,7 +184,7 @@ ul {
     }
     &.full {
         .toggle {
-            left: 0.5rem + $sb-width-full;
+            left: $tgl-left + $sb-width-full;
         }
         .sidebar {
             width: $sb-width-full;
@@ -204,27 +207,49 @@ ul {
         }
     }
     .client-header {
+        color: darken($cl-control, 35%);
         padding-left: 1rem;
         font-size: 1.5rem;
+        font-weight: bold;
         line-height: 2.5rem;
     }
-    .timeframe {
+    .chart-options {
+        $co-lh: 1.3rem;
         display: flex;
         background: white;
         border-top: 1px solid darken($cl-control, 3%);
         border-top-style: dashed;
-        height: 2rem;
-        button {
-            background: none;
-            border: none;
-            border-radius: 0.1rem;
-            color: darken($cl-control, 20%);
+        line-height: $co-lh;
+        font-size: 0.65rem;
+        & > * {
             display: inline-block;
-            font-size: 0.75rem;
-            margin: 0.3rem 0 0.3rem 0.3rem;
-            width: 1.8rem;
-            &:hover {
-                background: darken($cl-control, 1%);
+            margin: 0.6rem 0 0.6rem 0.6rem;
+        }
+        .dropdown {
+            .title-wrap, .menu-wrap {
+                border: 1px solid darken($cl-control, 3%);
+                border-radius: $co-lh / 2;
+            }
+            .title-wrap:hover {
+                border: 1px solid $cl-accent2;
+                background: $cl-accent2;
+                color: white;
+                .caret {
+                    color: white;
+                }
+            }
+            .category {
+                font-weight: normal;
+            }
+            .caret {
+                color: $cl-accent2;
+            }
+            .item:hover {
+                background: 1px solid darken($cl-control, 0%);
+            }
+            .item.selected {
+                color: $cl-accent2;
+                font-weight: bold;
             }
         }
     }
@@ -253,7 +278,7 @@ ul {
         display: grid;
         grid-template-columns: 1.3rem auto;
         &:hover {
-            background: darken($cl-control, 1%);
+            background: darken($cl-control, 0.5%);
         }
         .key-value-wrap {
             padding-right: 1.2rem;
@@ -261,7 +286,7 @@ ul {
         input[type="checkbox"] {
             border-radius: 0;
             display: inline-block;
-            border: 1px solid darken($cl-control, 3%);
+            border: 1px solid darken($cl-control, 7%);
             height: 0.7rem;
             width: 0.7rem;
             &:checked {
@@ -375,7 +400,10 @@ $colors: (
     .chart {
         overflow: visible;
         position: relative;
-        height: 11rem;
+        height: 16rem;
+        @media screen and (max-width: 55rem) {
+            height: 11rem;
+        }
         width: 100%;
         & > div {
             position: absolute;

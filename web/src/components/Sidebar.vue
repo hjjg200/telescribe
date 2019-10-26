@@ -4,8 +4,8 @@
   
     <div class="toggle"
       @click="full = !full">
-      <font-awesome-icon v-if="full" icon="arrow-left"/>
-      <font-awesome-icon v-else icon="arrow-right"/>
+      <FontAwesome v-if="full" icon="arrow-left"/>
+      <FontAwesome v-else icon="arrow-right"/>
     </div>
 
     <div class="sidebar">

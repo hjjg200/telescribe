@@ -137,3 +137,23 @@ func connCopy(dest, src net.Conn) {
     defer dest.Close()
     io.Copy(dest, src)
 }
+
+func rewriteFile(path string, rd io.Reader) error {
+
+    // Temp
+    tmpPath := path + ".tmp"
+    tmp, err := os.OpenFile(tmpPath, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+    if err != nil {
+        return err
+    }
+
+    // Copy
+    io.Copy(tmp, rd)
+    tmp.Close()
+
+    // Replace
+    // + os.Rename replaces the old file with the new one if there is any, provided
+    //   the old path does not resolve to a directory
+    return os.Rename(tmpPath, path)
+
+}

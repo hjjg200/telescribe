@@ -509,26 +509,27 @@ func (srv *Server) CacheClientMonitorDataMap() (err error) {
         
         for key, md := range mdMap {
             
-            h  := fmt.Sprintf("%x", Sha256Sum([]byte(fullName + key)))
-            fn := srv.config.DataCacheDir + "/" + h + dataCacheExt
-
-            f, err2 := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0644)
-            if err2 != nil {
-                Logger.Warnln(err2)
-                continue
-            }
-
+            // Buffer
             cmp, err2 := CompressMonitorData(md)
             if err2 != nil {
                 Logger.Warnln(err2)
                 continue
             }
 
-            enc := gob.NewEncoder(f)
+            buf := bytes.NewBuffer(nil)
+            enc := gob.NewEncoder(buf)
             enc.Encode(fullName)
             enc.Encode(key)
             enc.Encode(cmp)
-            f.Close()
+
+            // Write file
+            h  := fmt.Sprintf("%x", Sha256Sum([]byte(fullName + key)))
+            fn := srv.config.DataCacheDir + "/" + h + dataCacheExt
+            err2 = rewriteFile(fn, buf)
+            if err2 != nil {
+                Logger.Warnln(err2)
+                continue
+            }
 
         }
 
