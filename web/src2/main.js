@@ -11,11 +11,6 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 library.add(faArrowRight, faArrowLeft);
 Vue.component('FontAwesome', FontAwesomeIcon);
 
-// Personal Lib
-import UI from '@/lib/ui';
-
-Vue.use(UI);
-
 // Prototype
 Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
@@ -88,14 +83,14 @@ function formatComma(x) {
 
 // MAIN
 (async function() {
-  //var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
-  //var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
+  var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
+  var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
 
   new Vue({
-    /*data: {
+    data: {
       abstract: abstract,
       options: options
-    },*/
+    },
     created: function() {
       document.title = "Telescribe";
     },

@@ -1,0 +1,15 @@
+
+$primary: 220;
+$secondary: 5;
+
+$cl-primary: hsl($primary, 70%, 55%);
+$cl-secondary: hsl($secondary, 90%, 54%);
+$cl-ctl-border: hsl($primary, 7%, 98.5%);
+$cl-ctl-border-active: lighten($secondary, 10%);
+$cl-ctl-bg: change-color($primary, $lightness: 99%);
+$cl-ctl-bg-active: change-color($secondary, $lightness: 98.5%);
+
+$cl-text: hsl($primary, 7%, 12%);
+$cl-text-strong: $cl-secondary;
+$cl-text-vibrant: $cl-primary;
+$cl-text-light: hsl($primary, 7%, 40%);
