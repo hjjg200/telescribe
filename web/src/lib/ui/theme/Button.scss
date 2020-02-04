@@ -1,7 +1,8 @@
-button {
+.button {
+    @include control;
     background: hsl(220, 85%, 55%);
     border: none;
     color: white;
     outline: none;
-    padding: 1.3rem;
+    padding: 0.6rem 2rem;
 }

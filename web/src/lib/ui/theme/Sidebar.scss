@@ -1,0 +1,116 @@
+
+$sidebar-width: 3rem;
+$sidebar-width-wide: 16rem;
+$sidebar-padding: 0.6rem;
+$sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
+
+// wide or narrow
+.sidebar {
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: $sidebar-width;
+    .sidebar-label {
+        font-size: 0;
+        line-height: 0;
+        border-top: 1px solid #ccc;
+        margin: 0.6rem
+            0.35rem 
+            calc(0.6rem - 1px + 0.25rem)
+            0.35rem;
+    }
+
+    &.wide {
+        width: $sidebar-width-wide;
+        .wide-toggle {
+            margin-left: $sidebar-width-wide - $sidebar-width;
+        }
+        .sidebar-label {
+            font-size: 1rem;
+            line-height: 1.2rem;
+            border: none;
+            margin: 0 0 0.25rem 0;
+        }
+        .details {
+            display: inline-block;
+        }
+    }
+}
+
+// general
+.sidebar {
+    height: 100vh;
+    background: #eee; // placeholder
+    padding: $sidebar-padding;
+    position: relative;
+
+    .wide-toggle {
+        background: none;
+        border: none;
+        color: black;
+        display: inline-block;
+        font-size: 1rem;
+        outline: none;
+        padding: 0;
+        margin-bottom: 0.3rem;
+        height: $sidebar-icon-size;
+        width: $sidebar-icon-size;
+
+        &:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        &, * {
+            @include control;
+        }
+    }
+
+    .sidebar-label {
+        color: #ccc;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .sidebar-item {
+        background: none;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: center;
+        padding: 0.3rem 0;
+
+        &, * {
+            @include control;
+        }
+    }
+
+    .icon {
+        background: #e64;
+        border-radius: 50%;
+        color: white;
+        display: inline-block;
+        line-height: $sidebar-icon-size;
+        overflow: hidden;
+        height: $sidebar-icon-size;
+        flex: 0 0 $sidebar-icon-size;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .details {
+        display: none;
+        line-height: 1;
+        font-size: 0.75rem;
+        padding: 0 0.6rem;
+        strong, b {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding-bottom: 0.1rem;
+        }
+    }
+}

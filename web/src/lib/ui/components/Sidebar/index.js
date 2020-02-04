@@ -1,9 +1,9 @@
 import Sidebar from './Sidebar.vue';
 import SidebarItem from './SidebarItem.vue';
-import SidebarSeparator from './SidebarSeparator.vue';
+import SidebarLabel from './SidebarLabel.vue';
 
 export {
   Sidebar,
   SidebarItem,
-  SidebarSeparator
+  SidebarLabel
 };

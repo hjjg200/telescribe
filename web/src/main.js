@@ -4,12 +4,6 @@ import * as moment from '@/lib/moment.js';
 
 import Vue from 'vue';
 import App from './App.vue';
-// Font Awesome
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { faArrowRight, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-library.add(faArrowRight, faArrowLeft);
-Vue.component('FontAwesome', FontAwesomeIcon);
 
 // Personal Lib
 import UI from '@/lib/ui';

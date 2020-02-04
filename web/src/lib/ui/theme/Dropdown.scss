@@ -20,4 +20,8 @@
             color: $cl-text-strong;
         }
     }
+
+    &, * {
+        @include control;
+    }
 }

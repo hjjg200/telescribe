@@ -1,11 +1,11 @@
 <template>
-  <button class="button">
+  <div class="sidebar-label">
     <slot/>
-  </button>
+  </div>
 </template>
 
 <script>
 export default {
-  name: "Button"
+  name: "SidebarLabel"
 }
 </script>
