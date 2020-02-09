@@ -1,5 +1,5 @@
 <template>
-  <div class="chart"></div>
+  <article class="graph"></article>
 </template>
 
 <script>
@@ -9,43 +9,69 @@ function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
-function keysEqual(a, b) {
-  if(a === b) return true;
-  if(a == null || b == null) return false;
-  if(a.length != b.length) return false;
-  a = a.slice(0).sort();
-  b = b.slice(0).sort();
-  for (var i = 0; i < a.length; ++i) {
-      if(a[i] !== b[i]) return false;
-  }
-  return true;
-}
+/*
+graph
+- 
 
-// Exported component
+dataset [key]
+- color
+- data
+*/
+
 export default {
-  name: "Chart",
-  data() {
-    return {};
+  name: "Graph",
+  props: {
+    duration: {
+      type: Number
+    },
+    dataset: {
+      type: Object
+    },
+    xBoundary: {
+      type: Array,
+      default: undefined
+    },
   },
-  computed: {
-    client: function() {
-      return this.$parent;
+  watch: {
+    duration(oldVal, newVal) {
+
     },
-    options: function() {
-      return this.client.app.options
+    dataset(oldVal, newVal) {
+
     },
-    csvBox: function() {
-      return this.client.csvBox;
+    xBoundary(oldVal, newVal) {
+
     }
   },
-  created: async function() {
+  computed: {
+    _xBoundary() {
+      let timestamps = [];
+      if(this.xBoundary === undefined) {
+        for(let key in this.dataset) {
+          let entry = this.dataset[key];
+          for(let i = 0; i < entry.data.length; i++) {
+            timestamps.push(entry.data[i].timestamp);
+          }
+        }
+        return this.$d3.extent(timestamps);
+      }
+      return this.xBoundary;
+    },
+    keys() {
+      let ret = [];
+      this.dataset.forEach(each => {
+        ret.push(each.key);
+      });
+      return ret;
+    }
+  },
+
+  async created() {
 
     //
     var $ = this;
 
     // Public
-    this.client.chart = this;
-    this.dataset = {};
 
     // Promise
     var r;
@@ -59,22 +85,22 @@ export default {
     });
 
     // Data
-    await this._fetch();
-    this._keys = [];
-    this._duration = this.options.durations[0];
+    this._duration = this.duration;
 
     // Resolve
     r();
 
   },
-  mounted: async function() {
+
+  async mounted() {
     await this._promise;
     this._draw();
   },
-  methods: {
-    // Private
 
-    _fetch: async function() {
+  methods: {
+
+    async _fetch() {
+
       var $ = this;
       // Get boundaries
       $._boundaries = [];
@@ -91,15 +117,15 @@ export default {
       await p;
       // Scale
       this._xScale = this._scale();
+
     },
 
-    _draw: async function() {
+    async _draw() {
 
       // Shorthand access
       var $ = this;
 
       // Client-specific vars
-      var activeKeys = this._keys;
       var entireDataset = this.dataset;
     
     // Vars
@@ -116,7 +142,7 @@ export default {
         height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
       };
       var xScale = this._xScale;
-      var xBoundary = this.$d3.extent(this._boundaries);
+      var xBoundary = this._xBoundary;
       var xDuration = xScale.totalDuration;
       // Duration too low
       if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
@@ -363,8 +389,7 @@ export default {
           var mouse = $.$d3.mouse(projection.node());
           var [mX, mY] = mouse;
           var timestamp = xScale.invert(mX);
-          var activeKeys = $._keys;
-          var activeDataset = $._activeDataset;
+          var dataset = $.dataset;
           var seriesName = $._seriesName;
           var yScale = $._yScale;
           var scrollLeft = segmentsWrap.node().scrollLeft;
@@ -378,8 +403,8 @@ export default {
           var handX;
     
           // Points
-          activeKeys.forEach(function(key) {
-            var elem = bisect(activeDataset[key], timestamp, function(d) { return d.timestamp; });
+          dataset.forEach(entry => {
+            var elem = bisect(entry.data, timestamp, function(d) { return d.timestamp; });
             if(elem === undefined || isNaN(elem.value)) return;
             var cX = xScale(elem.timestamp);
             var cY = yScale(elem.value);
@@ -464,10 +489,10 @@ export default {
         })
         .on("mousemove", mouseHandler);
       }
-    
+
     },
 
-    _scale: function() {
+    _scale() {
 
       let epsilon = 1e-5;
       let boundaries = this._boundaries;
@@ -594,17 +619,14 @@ export default {
 
     },
 
-    // Public
+    async update() {
 
-    update: async function() {
-    // Shorthand
+      // Shorthand
       var $ = this;
 
       // Chart
       var chart = this.$d3.select(this.$el);
-      var activeKeys = this._keys;
 
-      var priorActiveKeys = this._priorActiveKeys;
       var xDuration = this._xDuration;
       var xBoundary = this._xBoundary;
       var chartWidth = this._width;
@@ -618,20 +640,14 @@ export default {
       var xScale = this._xScale;
       var projection = this._projection;
 
-      // Check Changes
-      var keysChanged = !keysEqual(activeKeys, priorActiveKeys);
-
-      // Info Set
-      this._priorActiveKeys = activeKeys.slice(0);
-
       // Segments
       var segmentsWrap = chart.select(".segments-wrap");
       var scrollLeft = segmentsWrap.node().scrollLeft;
 
       // Dataset
       var seriesName = this.$d3.scaleOrdinal()
-        .domain(activeKeys)
-        .range("abcdefghijklmno".split("").map(function(a) {
+        .domain(this.keys)
+        .range("abcdefghijklmnopqrstuvwxyz".split("").map(function(a) {
           return "series-" + a;
         }));
       this._seriesName = seriesName;
@@ -644,41 +660,15 @@ export default {
       ];
 
       // DATASET
-      var activeDataset = {};
-      this._activeDataset = activeDataset;
-      for(let i = 0; i < activeKeys.length; i++) {
-        let key = activeKeys[i];
-        // Process Dataset
-        if($.dataset[key] === undefined) {
-          $.dataset[key] = [];
-          var p = new Promise(resolve => {
-            // Make buf so as not to invoke watchers
-            let buf = [];
-            $.$d3.csv(TELESCRIBE_HOST + $.csvBox.dataMap[key])
-            .row(function(r) {
-              buf.push({
-                timestamp: +r.timestamp,
-                value: +r.value
-              });
-            })
-            .get(undefined, function() {
-              $.dataset[key] = buf;
-              resolve();
-            });
-          });
-          await p;
-        }
-        activeDataset[key] = $.dataset[key];
-      }
       
       var yBoundary = this.$d3.extent(function() {
         var arr = [];
-        for(let key in activeDataset) {
-          var slice = activeDataset[key];
-          slice.forEach(function(each) {
-            arr.push(each.value);
+        this.dataset.forEach(each => {
+          var data = each.data;
+          data.forEach(i => {
+            arr.push(i.value);
           });
-        }
+        });
         return arr;
       }());
       if(yBoundary[0] == undefined) {
@@ -689,14 +679,11 @@ export default {
 
       // Visible Dataset
       var visibleDataset = {};
-      for(let key in activeDataset) {
-        visibleDataset[key] = activeDataset[key].filter(function(each) {
-          if(visibleBoundary[0] <= each.timestamp && each.timestamp <= visibleBoundary[1]) {
-            return true;
-          }
-          return false;
-        });
-      }
+      this.dataset.forEach(each => {
+        visibleDataset.push(each.filter(i => {
+          return visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1];
+        }));
+      });
 
       // Update Y Axis
       var yScale = this.$d3.scaleLinear()
@@ -754,8 +741,6 @@ export default {
         var end = Number(node.getAttribute("data-end"));
         var left = Number(node.getAttribute("data-left"));
 
-        // Check Already Updated
-        if(keysChanged === false && seg.selectAll("path").size() > 0) return;
         // Erase First
         node.innerHTML = "";
 
@@ -763,25 +748,23 @@ export default {
         if(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]) {
           // to be drawn
         } else {
+          // invisible
           return;
         }
 
         // Segment Dataset
         var segDataGroups = [];
-        for(let key in visibleDataset) {
-          var values = visibleDataset[key].filter(function(each) {
-            if(start <= each.timestamp && each.timestamp <= end) {
-              return true;
-            }
-            return false;
+        visibleDataset.forEach(each => {
+          var data = each.data.filter(i => {
+            return start <= i.timestamp && i.timestamp <= end;
           });
-          if(values.length > 0) {
+          if(data.length > 0) {
             segDataGroups.push({
-              key: key,
-              values: values
+              key: each.key,
+              data: data
             });
           }
-        }
+        });
 
         // If No Data
         if(segDataGroups.length === 0) {
@@ -801,7 +784,7 @@ export default {
                 .defined(function(e) { return !isNaN(e.value); })
                 .x(function(e) { return xScale(e.timestamp) })
                 .y(function(e) { return yScale(e.value) })
-                (d.values);
+                (d.data);
             });
 
       });
@@ -812,7 +795,7 @@ export default {
         segments.selectAll(".circles circle").remove();
         var circles = segments.select(".circles");
         circles.selectAll("circles")
-            .data(activeKeys)
+            .data(this.keys)
             .enter()
             .append("circle")
               .attr("class", function(key) { return `${seriesName(key)} point`; })
@@ -822,26 +805,9 @@ export default {
               .attr("cx", -100)
               .style("opacity", 0);
       }
-    },
 
-    keys: function(arr) {
-      if(arr === undefined) return this._keys;
-      this._keys = arr;
-      this.update();
-      return this;
-    },
-
-    duration(d) {
-      if(d === undefined) return this._duration;
-      this._duration = d;
-      this._draw();
-      return this;
     }
 
   }
 }
 </script>
-
-<style lang="scss" scoped>
-
-</style>

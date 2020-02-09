@@ -1,8 +1,14 @@
 <template>
   <div class="dropdown"
+    :class="{open: open}"
     @click="open = !open"
     v-click-outside="function() {open = false;}">
-    <div class="title">{{ name }}</div>
+    <div class="title">
+      {{ selected ? selected.text : "..." }}
+    </div>
+    <div class="caret">
+      <font-awesome icon="caret-down"/>
+    </div>
     <div class="items" v-show="open">
       <slot/>
     </div>
@@ -17,12 +23,18 @@ library.add(faCaretDown);
 
 export default {
   name: "Dropdown",
-  props: ["name"],
   directives: { clickOutside: vClickOutside.directive },
   data() {
     return {
-      open: false
+      open: false,
+      selected: undefined,
+      items: []
     };
+  },
+  methods: {
+    selectItem(item) {
+      this.selected = item;
+    }
   }
 }
 </script>

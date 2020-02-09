@@ -1,89 +1,92 @@
 <template>
-  <li class="client">
-    <div class="client-header">
-      <span class="name">{{ fullName }}</span>
-    </div>
-    <div class="client-body">
-      <ul class="md-list">
-        <li v-for="(latest, key) in latestMap" :key="key" :data-status="status(key)">
-          <div class="label-wrap">
-            <label>
-              <input type="checkbox"
-                @change="update()"
-                :value="key" v-model="activeKeys">
-              <div class="key-value-wrap">
-                <span class="key">{{ key }}</span>
-                <span class="value">{{ latest.value }}</span>
-              </div>
-            </label>
-          </div>
-        </li>
-      </ul>
-      <div class="chart-options">
-        <Dropdown category="Duration"
-          :items="durations"
-          :default="durations[0]"
-          @select="chart.duration($event)"/>
-      </div>
-      <div class="chart-wrap">
-        <Chart :abstract="abstract"/>
-      </div>
-    </div>
-  </li>
+  <article class="client">
+    <h2>{{ fullName }}</h2>
+    <ul class="checkboxes">
+      <li v-for="(latest, key) in body.latestMap"
+        :key="key" :data-status="status(key)">
+        <Checkbox :value="key" v-model="activeKeys">
+          {{ key }}: {{ latest.value }}
+        </Checkbox>
+      </li>
+    </ul>
+  </article>
 </template>
 
 <script>
-import Chart from '@/components/Client/Chart.vue';
-import Dropdown from '@/components/Dropdown.vue';
 export default {
   name: "Client",
-  components: { Chart, Dropdown },
-  props: ['abstract'],
+  async created() {
+    await this.update();
+  },
+
+  props: {
+    body: {
+      type: Object
+    }
+  },
   data() {
     return {
-      app: this.$parent,
       activeKeys: [],
-      keys: Object.keys(this.abstract.latestMap),
-      fullName: this.$vnode.key,
-      csvBox: this.abstract.csvBox,
-      latestMap: this.abstract.latestMap,
-      configMap: this.abstract.configMap
+      dataset: {},
+      _xBoundary: undefined
     };
   },
   computed: {
-    durations() {
+    fullName() {
+      return this.$vnode.key;
+    }
+  },
+  watch: {
+    activeKeys(newVal, oldVal) {
       var $ = this;
-      return this.app.options.durations.map(function(i) {
-        return {label: $._shortDuration(i), value: i}
+      newVal.forEach(key => {
+        if($.dataset[key] == undefined) {
+          (async function() {
+            $.dataset[key] = [];
+            var p = new Promise(resolve => {
+              // Make buf so as not to invoke watchers
+              let buf = [];
+              $.$d3.csv(TELESCRIBE_HOST + $.body.csvBox.dataMap[key])
+              .row(function(r) {
+                buf.push({
+                  timestamp: +r.timestamp,
+                  value: +r.value
+                });
+              })
+              .get(undefined, function() {
+                $.dataset[key] = buf;
+                resolve();
+              });
+            });
+            await p;
+          })();
+        }
       });
     }
   },
-  created: function() {
-    // Due to the limitations of modern JavaScript (and the abandonment of Object.observe),
-    // Vue cannot detect property addition or deletion.
-    // Vue.set or Vue.prototype.$set is required
-    this.$set(this.app.clientMap, this.fullName, this);
-  },
-  mounted: function() {
-    var $ = this;
-    this.checkboxes = function() {
-      var obj = {};
-      $.keys.forEach(function(key) {
-        obj[key] = $.$el.querySelector(`input[type="checkbox"][value="${key.escapeQuote()}"]`);
-      });
-      return obj;
-    }();
-  },
   methods: {
+    async update() {
+      // Clean up first
+      this.dataset = {};
 
-    _shortDuration: function(t) {
-      if(t <= 3600) return Math.round(t / 60) + "m";
-      else if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
-      else return Math.round(t / 86400) + "d";
+      var $ = this;
+      // Get boundaries
+      var boundaries = [];
+      var p = new Promise(resolve => {
+        $.$d3.csv(TELESCRIBE_HOST + this.body.csvBox.boundaries)
+          .row(function(r) {
+            boundaries.push(+r.timestamp);
+          })
+          .get(undefined, function() {
+            resolve();
+          });
+      });
+      //
+      await p;
+      $._xBoundary = $.$d3.extent(boundaries);
     },
-
-    status: function(key) {
-      let map = this.latestMap;
+    status(key) {
+      let map = this.body.latestMap;
       if(key === undefined) {
         let max = -1;
         for(let key in map) {
@@ -93,18 +96,7 @@ export default {
         return max;
       }
       return map[key].status;
-    },
-
-    update: function() {
-      for(let key in this.checkboxes) {
-        let box = this.checkboxes[key];
-        var i = this.activeKeys.indexOf(box.value);
-        if(i === -1) box.className = "";
-        else box.className = i.toSeries();
-      }
-      this.chart.keys(this.activeKeys);
     }
-
   }
 }
 </script>

@@ -1,15 +1,9 @@
 
-$primary: 220;
-$secondary: 5;
-
-$cl-primary: hsl($primary, 70%, 55%);
-$cl-secondary: hsl($secondary, 90%, 54%);
-$cl-ctl-border: hsl($primary, 7%, 98.5%);
-$cl-ctl-border-active: lighten($cl-secondary, 10%);
-$cl-ctl-bg: change-color($cl-primary, $lightness: 99%);
-$cl-ctl-bg-active: change-color($cl-secondary, $lightness: 98.5%);
-
-$cl-text: hsl($primary, 7%, 12%);
-$cl-text-strong: $cl-secondary;
-$cl-text-vibrant: $cl-primary;
-$cl-text-light: hsl($primary, 7%, 40%);
+$h-accent: 5;
+$h-secondary: 220;
+$cl-accent: hsl($h-accent, 70%, 55%);
+$cl-bg: hsl($h-secondary, 70%, 98.6%);
+$cl-bg-accent: hsl($h-accent, 90%, 98.5%);
+$cl-text: hsl($h-secondary, 7%, 12%);
+$cl-text-light: hsl($h-secondary, 16%, 85%);
+$cl-text-accent: hsl($h-accent, 90%, 54%);

@@ -13,22 +13,39 @@
         </SidebarItem>
       </Sidebar>
       <section>
+        
+        <Client v-for="(client, fullName) in abstract.clientMap"
+          :key="fullName"
+          :body="client"></Client>
+        <!--
         <Button>ABC</Button>
-        <Dropdown name="fruit">
+        <Dropdown name="fruit" style="width: 300px">
           <DropdownItem value="apple">Apple</DropdownItem>
           <DropdownItem value="banana">Banana</DropdownItem>
         </Dropdown>
-        <Checkbox name="okay" value="false">Not OK</Checkbox>
+        <Checkbox color="#56e" name="okay" value="false" v-model="temp1">Not OK</Checkbox>
+        -->
       </section>
     </main>
   </div>
 </template>
 
 <script>
+import Client from '@/components/Client.vue';
 export default {
   name: "App",
+  components: {Client},
+  computed: {
+    abstract() {
+      return this.$root.abstract;
+    },
+    options() {
+      return this.$root.options;
+    }
+  },
   data() {
     return {
+      temp1: true
     };
   }
 }

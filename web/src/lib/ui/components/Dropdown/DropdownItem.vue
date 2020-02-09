@@ -1,18 +1,31 @@
 <template>
-  <div class="item">
-    <slot @click="change"/>
+  <div class="item" @click="onClick">
+    <slot/>
   </div>
 </template>
 
 <script>
 export default {
   name: "DropdownItem",
-  props: [
-    "value"
-  ],
+  props: {
+    value: {},
+    selected: {
+      type: Boolean,
+      default: false
+    }
+  },
+  created() {
+    this.$parent.items.push(this);
+  },
+  mounted() {
+    this.text = this.$el.textContent;
+    if(this.selected) {
+      this.$parent.selectItem(this);
+    }
+  },
   methods: {
-    change() {
-      this.$emit('change', this.value);
+    onClick() {
+      this.$parent.selectItem(this);
     }
   }
 }

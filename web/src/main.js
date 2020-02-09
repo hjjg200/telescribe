@@ -42,7 +42,7 @@ Number.prototype.format = function(str) {
 };
 
 Number.prototype.toSeries = function() {
-  return "series-" + "abcdefghijklmno".charAt(this);
+  return "series-" + "abcdefghijklmnopqrstuvwxyz".charAt(this);
 };
 
 String.prototype.escapeQuote = function() {
@@ -62,7 +62,7 @@ async function fetchJson(url) {
 }
 
 function getSeriesIdx(i) {
-  return "abcdefghijklmno".charAt(i - 1);
+  return "abcdefghijklmnopqrstuvwxyz".charAt(i - 1);
 }
 
 function parseNumberFormat(str) {
@@ -82,14 +82,15 @@ function formatComma(x) {
 
 // MAIN
 (async function() {
-  //var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
-  //var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
+  var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
+  var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
 
+  console.log(abstract);
   new Vue({
-    /*data: {
+    data: {
       abstract: abstract,
       options: options
-    },*/
+    },
     created: function() {
       document.title = "Telescribe";
     },

@@ -1,8 +1,10 @@
 .button {
     @include control;
-    background: hsl(220, 85%, 55%);
+    background: $cl-accent;
     border: none;
+    border-radius: 0.2rem;
     color: white;
+    font-size: 1rem;
     outline: none;
-    padding: 0.6rem 2rem;
+    padding: 0.55rem 1.6rem;
 }

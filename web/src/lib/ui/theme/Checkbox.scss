@@ -10,7 +10,9 @@
     }
 
     .mark {
-        border: 1px solid #ddd;
+        background: $cl-accent;
+        border: none;
+        color: white;
         border-radius: 0.2rem;
         display: inline-block;
         flex: 0 0 1rem;
@@ -24,11 +26,10 @@
         display: inline-block;
     }
 
-    &.checked {
+    &:not(.checked) {
         .mark {
-            border: none;
-            background: #67e;
-            color: white;
+            border: 1px solid $cl-text-light !important;
+            background: white !important;
         }
     }
 }
