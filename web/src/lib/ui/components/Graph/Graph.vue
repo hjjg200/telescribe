@@ -9,6 +9,19 @@ function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
+function keysEqual(a, b) {
+  if(a === b) return true;
+  if(a == null || b == null) return false;
+  if(a.length != b.length) return false;
+  a = a.slice(0).sort();
+  b = b.slice(0).sort();
+  for (var i = 0; i < a.length; ++i) {
+      if(a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+
 /*
 graph
 - 
@@ -21,48 +34,22 @@ dataset [key]
 export default {
   name: "Graph",
   props: {
-    duration: {
-      type: Number
-    },
-    dataset: {
-      type: Object
-    },
-    xBoundary: {
-      type: Array,
-      default: undefined
-    },
   },
   watch: {
-    duration(oldVal, newVal) {
-
+    duration(newVal) {
+      this._draw();
     },
-    dataset(oldVal, newVal) {
-
+    dataset(newVal) {
+      this.update();
     },
-    xBoundary(oldVal, newVal) {
-
+    boundaries(newVal) {
+      this._xBoundary = this.$d3.extent(newVal);
+      this._draw(true);
     }
   },
   computed: {
-    _xBoundary() {
-      let timestamps = [];
-      if(this.xBoundary === undefined) {
-        for(let key in this.dataset) {
-          let entry = this.dataset[key];
-          for(let i = 0; i < entry.data.length; i++) {
-            timestamps.push(entry.data[i].timestamp);
-          }
-        }
-        return this.$d3.extent(timestamps);
-      }
-      return this.xBoundary;
-    },
     keys() {
-      let ret = [];
-      this.dataset.forEach(each => {
-        ret.push(each.key);
-      });
-      return ret;
+      return Object.keys(this.dataset);
     }
   },
 
@@ -99,28 +86,7 @@ export default {
 
   methods: {
 
-    async _fetch() {
-
-      var $ = this;
-      // Get boundaries
-      $._boundaries = [];
-      var p = new Promise(resolve => {
-        $.$d3.csv(TELESCRIBE_HOST + this.csvBox.boundaries)
-          .row(function(r) {
-            $._boundaries.push(+r.timestamp);
-          })
-          .get(undefined, function() {
-            resolve();
-          });
-      });
-      //
-      await p;
-      // Scale
-      this._xScale = this._scale();
-
-    },
-
-    async _draw() {
+    async _draw(reset = false) {
 
       // Shorthand access
       var $ = this;
@@ -141,7 +107,7 @@ export default {
         width: chartNode.offsetWidth - chartMargin.left,
         height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
       };
-      var xScale = this._xScale;
+      var xScale = reset ? this._scale() : this._xScale;
       var xBoundary = this._xBoundary;
       var xDuration = xScale.totalDuration;
       // Duration too low
@@ -152,13 +118,12 @@ export default {
       var segNo = Math.ceil(dw_cw);
       var xTicks = Math.round(dw_cw * 4);
       var yTicks = 4;
-      this._priorActiveKeys = null;
+      this._priorKeys = null;
       this._dataWidth = dataWidth;
       this._dataHeight = dataHeight;
       this._width = chartRect.width;
       this._height = chartRect.height;
       this._margin = chartMargin;
-      this._xBoundary = xBoundary;
       this._xDuration = xDuration;
       this._yTicks = yTicks;
       this._chartDuration = chartDuration;
@@ -173,7 +138,7 @@ export default {
       var priorHandXPercent;
       {
         var segmentsWrap = chart.select(".segments-wrap");
-        if(segmentsWrap.size() > 0) {
+        if(segmentsWrap.size() > 0 && !reset) {
           prior = true;
     
           var node = segmentsWrap.node();
@@ -403,8 +368,9 @@ export default {
           var handX;
     
           // Points
-          dataset.forEach(entry => {
-            var elem = bisect(entry.data, timestamp, function(d) { return d.timestamp; });
+          for(let key in dataset) {
+            let data = dataset[key];
+            var elem = bisect(data, timestamp, function(d) { return d.timestamp; });
             if(elem === undefined || isNaN(elem.value)) return;
             var cX = xScale(elem.timestamp);
             var cY = yScale(elem.value);
@@ -418,7 +384,7 @@ export default {
             // Hand X
             if(handX === undefined) handX =  cX;
             else if(Math.abs(handX - mX) > Math.abs(cX - mX)) handX = cX;
-          });
+          }
 
           // No nearest X
           if(handX === undefined) return;
@@ -495,7 +461,7 @@ export default {
     _scale() {
 
       let epsilon = 1e-5;
-      let boundaries = this._boundaries;
+      let boundaries = this.boundaries;
       let firstT = boundaries[0];
       let lastT = boundaries[boundaries.length - 1];
       let duration = lastT - firstT;
@@ -627,6 +593,7 @@ export default {
       // Chart
       var chart = this.$d3.select(this.$el);
 
+      var priorKeys = this._priorKeys;
       var xDuration = this._xDuration;
       var xBoundary = this._xBoundary;
       var chartWidth = this._width;
@@ -639,6 +606,12 @@ export default {
       // ELements
       var xScale = this._xScale;
       var projection = this._projection;
+
+      // Check Changes
+      var keysChanged = !keysEqual(this.keys, priorKeys);
+
+      // Info Set
+      this._priorKeys = this.keys.slice(0);
 
       // Segments
       var segmentsWrap = chart.select(".segments-wrap");
@@ -663,12 +636,12 @@ export default {
       
       var yBoundary = this.$d3.extent(function() {
         var arr = [];
-        this.dataset.forEach(each => {
-          var data = each.data;
+        for(let key in this.dataset) {
+          var data = this.dataset[key];
           data.forEach(i => {
             arr.push(i.value);
           });
-        });
+        }
         return arr;
       }());
       if(yBoundary[0] == undefined) {
@@ -679,11 +652,11 @@ export default {
 
       // Visible Dataset
       var visibleDataset = {};
-      this.dataset.forEach(each => {
-        visibleDataset.push(each.filter(i => {
+      for(let key in this.dataset) {
+        visibleDataset[key] = this.dataset[key].filter(i => {
           return visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1];
-        }));
-      });
+        });
+      }
 
       // Update Y Axis
       var yScale = this.$d3.scaleLinear()

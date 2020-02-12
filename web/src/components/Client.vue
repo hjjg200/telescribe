@@ -4,11 +4,16 @@
     <ul class="checkboxes">
       <li v-for="(latest, key) in body.latestMap"
         :key="key" :data-status="status(key)">
-        <Checkbox :value="key" v-model="activeKeys">
-          {{ key }}: {{ latest.value }}
+        <Checkbox :value="key" v-model="activeKeys"
+          :class="[classLegend(key), 'legend']">
+          <span class="key">{{ key }}</span>
+          <span class="value">{{ latest.value.format() }}</span>
         </Checkbox>
       </li>
     </ul>
+    <div class="graph-wrap">
+      <Graph ref="graph"/>
+    </div>
   </article>
 </template>
 
@@ -17,6 +22,7 @@ export default {
   name: "Client",
   async created() {
     await this.update();
+    this.$refs.graph.duration = 6 * 3600;
   },
 
   props: {
@@ -27,8 +33,7 @@ export default {
   data() {
     return {
       activeKeys: [],
-      dataset: {},
-      _xBoundary: undefined
+      dataset: {}
     };
   },
   computed: {
@@ -39,10 +44,16 @@ export default {
   watch: {
     activeKeys(newVal, oldVal) {
       var $ = this;
-      newVal.forEach(key => {
+      var activeDataset = {};
+      var ensure = (i = 0) => {
+        if(i >= newVal.length) {
+          $.$refs.graph.dataset = activeDataset;
+          return;
+        }
+
+        var key = newVal[i];
         if($.dataset[key] == undefined) {
           (async function() {
-            $.dataset[key] = [];
             var p = new Promise(resolve => {
               // Make buf so as not to invoke watchers
               let buf = [];
@@ -54,17 +65,29 @@ export default {
                 });
               })
               .get(undefined, function() {
-                $.dataset[key] = buf;
+                // $set so as to make watchers work
+                $.$set($.dataset, key, buf);
                 resolve();
               });
             });
             await p;
+            activeDataset[key] = $.dataset[key];
+            ensure(++i);
           })();
+        } else {
+          activeDataset[key] = $.dataset[key];
+          ensure(++i);
         }
-      });
+      };
+
+      ensure();
     }
   },
   methods: {
+    classLegend(key) {
+      var i = this.activeKeys.indexOf(key);
+      return i.toSeries();
+    },
     async update() {
       // Clean up first
       this.dataset = {};
@@ -83,7 +106,7 @@ export default {
       });
       //
       await p;
-      $._xBoundary = $.$d3.extent(boundaries);
+      $.$refs.graph.boundaries = boundaries;
     },
     status(key) {
       let map = this.body.latestMap;

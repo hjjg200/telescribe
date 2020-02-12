@@ -1,0 +1,30 @@
+{
+  "authPrivateKeyPath": "./.serverAuth.priv",
+  "clientConfigPath": "./clientConfig.json",
+  "http.username": "user",
+  "http.password": "",
+  "http.certFilePath": "",
+  "http.keyFilePath": "",
+  "monitor.dataCacheInterval": 1,
+  "monitor.dataCacheDir": "./serverCache.d",
+  "monitor.maxDataLength": 43200,
+  "monitor.gapThresholdTime": 15,
+  "monitor.decimationThreshold": 1500,
+  "monitor.decimationInterval": 10,
+  "web": {
+    "durations": [
+      10800,
+      43200,
+      259200,
+      604800,
+      2592000
+    ],
+    "format.number": "{e+0.2f}",
+    "format.date.long": "DD HH:mm",
+    "format.date.short": "MM/DD"
+  },
+  "network.bind": "127.0.0.1",
+  "network.port": 1226,
+  "network.tickrate": 60,
+  "alarm.webhookUrl": ""
+}

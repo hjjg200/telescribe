@@ -31,11 +31,12 @@ $dropdown-caret-width: 2.5rem;
         transform: translateY(50%);
     }
     .items {
-        border-top-color: $cl-accent;
+        border-top-color: $cl-text-accent;
         position: absolute;
         transform: translateY(-1px)
             translateX(1px);
-        width: calc(100% - 2px)
+        width: calc(100% - 2px);
+        z-index: 10000;
     }
     .item {
         padding: 0.4rem 1.3rem;
@@ -50,7 +51,7 @@ $dropdown-caret-width: 2.5rem;
 
     &.open {
         .title {
-            border-color: $cl-accent;
+            border-color: $cl-text-accent;
         }
     }
 

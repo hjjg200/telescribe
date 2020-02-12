@@ -1,9 +1,10 @@
 
 $h-accent: 5;
 $h-secondary: 220;
-$cl-accent: hsl($h-accent, 70%, 55%);
-$cl-bg: hsl($h-secondary, 70%, 98.6%);
-$cl-bg-accent: hsl($h-accent, 90%, 98.5%);
+
+$cl-bg: hsl($h-secondary, 15%, 95.6%);
+$cl-bg-accent: hsl($h-accent, 100%, 95%);
+$cl-bg-light: hsl($h-secondary, 15%, 97%);
 $cl-text: hsl($h-secondary, 7%, 12%);
-$cl-text-light: hsl($h-secondary, 16%, 85%);
 $cl-text-accent: hsl($h-accent, 90%, 54%);
+$cl-text-light: hsl($h-secondary, 16%, 85%);

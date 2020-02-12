@@ -12,7 +12,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     .sidebar-label {
         font-size: 0;
         line-height: 0;
-        border-top: 1px solid #ccc;
+        border-top: 1px solid $cl-text-light;
         margin: 0.6rem
             0.35rem 
             calc(0.6rem - 1px + 0.25rem)
@@ -39,7 +39,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
 // general
 .sidebar {
     height: 100vh;
-    background: #eee; // placeholder
+    background: $cl-bg; // placeholder
     padding: $sidebar-padding;
     position: relative;
 
@@ -65,7 +65,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     }
 
     .sidebar-label {
-        color: #ccc;
+        color: $cl-text-light;
         font-weight: bold;
         text-transform: uppercase;
     }
@@ -87,7 +87,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     }
 
     .icon {
-        background: #e64;
+        background: $cl-text-accent;
         border-radius: 50%;
         color: white;
         display: inline-block;

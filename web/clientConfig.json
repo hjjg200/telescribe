@@ -1,0 +1,35 @@
+{
+  "hosts": {
+    "127.0.0.1": {
+      "default": "example",
+      "foo": "bar"
+    }
+  },
+  "roles": {
+    "bar": {
+      "monitorConfigMap": {
+        "memory-usage": {
+          "fatalRange": "",
+          "warningRange": "",
+          "format": "Using {.0f}%"
+        },
+        "swap-usage": {
+          "fatalRange": "",
+          "warningRange": "",
+          "format": ""
+        }
+      },
+      "monitorInterval": 60
+    },
+    "example": {
+      "monitorConfigMap": {
+        "cpu-usage": {
+          "fatalRange": "80:",
+          "warningRange": "50:",
+          "format": "{.1f}%"
+        }
+      },
+      "monitorInterval": 60
+    }
+  }
+}

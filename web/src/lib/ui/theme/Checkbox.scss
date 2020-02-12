@@ -9,11 +9,15 @@
         @include control;
     }
 
+    input {
+        display: none;
+    }
+
     .mark {
-        background: $cl-accent;
+        background: $cl-bg-accent;
         border: none;
-        color: white;
         border-radius: 0.2rem;
+        color: $cl-text-accent;
         display: inline-block;
         flex: 0 0 1rem;
         font-size: 0.65rem;

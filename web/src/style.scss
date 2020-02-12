@@ -1,4 +1,8 @@
 
+@import '@/lib/ui/theme/colors.scss';
+
+$main-padding: 1.3rem;
+
 * {
     appearance: none;
     -moz-appearance: none;
@@ -25,14 +29,49 @@ main {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
+    height: 100vh;
     & > section {
-        padding: 1.3rem;
+        padding: $main-padding;
         width: 100%;
+        overflow: auto;
     }
 }
 
 .client {
     .checkboxes {
         list-style: none;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        .checkbox {
+            padding: .1rem .4rem;
+            border-radius: .3rem;
+            &.checked {
+                color: white;
+                .key {
+                    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.33);
+                    color: rgba(255, 255, 255, 0.7);
+                }
+                .value {
+                    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+                }
+            }
+        }
+        li {
+            flex: 0 0 16rem;
+            margin: .1rem .2rem;
+        }
+        .key, .value {
+            line-height: 1.15rem;
+            font-size: 1rem;
+        }
+        .key {
+            color: darken($cl-text-light, 20%);
+            margin-right: 0.3rem;
+        }
+    }
+
+    .graph-wrap {
+        margin: 1.3rem 0 1.3rem (-$main-padding);
     }
 }
