@@ -44,8 +44,16 @@ export default {
     },
     boundaries(newVal) {
       this._xBoundary = this.$d3.extent(newVal);
+      this._xScale = this._scale();
       this._draw(true);
     }
+  },
+  data() {
+    return {
+      duration: 86400,
+      dataset: {},
+      boundaries: undefined
+    };
   },
   computed: {
     keys() {
@@ -71,9 +79,6 @@ export default {
       $._resize_handler();
     });
 
-    // Data
-    this._duration = this.duration;
-
     // Resolve
     r();
 
@@ -81,7 +86,6 @@ export default {
 
   async mounted() {
     await this._promise;
-    this._draw();
   },
 
   methods: {
@@ -90,13 +94,10 @@ export default {
 
       // Shorthand access
       var $ = this;
-
-      // Client-specific vars
-      var entireDataset = this.dataset;
     
     // Vars
       var chart = this.$d3.select(this.$el);
-      var chartDuration = this._duration;
+      var chartDuration = this.duration;
       var chartMargin = {
         top: remToPx(0.5),
         left: remToPx(2.5),
@@ -107,7 +108,7 @@ export default {
         width: chartNode.offsetWidth - chartMargin.left,
         height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
       };
-      var xScale = reset ? this._scale() : this._xScale;
+      var xScale = this._xScale;
       var xBoundary = this._xBoundary;
       var xDuration = xScale.totalDuration;
       // Duration too low
@@ -636,8 +637,8 @@ export default {
       
       var yBoundary = this.$d3.extent(function() {
         var arr = [];
-        for(let key in this.dataset) {
-          var data = this.dataset[key];
+        for(let key in $.dataset) {
+          var data = $.dataset[key];
           data.forEach(i => {
             arr.push(i.value);
           });
@@ -727,17 +728,17 @@ export default {
 
         // Segment Dataset
         var segDataGroups = [];
-        visibleDataset.forEach(each => {
-          var data = each.data.filter(i => {
+        for(let key in visibleDataset) {
+          let data = visibleDataset[key].filter(i => {
             return start <= i.timestamp && i.timestamp <= end;
           });
           if(data.length > 0) {
             segDataGroups.push({
-              key: each.key,
+              key: key,
               data: data
             });
           }
-        });
+        }
 
         // If No Data
         if(segDataGroups.length === 0) {

@@ -22,7 +22,6 @@ export default {
   name: "Client",
   async created() {
     await this.update();
-    this.$refs.graph.duration = 6 * 3600;
   },
 
   props: {
@@ -106,6 +105,7 @@ export default {
       });
       //
       await p;
+      $.$refs.graph.duration = 6 * 3600;
       $.$refs.graph.boundaries = boundaries;
     },
     status(key) {
