@@ -3,12 +3,10 @@
     <main>
       <Sidebar>
         <SidebarLabel>Hosts</SidebarLabel>
-        <SidebarItem>
-          <strong>Title</strong>
-          Details
-        </SidebarItem>
-        <SidebarItem>
-          <strong>Abcd</strong>
+        <SidebarItem v-for="(client, fullName) in abstract.clientMap"
+          :key="fullName"
+          @click="visibleClient = fullName">
+          <strong>{{ fullName }}</strong>
           Details
         </SidebarItem>
       </Sidebar>
@@ -16,15 +14,8 @@
         
         <Client v-for="(client, fullName) in abstract.clientMap"
           :key="fullName"
-          :body="client"></Client>
-        <!--
-        <Button>ABC</Button>
-        <Dropdown name="fruit" style="width: 300px">
-          <DropdownItem value="apple">Apple</DropdownItem>
-          <DropdownItem value="banana">Banana</DropdownItem>
-        </Dropdown>
-        <Checkbox color="#56e" name="okay" value="false" v-model="temp1">Not OK</Checkbox>
-        -->
+          :body="client"
+          :class="{visible: (visibleClient === fullName)}"></Client>
       </section>
     </main>
   </div>
@@ -45,7 +36,7 @@ export default {
   },
   data() {
     return {
-      temp1: true
+      visibleClient: undefined
     };
   }
 }

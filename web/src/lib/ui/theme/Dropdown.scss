@@ -4,18 +4,30 @@ $dropdown-caret-width: 2.5rem;
 .dropdown {
     position: relative;
 
-    .title, .items {
+    .button, .items {
         background: white;
         border: 1px solid $cl-text-light;
         color: $cl-text;
     }
-    .title {
+    .button {
         border-radius: 0.2rem;
         padding: 0.35rem 
             1.1rem + $dropdown-caret-width
             0.35rem
             1.1rem;
         position: relative;
+        display: flex;
+        flex-wrap: nowrap;
+        flex-direction: row;
+        align-items: center;
+        span {
+            display: inline-block;
+            flex: 0 0 auto;
+        }
+        .title {
+            color: $cl-text-light;
+            margin-right: 0.5rem;
+        }
     }
     .caret {
         color: $cl-text;
@@ -50,7 +62,7 @@ $dropdown-caret-width: 2.5rem;
     }
 
     &.open {
-        .title {
+        .button {
             border-color: $cl-text-accent;
         }
     }

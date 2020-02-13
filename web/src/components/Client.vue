@@ -11,6 +11,14 @@
         </Checkbox>
       </li>
     </ul>
+    <div class="options-wrap">
+      <Dropdown ref="durations" name="duration" @change="onDurationChange">
+        <DropdownLabel>Duration</DropdownLabel>
+        <DropdownItem v-for="(duration, i) in $root.options.durations"
+          :key="i" :value="duration"
+          :selected="i == 0">{{ formatDuration(duration) }}</DropdownItem>
+      </Dropdown>
+    </div>
     <div class="graph-wrap">
       <Graph ref="graph"/>
     </div>
@@ -21,7 +29,12 @@
 export default {
   name: "Client",
   async created() {
-    await this.update();
+    this.update();
+  },
+  async mounted() {
+    await this.createPromise;
+    this.$refs.durations.selectIndex(0);
+    this.$refs.graph.boundaries = this.boundaries;
   },
 
   props: {
@@ -94,19 +107,16 @@ export default {
       var $ = this;
       // Get boundaries
       var boundaries = [];
-      var p = new Promise(resolve => {
+      this.createPromise = new Promise(resolve => {
         $.$d3.csv(TELESCRIBE_HOST + this.body.csvBox.boundaries)
           .row(function(r) {
             boundaries.push(+r.timestamp);
           })
           .get(undefined, function() {
+            $.boundaries = boundaries;
             resolve();
           });
       });
-      //
-      await p;
-      $.$refs.graph.duration = 6 * 3600;
-      $.$refs.graph.boundaries = boundaries;
     },
     status(key) {
       let map = this.body.latestMap;
@@ -119,6 +129,14 @@ export default {
         return max;
       }
       return map[key].status;
+    },
+    formatDuration(t) {
+      if(t <= 3600) return Math.round(t / 60) + "m";
+      else if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
+      else return Math.round(t / 86400) + "d";
+    },
+    onDurationChange(val) {
+      this.$refs.graph.duration = val;
     }
   }
 }

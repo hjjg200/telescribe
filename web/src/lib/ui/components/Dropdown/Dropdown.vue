@@ -3,8 +3,9 @@
     :class="{open: open}"
     @click="open = !open"
     v-click-outside="function() {open = false;}">
-    <div class="title">
-      {{ selected ? selected.text : "..." }}
+    <div class="button">
+      <span v-if="title !== ''" class="title">{{ title }}</span>
+      <span class="value">{{ selected ? selected.text : "..." }}</span>
     </div>
     <div class="caret">
       <font-awesome icon="caret-down"/>
@@ -28,12 +29,17 @@ export default {
     return {
       open: false,
       selected: undefined,
-      items: []
+      items: [],
+      title: ""
     };
   },
   methods: {
     selectItem(item) {
       this.selected = item;
+      this.$emit("change", item.value);
+    },
+    selectIndex(i) {
+      this.selectItem(this.items[i]);
     }
   }
 }

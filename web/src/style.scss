@@ -38,6 +38,11 @@ main {
 }
 
 .client {
+    &:not(.visible) {
+        opacity: 0;
+        height: 0;
+        overflow: hidden;
+    }
     .checkboxes {
         list-style: none;
         display: flex;
@@ -71,6 +76,12 @@ main {
         }
     }
 
+    .options-wrap {
+        margin: 1rem 0;
+        .dropdown {
+            display: inline-block;
+        }
+    }
     .graph-wrap {
         margin: 1.3rem 0 1.3rem (-$main-padding);
     }
