@@ -10,7 +10,7 @@ Focuses on the overall change of looks
 - [x] **Fixed:** `web` made the hand to be reset to the middle, when the hand is outside the chart rect
 - [ ] **Fixed:** `web` infinite re-render bug
 - [ ] **Fixed:** `server` EOF errors
-- [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to caching
+- [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
 - [x] **Changed:** `server` when writing cache files, write to temp files and rename them to minimalize the odds of files being corrupted
 - [x] **Changed:** `web` 1 overall change of web layout and design
 - [x] **Changed:** `web` page title

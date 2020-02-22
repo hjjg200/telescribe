@@ -11,7 +11,10 @@ import (
     netUrl "net/url"
     "os"
     "path"
+    "regexp"
     "strings"
+    "sync"
+    "time"
 
     . "github.com/hjjg200/go-act"
 )
@@ -54,6 +57,7 @@ func (srv *Server) startHttpServer() error {
         Addr: srv.HttpAddr(),
         Handler: srv,
     }
+    srv.populateHttpRouter()
 
     // Password
     if srv.config.HttpPassword == "" {
@@ -98,6 +102,9 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(401)
         return
     }
+
+    srv.httpRouter.ServeHTTP(w, r)
+    return
 
     // Methods
     serveStatic := func(u string) {
@@ -209,3 +216,129 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
     }
 }
+
+////////////////
+//-- Router --//
+////////////////
+
+type httpRouter struct {
+    // [regexp] => [method] => route
+    routes map[*regexp.Regexp] map[string] func(HttpRequest)
+}
+
+var httpRouteRegexps = make(map[string] *regexp.Regexp)
+
+type HttpRequest struct {
+    Body *http.Request
+    Writer http.ResponseWriter
+    Matches []string
+}
+
+func(srv *Server) populateHttpRouter() {
+
+    hr := &httpRouter{
+        routes: make(map[*regexp.Regexp] map[string] func(HttpRequest)),
+    }
+    srv.httpRouter = hr
+
+    // Functions
+    type staticCache struct {
+        name string
+        modTime time.Time
+        bytes []byte
+    }
+    staticCacheMap := make(map[string] staticCache)
+    staticCacheMu  := sync.Mutex{}
+    serveStatic := func(req HttpRequest) {
+
+        defer func() {
+            r := recover()
+            if r != nil {
+                req.Writer.WriteHeader(404)
+                Logger.Warnln(r)
+            }
+        }()
+
+        fp := req.Body.URL.Path[1:]
+        cache, ok := staticCacheMap[fp]
+        if !ok {
+            Assert(strings.HasPrefix(fp, "static/"), "Static file path must start with static/")
+            Assert(strings.Contains("/" + fp, "/../") == false, "File path must not have .. in it")
+            f, err := os.OpenFile(fp, os.O_RDONLY, 0644); Try(err)
+            st, err := f.Stat(); Try(err)
+            buf := bytes.NewBuffer(nil)
+            io.Copy(buf, f)
+            cache = staticCache{
+                name: f.Name(),
+                modTime: st.ModTime(),
+                bytes: buf.Bytes(),
+            }
+            f.Close()
+            staticCacheMu.Lock()
+            staticCacheMap[fp] = cache
+            staticCacheMu.Unlock()
+            Logger.Infoln("Cached a static file:", fp)
+        }
+        http.ServeContent(req.Writer, req.Body, cache.name, cache.modTime, bytes.NewReader(cache.bytes))
+
+    }
+
+    hr.Get("/(index.html)?", func(req HttpRequest) {
+        req.Body.URL.Path = "/static/index.html"
+        serveStatic(req)
+    })
+    hr.Get("/static/(.+)", serveStatic)
+    hr.Get("/abstract.json", func(req HttpRequest) {})
+    hr.Get("/monitorDataTableBox/([^/]+)/([^/]+)", func(req HttpRequest) {
+        fmt.Fprintln(req.Writer, req.Matches)
+    })
+}
+
+func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    for rgx, handlers := range hr.routes {
+        matches := rgx.FindStringSubmatch(r.URL.Path)
+        if matches == nil {
+            continue
+        }
+        handler, ok := handlers[r.Method]
+        if !ok {
+            return
+        }
+        handler(HttpRequest{
+            Body: r,
+            Writer: w,
+            Matches: matches,
+        })
+    }
+}
+
+func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error {
+
+    // Find cached regexp
+    rgx, ok := httpRouteRegexps[rstr]
+    if !ok {
+        var err error
+        rgx, err = regexp.Compile(rstr)
+        if err != nil {
+            return err
+        }
+    }
+
+    // Check existence
+    if _, ok := hr.routes[rgx]; !ok {
+        hr.routes[rgx] = make(map[string] func(HttpRequest))
+    }
+
+    // Add a rotue
+    m = strings.ToUpper(m) // e.g.) get => GET
+    hr.routes[rgx][m] = h
+
+    return nil
+
+}
+
+func(hr *httpRouter) Get(rstr string, h func(HttpRequest)) { hr.addRoute("GET", rstr, h) }
+func(hr *httpRouter) Post(rstr string, h func(HttpRequest)) { hr.addRoute("POST", rstr, h) }
+func(hr *httpRouter) Patch(rstr string, h func(HttpRequest)) { hr.addRoute("PATCH", rstr, h) }
+func(hr *httpRouter) Delete(rstr string, h func(HttpRequest)) { hr.addRoute("DELETE", rstr, h) }
+

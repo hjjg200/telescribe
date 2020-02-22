@@ -31,6 +31,7 @@ type Server struct { // srv
     clientConfigVersion map[string/* fullName */] string
     clientMonitorDataTableBox map[string/* fullName */] MonitorDataTableBox
     clientMonitorDataMap map[string/* fullName */] MonitorDataMap
+    httpRouter *httpRouter
 }
 
 type ServerConfig struct { // srvCfg
@@ -390,6 +391,7 @@ func (srv *Server) Start() (err error) {
             }
             // Assign
             srv.clientMonitorDataTableBox = tBoxMap
+            Logger.Debugln("Chart data prepared")
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
         }()}
     }()
