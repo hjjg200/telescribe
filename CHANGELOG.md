@@ -1,20 +1,25 @@
+### Alpha 0.13
+
+Overall refinement
+
+- [ ] **Added:** `web` debug mode for time measuring
+- [ ] **Fixed:** `web` infinite re-render bug
+- [ ] **Fixed:** `server` EOF errors
+- [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
+- [ ] **Changed:** `web` uses per-key format
+
 ### Alpha 0.12
 
 Focuses on the overall change of looks
 
 - [x] **TODO:** `web` wrap icon and status togeether
-- [ ] **Added:** `web` debug mode for time measuring
 - [x] **Added:** `web` dropdown component
 - [x] **Fixed:** `web` font import error in css
 - [x] **Fixed:** `web` x-axis tick size
 - [x] **Fixed:** `web` made the hand to be reset to the middle, when the hand is outside the chart rect
-- [ ] **Fixed:** `web` infinite re-render bug
-- [ ] **Fixed:** `server` EOF errors
-- [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
 - [x] **Changed:** `server` when writing cache files, write to temp files and rename them to minimalize the odds of files being corrupted
-- [x] **Changed:** `web` 1 overall change of web layout and design
+- [x] **Changed:** `web` overall change of web layout and design
 - [x] **Changed:** `web` page title
-- [ ] **Changed:** `web` uses per-key format
 - [x] **Deprecated:** `web` plain web resources are replaced with Vue
 
 ### Alpha 0.11

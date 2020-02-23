@@ -104,117 +104,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }
 
     srv.httpRouter.ServeHTTP(w, r)
-    return
 
-    // Methods
-    serveStatic := func(u string) {
-        defer func() {
-            r := recover()
-            if r != nil {
-                w.WriteHeader(404)
-            }
-        }()
-        Assert(strings.HasPrefix(u, "/static/"), "Wrong static path")
-        fp := u[1:]
-        f, err := os.OpenFile(fp, os.O_RDONLY, 0644)
-        Try(err)
-        defer f.Close()
-        st, err := f.Stat()
-        Try(err)
-        http.ServeContent(w, r, f.Name(), st.ModTime(), f)
-    }
-
-    url := r.URL.Path
-    stripPrefix := func (s string) bool {
-        if strings.HasPrefix(url, s) {
-            url = url[len(s):]
-            return true
-        }
-        return false
-    }
-
-    // Routes
-    const (
-        prefixMdtBox = "/monitorDataTableBox/"
-    )
-    switch {
-    default:
-        serveStatic(url)
-        return
-    case url == "/":
-        serveStatic("/static/index.html")
-    case url == "/abstract.json":
-
-        w.Header().Set("content-type", "application/json")
-        enc       := json.NewEncoder(w)
-        clientMap := make(map[string/* fullName */] WebAbsClient)
-        for fullName, mdMap := range srv.clientMonitorDataMap {
-            efn     := netUrl.QueryEscape(fullName)
-            csvBds  := prefixMdtBox + efn + "/_boundaries.csv"
-            csvMap  := make(map[string/* key */] string)
-            latest  := make(map[string/* key */] WebAbsLatest)
-            cfgMap  := make(map[string/* key */] MonitorConfig)
-            for key, md := range mdMap {
-                mCfg := srv.getMonitorConfig(fullName, key)
-                le   := md[len(md) - 1]
-                csvMap[key] = prefixMdtBox + efn + "/" + netUrl.QueryEscape(key) + ".csv"
-                latest[key]  = WebAbsLatest{
-                    Timestamp: le.Timestamp,
-                    Status:    mCfg.StatusOf(le.Value),
-                    Value:     le.Value,
-                }
-                cfgMap[key] = mCfg
-            }
-            //
-            clientMap[fullName] = WebAbsClient{
-                CsvBox: WebAbsCsvBox{
-                    Boundaries: csvBds,
-                    DataMap: csvMap,
-                },
-                LatestMap: latest,
-                ConfigMap: cfgMap,
-            }
-        }
-        abs := WebAbstract{
-            ClientMap: clientMap,
-        }
-        enc.Encode(abs)
-
-    case url == "/options.json":
-
-        w.Header().Set("content-type", "application/json")
-        enc := json.NewEncoder(w)
-        enc.Encode(srv.config.Web)
-
-    case stripPrefix(prefixMdtBox):
-
-        split := strings.Split(url, "/")
-        Assert(len(split) == 2, "Wrong monitor data url")
-        fullName, err := netUrl.QueryUnescape(split[0])
-        Try(err)
-        base, err     := netUrl.QueryUnescape(split[1])
-        Try(err)
-
-        // CSV
-        Assert(path.Ext(base) == ".csv", "Non-csv request")
-        key := base[:len(base) - 4]
-        w.Header().Set("content-type", "text/csv")
-
-        //
-        mdtBox := srv.clientMonitorDataTableBox[fullName]
-        switch key {
-        case "_boundaries":
-            bds := mdtBox.Boundaries
-            rd  := bytes.NewReader(bds)
-            io.Copy(w, rd)
-        default:
-            mdt, ok := mdtBox.DataMap[key]
-            Assert(ok, "Monitor data not found")
-            rd := bytes.NewReader(mdt)
-            io.Copy(w, rd)
-        }
-
-    }
 }
 
 ////////////////
@@ -240,6 +130,11 @@ func(srv *Server) populateHttpRouter() {
         routes: make(map[*regexp.Regexp] map[string] func(HttpRequest)),
     }
     srv.httpRouter = hr
+
+    // Constants
+    const (
+        prefixMdtBox = "/monitorDataTableBox/"
+    )
 
     // Functions
     type staticCache struct {
@@ -288,27 +183,87 @@ func(srv *Server) populateHttpRouter() {
         serveStatic(req)
     })
     hr.Get("/static/(.+)", serveStatic)
-    hr.Get("/abstract.json", func(req HttpRequest) {})
-    hr.Get("/monitorDataTableBox/([^/]+)/([^/]+)", func(req HttpRequest) {
-        fmt.Fprintln(req.Writer, req.Matches)
+    hr.Get("/options.json", func(req HttpRequest) {
+        req.Writer.Header().Set("content-type", "application/json")
+        enc := json.NewEncoder(req.Writer)
+        enc.Encode(srv.config.Web)
+    })
+    hr.Get("/abstract.json", func(req HttpRequest) {
+        w := req.Writer
+        w.Header().Set("content-type", "application/json")
+        enc       := json.NewEncoder(w)
+        clientMap := make(map[string/* fullName */] WebAbsClient)
+        for fullName, mdMap := range srv.clientMonitorDataMap {
+            efn     := netUrl.QueryEscape(fullName)
+            csvBds  := prefixMdtBox + efn + "/_boundaries.csv"
+            csvMap  := make(map[string/* key */] string)
+            latest  := make(map[string/* key */] WebAbsLatest)
+            cfgMap  := make(map[string/* key */] MonitorConfig)
+            for key, md := range mdMap {
+                mCfg := srv.getMonitorConfig(fullName, key)
+                le   := md[len(md) - 1]
+                csvMap[key] = prefixMdtBox + efn + "/" + netUrl.QueryEscape(key) + ".csv"
+                latest[key]  = WebAbsLatest{
+                    Timestamp: le.Timestamp,
+                    Status:    mCfg.StatusOf(le.Value),
+                    Value:     le.Value,
+                }
+                cfgMap[key] = mCfg
+            }
+            //
+            clientMap[fullName] = WebAbsClient{
+                CsvBox: WebAbsCsvBox{
+                    Boundaries: csvBds,
+                    DataMap: csvMap,
+                },
+                LatestMap: latest,
+                ConfigMap: cfgMap,
+            }
+        }
+        abs := WebAbstract{
+            ClientMap: clientMap,
+        }
+        enc.Encode(abs)
+    })
+    hr.Get(prefixMdtBox + "([^/]+)/([^/]+)", func(req HttpRequest) {
+        w := req.Writer
+        fullName, base := req.Matches[1], req.Matches[2]
+
+        // CSV
+        Assert(path.Ext(base) == ".csv", "Non-csv request")
+        key := base[:len(base) - 4]
+        w.Header().Set("content-type", "text/csv")
+
+        //
+        mdtBox := srv.clientMonitorDataTableBox[fullName]
+        switch key {
+        case "_boundaries":
+            bds := mdtBox.Boundaries
+            rd  := bytes.NewReader(bds)
+            io.Copy(w, rd)
+        default:
+            mdt, ok := mdtBox.DataMap[key]
+            Assert(ok, "Monitor data not found")
+            rd := bytes.NewReader(mdt)
+            io.Copy(w, rd)
+        }
     })
 }
 
 func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     for rgx, handlers := range hr.routes {
         matches := rgx.FindStringSubmatch(r.URL.Path)
-        if matches == nil {
+        if matches == nil || matches[0] != r.URL.Path {
             continue
         }
-        handler, ok := handlers[r.Method]
-        if !ok {
-            return
+        if handler, ok := handlers[r.Method]; ok {
+            handler(HttpRequest{
+                Body: r,
+                Writer: w,
+                Matches: matches,
+            })
         }
-        handler(HttpRequest{
-            Body: r,
-            Writer: w,
-            Matches: matches,
-        })
+        return
     }
 }
 
@@ -338,7 +293,10 @@ func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error 
 }
 
 func(hr *httpRouter) Get(rstr string, h func(HttpRequest)) { hr.addRoute("GET", rstr, h) }
+func(hr *httpRouter) Head(rstr string, h func(HttpRequest)) { hr.addRoute("HEAD", rstr, h) }
 func(hr *httpRouter) Post(rstr string, h func(HttpRequest)) { hr.addRoute("POST", rstr, h) }
-func(hr *httpRouter) Patch(rstr string, h func(HttpRequest)) { hr.addRoute("PATCH", rstr, h) }
+func(hr *httpRouter) Put(rstr string, h func(HttpRequest)) { hr.addRoute("PUT", rstr, h) }
 func(hr *httpRouter) Delete(rstr string, h func(HttpRequest)) { hr.addRoute("DELETE", rstr, h) }
+func(hr *httpRouter) Options(rstr string, h func(HttpRequest)) { hr.addRoute("OPTIONS", rstr, h) }
+func(hr *httpRouter) Patch(rstr string, h func(HttpRequest)) { hr.addRoute("PATCH", rstr, h) }
 
