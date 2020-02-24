@@ -37,6 +37,13 @@ main {
     }
 }
 
+.sidebar {
+    .sidebar-label.version {
+        text-transform: none;
+        font-weight: lighter;
+    }
+}
+
 .client {
     &:not(.visible) {
         opacity: 0;

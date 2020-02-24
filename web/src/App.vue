@@ -9,6 +9,7 @@
           <strong>{{ fullName }}</strong>
           Details
         </SidebarItem>
+        <SidebarLabel class="version">{{ version }}</SidebarLabel>
       </Sidebar>
       <section>
         
@@ -32,6 +33,9 @@ export default {
     },
     options() {
       return this.$root.options;
+    },
+    version() {
+      return this.$root.version;
     }
   },
   data() {

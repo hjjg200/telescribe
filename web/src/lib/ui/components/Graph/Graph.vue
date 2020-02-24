@@ -715,6 +715,9 @@ export default {
         var end = Number(node.getAttribute("data-end"));
         var left = Number(node.getAttribute("data-left"));
 
+        // Check Already Updated
+        if(keysChanged === false && seg.selectAll("path").size() > 0) return;
+        
         // Erase First
         node.innerHTML = "";
 

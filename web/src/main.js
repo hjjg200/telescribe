@@ -61,6 +61,14 @@ async function fetchJson(url) {
   return await promise.json();
 }
 
+async function fetchText(url) {
+  var promise = await fetch(url, {
+    method: "GET",
+    cache: "no-cache"
+  });
+  return await promise.text();
+}
+
 function getSeriesIdx(i) {
   return "abcdefghijklmnopqrstuvwxyz".charAt(i - 1);
 }
@@ -84,12 +92,13 @@ function formatComma(x) {
 (async function() {
   var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
   var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
+  var version = await fetchText(TELESCRIBE_HOST + "/version");
 
-  console.log(abstract);
   new Vue({
     data: {
       abstract: abstract,
-      options: options
+      options: options,
+      version: version
     },
     created: function() {
       document.title = "Telescribe";

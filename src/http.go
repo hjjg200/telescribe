@@ -183,6 +183,9 @@ func(srv *Server) populateHttpRouter() {
         serveStatic(req)
     })
     hr.Get("/static/(.+)", serveStatic)
+    hr.Get("/version", func(req HttpRequest) {
+        fmt.Fprint(req.Writer, Version)
+    })
     hr.Get("/options.json", func(req HttpRequest) {
         req.Writer.Header().Set("content-type", "application/json")
         enc := json.NewEncoder(req.Writer)
