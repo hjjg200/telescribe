@@ -10,6 +10,7 @@ import (
     "os"
     "strings"
     "regexp"
+    "runtime/debug"
 )
 
 func EnsureDirectory(p string) error {
@@ -125,7 +126,13 @@ func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 func CatchFunc(f func(...interface{})) {
     r := recover()
-    if r != nil { f(r) }
+    if r != nil {
+        if flDebug {
+            f(string(debug.Stack()), r)
+            return
+        }
+        f(r)
+    }
 }
 
 //

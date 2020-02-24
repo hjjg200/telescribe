@@ -184,16 +184,22 @@ func(srv *Server) populateHttpRouter() {
     })
     hr.Get("/static/(.+)", serveStatic)
     hr.Get("/version", func(req HttpRequest) {
-        fmt.Fprint(req.Writer, Version)
+        w := req.Writer
+        w.Header().Set("Cache-Control", "no-store")
+        w.Header().Set("Content-Type", "text/plain")
+        fmt.Fprint(w, Version)
     })
     hr.Get("/options.json", func(req HttpRequest) {
-        req.Writer.Header().Set("content-type", "application/json")
+        w := req.Writer
+        w.Header().Set("Cache-Control", "no-store")
+        w.Header().Set("Content-Type", "application/json")
         enc := json.NewEncoder(req.Writer)
         enc.Encode(srv.config.Web)
     })
     hr.Get("/abstract.json", func(req HttpRequest) {
         w := req.Writer
-        w.Header().Set("content-type", "application/json")
+        w.Header().Set("Cache-Control", "no-store")
+        w.Header().Set("Content-Type", "application/json")
         enc       := json.NewEncoder(w)
         clientMap := make(map[string/* fullName */] WebAbsClient)
         for fullName, mdMap := range srv.clientMonitorDataMap {

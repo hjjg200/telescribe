@@ -431,13 +431,24 @@ func (srv *Server) Start() (err error) {
             switch {
             case strings.Contains(startLine, "HTTP"):
                 // HTTP
+                src := bufio.NewReader(io.MultiReader(bytes.NewReader(already), conn))
                 proxy, err := net.Dial("tcp", srv.HttpAddr())
                 Try(err)
-                startLine = strings.Trim(startLine, "\r\n")
-                Logger.Infoln(host, startLine)
-                proxy.Write(already)
-                go connCopy(proxy, conn)
-                go connCopy(conn, proxy)
+                go connCopy(conn, proxy) // Proxy -> Conn
+                for {
+                    // Look for requests
+                    req, err := http.ReadRequest(src)
+                    if err == io.EOF {
+                        break
+                    } else if err != nil {
+                        Try(err)
+                        break
+                    }
+
+                    // New request
+                    Logger.Infoln(host, req.Method, req.URL.Path, req.Proto)
+                    req.WriteProxy(proxy) // Conn -> Proxy
+                }
             case strings.Contains(startLine, "TELESCRIBE"):
                 // TELESCRIBE
                 s := NewSession(conn)

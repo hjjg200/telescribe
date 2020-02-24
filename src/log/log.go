@@ -53,14 +53,14 @@ func (lgr *Logger) Infoln(args ...interface{}) {
 
 func (lgr *Logger) Warnln(args ...interface{}) {
     if Debug {
-        args = append([]interface{}{ lgr.caller(2) }, args...)
+        args = append(lgr.callers(3), args...)
     }
     lgr.println(prefixWarn, args...)
 }
 
 func (lgr *Logger) Fatalln(args ...interface{}) {
     if Debug {
-        args = append([]interface{}{ lgr.caller(2) }, args...)
+        args = append(lgr.callers(3), args...)
     }
     lgr.println(prefixFatal, args...)
     os.Exit(1)
@@ -75,7 +75,7 @@ func (lgr *Logger) Debugln(args ...interface{}) {
     if !Debug {
         return
     }
-    args = append([]interface{}{ lgr.caller(2) }, args...)
+    args = append(lgr.callers(3), args...)
     lgr.println(prefixDebug, args...)
 }
 
@@ -90,6 +90,22 @@ func (lgr *Logger) caller(skip int) string {
     f = dir + "/" + filepath.Base(f)
     n := filepath.Base(fn.Name())
     return fmt.Sprintf("%s[%s:%d]", n, f, l)
+}
+
+func (lgr *Logger) callers(skip int) []interface{} {
+    pcs := make([]uintptr, 128)
+    count := runtime.Callers(skip, pcs)
+    ret := make([]interface{}, 0)
+    for i := count - 1; i >= 0; i-- {
+        pc := pcs[i]
+        fn := runtime.FuncForPC(pc)
+        f, l := fn.FileLine(pc)
+        dir := filepath.Base(filepath.Dir(f))
+        f = dir + "/" + filepath.Base(f)
+        n := filepath.Base(fn.Name())
+        ret = append(ret, fmt.Sprintf("%s[%s:%d]\n  ", n, f, l))
+    }
+    return ret
 }
 
 func (lgr *Logger) println(prefix string, args ...interface{}) {

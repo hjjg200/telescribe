@@ -54,19 +54,18 @@ Element.prototype.hasClass = function(className) {
 }
 
 async function fetchJson(url) {
-  var promise = await fetch(url, {
-    method: "GET",
-    cache: "no-cache"
+  var response = await fetch(url, {
+    method: "GET"
   });
-  return await promise.json();
+  console.log(response.status);
+  return await response.json();
 }
 
 async function fetchText(url) {
-  var promise = await fetch(url, {
-    method: "GET",
-    cache: "no-cache"
+  var response = await fetch(url, {
+    method: "GET"
   });
-  return await promise.text();
+  return await response.text();
 }
 
 function getSeriesIdx(i) {
