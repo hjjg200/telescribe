@@ -1,25 +1,18 @@
 #!/bin/bash
 
+# Populate Vars
+. ./VARS
+
+VERSION_STRING=${APP_NAME}-${VERSION}
+echo Building $VERSION_STRING
+
 opt=$1
 
-compile_sass () {
+build_web() {
     {
-        fn=$1 &&
-        # Getting basename
-        # https://stackoverflow.com/questions/2664740/extract-file-basename-without-path-and-extension-in-bash/36341390
-        base=${fn%.scss} &&
-        sass --no-source-map ${base}.scss ${base}.css
-    } || {
-        return 1
-    }
-}
-export -f compile_sass # so that xargs can access
-
-build_static() {
-    {
-        # Accessing function in xargs
-        # https://stackoverflow.com/questions/11003418/calling-shell-functions-with-xargs
-        find static/ -name '*.scss' | xargs -I {} bash -c 'compile_sass "$@"' _ {}
+        cd ./web &&
+        npm run build &&
+        cd ../
     } || {
         return 1
     }
@@ -27,7 +20,7 @@ build_static() {
 
 build_go () {
     {
-        go build -o bin/telescribe ./src/
+        go build -ldflags "-X main.Version=$VERSION_STRING" -o bin/telescribe ./src/
     } || {
         return 1
     }
@@ -35,7 +28,7 @@ build_go () {
 
 build_all () {
     {
-        build_static &&
+        build_web &&
         build_go
     } || {
         return 1
@@ -45,8 +38,8 @@ build_all () {
 # Main
 {
     case $opt in
-    static)
-        build_static
+    web)
+        build_web
         ;;
     go)
         build_go
@@ -56,7 +49,7 @@ build_all () {
         ;;
     *|help)
     # Default
-        echo "Available options are all, go, static"
+        echo "Available options are all, go, web"
         ;;
     esac
 } || {

@@ -415,13 +415,15 @@ func (srv *Server) Start() (err error) {
         }
 
         go func() {
-            defer CatchFunc(Logger.Warnln)
+            var host string
+            defer CatchFunc(Logger.Warnln, host)
 
-            host, _ := HostnameOf(conn)
+            host, _  = HostnameOf(conn)
             rd      := bufio.NewReader(conn)
             // Start line
             startLine, err := rd.ReadString('\n')
-            Try(err)
+            if err == io.EOF { return }
+            Assert(err == nil, "Unexpected start line:" + startLine)
             // Read rest bytes without advancing the reader
             rest, err := rd.Peek(rd.Buffered()) 
             Try(err)
@@ -431,9 +433,9 @@ func (srv *Server) Start() (err error) {
             switch {
             case strings.Contains(startLine, "HTTP"):
                 // HTTP
-                src := bufio.NewReader(io.MultiReader(bytes.NewReader(already), conn))
                 proxy, err := net.Dial("tcp", srv.HttpAddr())
                 Try(err)
+                src := bufio.NewReader(io.MultiReader(bytes.NewReader(already), conn))
                 go connCopy(conn, proxy) // Proxy -> Conn
                 for {
                     // Look for requests

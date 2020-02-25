@@ -4,9 +4,10 @@ Overall refinement
 
 - [ ] **Added:** `web` debug mode for time measuring
 - [ ] **Fixed:** `web` infinite re-render bug
-- [ ] **Fixed:** `server` EOF errors
+- [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
 - [ ] **Changed:** `web` uses per-key format
+- [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 
 ### Alpha 0.12
 

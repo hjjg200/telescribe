@@ -1,0 +1,4 @@
+#!/bin/bash
+
+export APP_NAME=telescribe
+export VERSION=alpha_0.13

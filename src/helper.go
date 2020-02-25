@@ -124,14 +124,16 @@ func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 // RECOVER
 //
 
-func CatchFunc(f func(...interface{})) {
+func CatchFunc(f func(...interface{}), prepend ...interface{}) {
     r := recover()
     if r != nil {
+        args := make([]interface{}, 0)
         if flDebug {
-            f(string(debug.Stack()), r)
-            return
+            args = append(args, string(debug.Stack()))
         }
-        f(r)
+        args = append(args, prepend...)
+        args = append(args, r)
+        f(args...)
     }
 }
 
