@@ -12,7 +12,7 @@ The install procedure is as follows:
 1. In the bin folder, do `./telescribe -server` to create config files.
 1. Modify the configuration to your taste.
 1. Distribute the binary file `telescribe` to client machines.
-1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS> -alias <ALIAS_NAME> -port <DEFAULT:1226>`
+1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS> -alias <ALIAS_NAME|DEFAULT:default> -port <DEFAULT:1226>`
 
 Post-installation process:
 

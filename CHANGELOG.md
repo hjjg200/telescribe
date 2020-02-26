@@ -10,6 +10,11 @@ Overall refinement and system signal handling
 - [ ] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 
+#### Known Issues
+
+- [ ] Machines may have disks of different names which require different roles to monitor separately.
+- [ ] Feature to delete existing data is needed.
+
 ### Alpha 0.12
 
 Focuses on the overall change of looks
