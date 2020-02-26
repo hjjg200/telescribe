@@ -2,6 +2,24 @@
 
 ![](https://img.shields.io/badge/-mini%20project-orange) ![](https://img.shields.io/badge/created-‘19%20Sep%2016-9cf)
 
+## Install
+
+Note that this project is currently in **the alpha stage**; things are liable to change and there is no guarantee of backward compatibility in the alpha stage, which means that using data files or assets created by one version in the alpha stage may not be compatible with another version.
+
+The install procedure is as follows:
+
+1. Run `build.sh` which will produce necessary things in `bin` directory.
+1. In the bin folder, do `./telescribe -server` to create config files.
+1. Modify the configuration to your taste.
+1. Distribute the binary file `telescribe` to client machines.
+1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS> -alias <ALIAS_NAME> -port <DEFAULT:1226>`
+
+Post-installation process:
+
+1. You can simply edit the config files on the server machine in order to make changes to the configuration.
+
+## Introduction
+
 Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and send the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each client machine has to have nothing but the executable file.
 
 And when it acts as a server, it handles connections from telescribe clients and general http clients, handling both connections on the same port. When you use a browser to connect, you'll see graphs and status of the monitored clients.

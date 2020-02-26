@@ -8,6 +8,9 @@ echo Building $VERSION_STRING
 
 opt=$1
 
+# Ensure Directory
+[ ! -d ./bin ] && mkdir bin
+
 build_web() {
     {
         cd ./web &&
@@ -16,6 +19,8 @@ build_web() {
     } || {
         return 1
     }
+    [ ! -L bin/static ] && ln -s ../web/dist bin/static
+    return 0
 }
 
 build_go () {
