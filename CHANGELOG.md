@@ -2,18 +2,30 @@
 
 Overall refinement and system signal handling
 
+- [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
 - [ ] **Added:** `web` debug mode for time measuring
-- [ ] **Added:** `go` system signal handling
+- [ ] **Added:** `web` feature to delete data
+- [ ] **Added:** `server` better handling of JSON API
+- [x] **Added:** `go` system signal handling
 - [ ] **Fixed:** `web` infinite re-render bug
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
 - [ ] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 
+#### Experiments
+
+- [ ] See if having paths in the only visible parts is better.
+- [ ] Always reload static file in debug mode
+
 #### Known Issues
 
 - [ ] Machines may have disks of different names which require different roles to monitor separately.
-- [ ] Feature to delete existing data is needed.
+- [ ] Graph tooltip UI needs modification
+- [ ] Graph y-axis figures sometimes get partly invisible.
+- [ ] Numbers on graph are not so legible due to their color.
+- [ ] Tiny gaps are present in the graph
+- [ ] Checkbox label can be two-lined
 
 ### Alpha 0.12
 

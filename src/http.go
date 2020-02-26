@@ -134,6 +134,7 @@ func(srv *Server) populateHttpRouter() {
     // Constants
     const (
         prefixMdtBox = "/monitorDataTableBox/"
+        rgxMdtBox = prefixMdtBox + "([^/]+)/([^/]+)\.csv"
     )
 
     // Functions
@@ -234,16 +235,18 @@ func(srv *Server) populateHttpRouter() {
         }
         enc.Encode(abs)
     })
-    hr.Get(prefixMdtBox + "([^/]+)/([^/]+)", func(req HttpRequest) {
+
+    // DATA RELATED
+
+    parseMdtBox := func(req HttpRequest) (string, string) {
+        return req.Matches[1], req.Matches[2]
+    }
+    hr.Get(rgxMdtBox, func(req HttpRequest) {
         w := req.Writer
-        fullName, base := req.Matches[1], req.Matches[2]
+        fullName, key := parseMdtBox(req)
 
         // CSV
-        Assert(path.Ext(base) == ".csv", "Non-csv request")
-        key := base[:len(base) - 4]
         w.Header().Set("content-type", "text/csv")
-
-        //
         mdtBox := srv.clientMonitorDataTableBox[fullName]
         switch key {
         case "_boundaries":
@@ -257,6 +260,40 @@ func(srv *Server) populateHttpRouter() {
             io.Copy(w, rd)
         }
     })
+    hr.Delete(rgxMdtBox, func(req HttpRequest) {
+        w := req.Writer
+        fullName, key := parseMdtBox(req)
+
+        // JSON Response
+        w.Header().Set("content-type", "application/json")
+        
+        /*
+{
+    "data": {
+        "fullName": "...",
+        "key": "..."
+    },
+    "meta": {
+        "action": "deleteMonitorDataTableBox",
+        "timestamp": ...,
+        "executor": ... // http username
+    }
+}
+
+{
+    "error": {
+        "code": 300,
+        "message": "not found"
+    },
+    "meta": {
+        "action": "deleteMonitorDataTableBox",
+        "timestamp": ...,
+        "executor": ... // http username
+    }
+}
+        */
+    })
+
 }
 
 func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {

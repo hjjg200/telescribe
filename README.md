@@ -80,6 +80,7 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
 1. Roles as tags: "bar": "minecraft-server cpu memory"
 1. Log files like latest.log, 20191210.1.log.gz...
+1. Various http users with different permissions
 
 ## External Libraries
 - Vue.js

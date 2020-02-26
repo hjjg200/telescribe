@@ -96,9 +96,9 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
         height: $sidebar-icon-size;
         flex: 0 0 $sidebar-icon-size;
         text-align: center;
-        font-size: 1.2rem;
+        font-size: .8rem;
         font-weight: bold;
-        text-transform: uppercase;
+        text-transform: lowercase
     }
 
     .details {
