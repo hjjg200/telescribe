@@ -11,7 +11,7 @@ opt=$1
 build_web() {
     {
         cd ./web &&
-        npm run build &&
+        npm run build &> /dev/null &&
         cd ../
     } || {
         return 1
@@ -29,7 +29,8 @@ build_go () {
 build_all () {
     {
         build_web &&
-        build_go
+        build_go &&
+        echo "Succesful"
     } || {
         return 1
     }

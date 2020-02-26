@@ -1,8 +1,9 @@
 ### Alpha 0.13
 
-Overall refinement
+Overall refinement and system signal handling
 
 - [ ] **Added:** `web` debug mode for time measuring
+- [ ] **Added:** `go` system signal handling
 - [ ] **Fixed:** `web` infinite re-render bug
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http

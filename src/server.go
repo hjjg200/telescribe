@@ -10,10 +10,14 @@ import (
     "net"
     "net/http"
     "os"
+    "os/signal"
     "path/filepath"
     "sort"
     "strings"
+    "syscall"
     "time"
+    "github.com/hjjg200/go-together"
+
     . "github.com/hjjg200/go-act"
 )
 
@@ -291,17 +295,36 @@ func (srv *Server) Start() (err error) {
     Try(err)
     Logger.Infoln("Network Configured to Listen at", addr)
 
+    // Thread-related
+    hs := together.NewHoldSwitch()
+    const (
+        threadMain = iota
+        threadCleanUp
+    )
+
+    // Signal Catcher
+    sig := make(chan os.Signal, 1)
+    signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+    go func() {
+        <- sig
+        fmt.Println()
+        Logger.Infoln("Waiting for tasks to finish...")
+        hs.Add(threadCleanUp, 1)
+        Logger.Infoln("Bye bye")
+        os.Exit(0)
+    }()
+
     // Flush cache thread
     go func() {
-        for {
+        for {func() {
+            defer CatchFunc(Logger.Warnln)
             time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
+            hs.Add(threadMain, 1)
             err := srv.CacheClientMonitorDataMap()
-            if err != nil {
-                Logger.Warnln(err)
-                continue
-            }
+            Try(err)
             Logger.Infoln("Cached Client Monitor Data")
-        }
+            hs.Done(threadMain)
+        }()}
     }()
     Logger.Infoln("Started Monitor Data Caching Thread")
 
@@ -314,6 +337,8 @@ func (srv *Server) Start() (err error) {
             // Catch
             defer CatchFunc(Logger.Warnln)
             time.Sleep(clientConfigWatchInterval)
+
+            hs.Add(threadMain, 1)
             // Mod Time Check
             st, err := os.Stat(ccvp)
             Try(err)
@@ -324,6 +349,7 @@ func (srv *Server) Start() (err error) {
                 Logger.Infoln("Reloaded Client Config")
                 lastMod = st.ModTime()
             }
+            hs.Done(threadMain)
         }()}
     }()
     Logger.Infoln("Started Client Config Reloading Thread")
@@ -332,6 +358,7 @@ func (srv *Server) Start() (err error) {
     go func() {
         for {func() {
             defer CatchFunc(Logger.Warnln)
+            hs.Add(threadMain, 1)
             tBoxMap := make(map[string/* fullName */] MonitorDataTableBox)
             gthSec  := int64(srv.config.GapThresholdTime * 60) // To seconds
             for fullName, mdMap := range srv.clientMonitorDataMap {
@@ -391,7 +418,7 @@ func (srv *Server) Start() (err error) {
             }
             // Assign
             srv.clientMonitorDataTableBox = tBoxMap
-            Logger.Debugln("Chart data prepared")
+            hs.Done(threadMain)
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
         }()}
     }()
