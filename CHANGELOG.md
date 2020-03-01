@@ -7,25 +7,24 @@ Overall refinement and system signal handling
 - [ ] **Added:** `web` feature to delete data
 - [ ] **Added:** `server` better handling of JSON API
 - [x] **Added:** `go` system signal handling
-- [ ] **Fixed:** `web` infinite re-render bug
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
-- [ ] **Fixed:** `server` performance(possible leakage) issue, which might be related to http
 - [ ] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 
 #### Experiments
 
 - [ ] See if having paths in the only visible parts is better.
-- [ ] Always reload static file in debug mode
 
 #### Known Issues
 
+- [ ] No indicator for status and disabled status for clients not sending data
 - [ ] Machines may have disks of different names which require different roles to monitor separately.
 - [ ] Graph tooltip UI needs modification
 - [ ] Graph y-axis figures sometimes get partly invisible.
 - [ ] Numbers on graph are not so legible due to their color.
-- [ ] Tiny gaps are present in the graph
-- [ ] Checkbox label can be two-lined
+- [ ] `web` Tiny gaps are present in the graph
+- [ ] `web` Checkbox label can be two-lined
+- [ ] `web` Data fetching must be queued
 
 ### Alpha 0.12
 

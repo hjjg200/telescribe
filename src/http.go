@@ -10,7 +10,6 @@ import (
     "net/http"
     netUrl "net/url"
     "os"
-    "path"
     "regexp"
     "strings"
     "sync"
@@ -134,7 +133,7 @@ func(srv *Server) populateHttpRouter() {
     // Constants
     const (
         prefixMdtBox = "/monitorDataTableBox/"
-        rgxMdtBox = prefixMdtBox + "([^/]+)/([^/]+)\.csv"
+        rgxMdtBox = prefixMdtBox + "([^/]+)/([^/]+)\\.csv"
     )
 
     // Functions
@@ -262,7 +261,7 @@ func(srv *Server) populateHttpRouter() {
     })
     hr.Delete(rgxMdtBox, func(req HttpRequest) {
         w := req.Writer
-        fullName, key := parseMdtBox(req)
+        //fullName, key := parseMdtBox(req)
 
         // JSON Response
         w.Header().Set("content-type", "application/json")
@@ -294,6 +293,19 @@ func(srv *Server) populateHttpRouter() {
         */
     })
 
+    // API Test
+    arn := "api/test"
+    ar := NewAPIRouter(arn)
+    hr.Fallback("/" + arn + "/.+", func(req HttpRequest) {
+        ar.Serve(req)
+    })
+    ar.Get("action1", func(arq APIRequest) {
+        arq.Data(map[string] interface{} {
+            "data1": "abcd",
+            "arg1": arq.Args[0],
+        })
+    })
+
 }
 
 func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -302,12 +314,15 @@ func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         if matches == nil || matches[0] != r.URL.Path {
             continue
         }
+        hrq := HttpRequest{
+            Body: r,
+            Writer: w,
+            Matches: matches,
+        }
         if handler, ok := handlers[r.Method]; ok {
-            handler(HttpRequest{
-                Body: r,
-                Writer: w,
-                Matches: matches,
-            })
+            handler(hrq)
+        } else if fallback, ok := handlers[""]; ok {
+            fallback(hrq)
         }
         return
     }
@@ -338,6 +353,7 @@ func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error 
 
 }
 
+func(hr *httpRouter) Fallback(rstr string, h func(HttpRequest)) { hr.addRoute("", rstr, h) }
 func(hr *httpRouter) Get(rstr string, h func(HttpRequest)) { hr.addRoute("GET", rstr, h) }
 func(hr *httpRouter) Head(rstr string, h func(HttpRequest)) { hr.addRoute("HEAD", rstr, h) }
 func(hr *httpRouter) Post(rstr string, h func(HttpRequest)) { hr.addRoute("POST", rstr, h) }

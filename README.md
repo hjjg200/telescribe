@@ -38,6 +38,13 @@ Telescribe is designed in such a way that the only thing you have to worry about
 - **Gob Encoding:** To serialize the monitored data and cache them as files.
 - **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
 
+## Production(Stable Release) Checklist
+
+1. Project requirements satisfied
+1. Maintainable
+1. Scalable
+1. Well-documented
+
 ## TODO (alpha)
 
 Telescribe is currently at alpha stage. When all of the followings get done, it will be its beta stage.
@@ -81,6 +88,7 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Roles as tags: "bar": "minecraft-server cpu memory"
 1. Log files like latest.log, 20191210.1.log.gz...
 1. Various http users with different permissions
+1. Web anchors(#) or queries for fullName, timestamp, and selected items
 
 ## External Libraries
 - Vue.js
