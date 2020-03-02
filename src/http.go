@@ -11,6 +11,7 @@ import (
     netUrl "net/url"
     "os"
     "regexp"
+    "strconv"
     "strings"
     "sync"
     "time"
@@ -59,10 +60,17 @@ func (srv *Server) startHttpServer() error {
     srv.populateHttpRouter()
 
     // Password
-    if srv.config.HttpPassword == "" {
-        plainPwd := RandomAlphaNum(13)
-        srv.config.HttpPassword = fmt.Sprintf("%x", Sha256Sum([]byte(plainPwd)))
-        Logger.Warnln("Empty HTTP Password! Setting a Random Password:", plainPwd)
+    for i := range srv.config.HttpUsers {
+        usr := &srv.config.HttpUsers[i]
+        if usr.Password == "" {
+            plainPwd := RandomAlphaNum(13)
+            usr.Password = fmt.Sprintf("%x", Sha256Sum([]byte(plainPwd)))
+            Logger.Warnln(
+                "Setting a Random Password for",
+                usr.Name + ":",
+                plainPwd,
+            )
+        }
     }
 
     if certFile != "" && keyFile != "" {
@@ -88,45 +96,34 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     }()
 
     // Auth
-    un  := srv.config.HttpUsername
-    pwd := srv.config.HttpPassword
     w.Header().Set("WWW-Authenticate", "Basic realm=\"\"")
     hun, hplainPwd, ok := r.BasicAuth()
-    authTest := func() int {
-        return subtle.ConstantTimeCompare(
-            []byte(pwd), []byte(fmt.Sprintf("%x", Sha256Sum([]byte(hplainPwd)))),
-       )
+    
+    var usr HttpUser
+    for _, each := range srv.config.HttpUsers {
+        if each.Name == hun {
+            usr = each
+            break
+        }
     }
-    if !ok || un != hun || authTest() != 1 {
+    authTest := subtle.ConstantTimeCompare(
+        []byte(usr.Password), []byte(fmt.Sprintf("%x", Sha256Sum([]byte(hplainPwd)))),
+    )
+    if !ok || usr.Name == "" || authTest != 1 {
         w.WriteHeader(401)
         return
     }
 
-    srv.httpRouter.ServeHTTP(w, r)
+    srv.httpRouter.Serve(HttpContext{
+        Request: r, Writer: w, User: usr,
+    })
 
-}
-
-////////////////
-//-- Router --//
-////////////////
-
-type httpRouter struct {
-    // [regexp] => [method] => route
-    routes map[*regexp.Regexp] map[string] func(HttpRequest)
-}
-
-var httpRouteRegexps = make(map[string] *regexp.Regexp)
-
-type HttpRequest struct {
-    Body *http.Request
-    Writer http.ResponseWriter
-    Matches []string
 }
 
 func(srv *Server) populateHttpRouter() {
 
     hr := &httpRouter{
-        routes: make(map[*regexp.Regexp] map[string] func(HttpRequest)),
+        routes: make(map[*regexp.Regexp] map[string] func(HttpContext)),
     }
     srv.httpRouter = hr
 
@@ -143,18 +140,17 @@ func(srv *Server) populateHttpRouter() {
         bytes []byte
     }
     staticCacheMap := make(map[string] staticCache)
-    staticCacheMu  := sync.Mutex{}
-    serveStatic := func(req HttpRequest) {
+    serveStatic := func(hctx HttpContext) {
 
         defer func() {
             r := recover()
             if r != nil {
-                req.Writer.WriteHeader(404)
+                hctx.Writer.WriteHeader(404)
                 Logger.Warnln(r)
             }
         }()
 
-        fp := req.Body.URL.Path[1:]
+        fp := hctx.Request.URL.Path[1:]
         cache, ok := staticCacheMap[fp]
         if !ok {
             Assert(strings.HasPrefix(fp, "static/"), "Static file path must start with static/")
@@ -169,35 +165,35 @@ func(srv *Server) populateHttpRouter() {
                 bytes: buf.Bytes(),
             }
             f.Close()
-            staticCacheMu.Lock()
             staticCacheMap[fp] = cache
-            staticCacheMu.Unlock()
             Logger.Infoln("Cached a static file:", fp)
         }
-        http.ServeContent(req.Writer, req.Body, cache.name, cache.modTime, bytes.NewReader(cache.bytes))
+        http.ServeContent(
+            hctx.Writer, hctx.Request, cache.name, cache.modTime, bytes.NewReader(cache.bytes),
+        )
 
     }
 
-    hr.Get("/(index.html)?", func(req HttpRequest) {
-        req.Body.URL.Path = "/static/index.html"
-        serveStatic(req)
+    hr.Get("/(index.html)?", func(hctx HttpContext) {
+        hctx.Request.URL.Path = "/static/index.html"
+        serveStatic(hctx)
     })
     hr.Get("/static/(.+)", serveStatic)
-    hr.Get("/version", func(req HttpRequest) {
-        w := req.Writer
+    hr.Get("/version", func(hctx HttpContext) {
+        w := hctx.Writer
         w.Header().Set("Cache-Control", "no-store")
         w.Header().Set("Content-Type", "text/plain")
         fmt.Fprint(w, Version)
     })
-    hr.Get("/options.json", func(req HttpRequest) {
-        w := req.Writer
+    hr.Get("/options.json", func(hctx HttpContext) {
+        w := hctx.Writer
         w.Header().Set("Cache-Control", "no-store")
         w.Header().Set("Content-Type", "application/json")
-        enc := json.NewEncoder(req.Writer)
+        enc := json.NewEncoder(hctx.Writer)
         enc.Encode(srv.config.Web)
     })
-    hr.Get("/abstract.json", func(req HttpRequest) {
-        w := req.Writer
+    hr.Get("/abstract.json", func(hctx HttpContext) {
+        w := hctx.Writer
         w.Header().Set("Cache-Control", "no-store")
         w.Header().Set("Content-Type", "application/json")
         enc       := json.NewEncoder(w)
@@ -237,12 +233,12 @@ func(srv *Server) populateHttpRouter() {
 
     // DATA RELATED
 
-    parseMdtBox := func(req HttpRequest) (string, string) {
-        return req.Matches[1], req.Matches[2]
+    parseMdtBox := func(hctx HttpContext) (string, string) {
+        return hctx.Matches[1], hctx.Matches[2]
     }
-    hr.Get(rgxMdtBox, func(req HttpRequest) {
-        w := req.Writer
-        fullName, key := parseMdtBox(req)
+    hr.Get(rgxMdtBox, func(hctx HttpContext) {
+        w := hctx.Writer
+        fullName, key := parseMdtBox(hctx)
 
         // CSV
         w.Header().Set("content-type", "text/csv")
@@ -259,8 +255,8 @@ func(srv *Server) populateHttpRouter() {
             io.Copy(w, rd)
         }
     })
-    hr.Delete(rgxMdtBox, func(req HttpRequest) {
-        w := req.Writer
+    hr.Delete(rgxMdtBox, func(hctx HttpContext) {
+        w := hctx.Writer
         //fullName, key := parseMdtBox(req)
 
         // JSON Response
@@ -293,42 +289,150 @@ func(srv *Server) populateHttpRouter() {
         */
     })
 
-    // API Test
-    arn := "api/test"
-    ar := NewAPIRouter(arn)
-    hr.Fallback("/" + arn + "/.+", func(req HttpRequest) {
-        ar.Serve(req)
-    })
-    ar.Get("action1", func(arq APIRequest) {
-        arq.Data(map[string] interface{} {
-            "data1": "abcd",
-            "arg1": arq.Args[0],
+    hr.Get("/test1", func(hctx HttpContext) {
+        if !hctx.User.IsPermitted("get", "test1") {
+            hctx.Writer.WriteHeader(403)
+            return
+        }
+        pn := NewPermissionNode([]string{
+            "action1",
+            "action2.*",
+            "action3.abc",
+            "action3.def",
         })
+
+        wr := func(s ...string) {
+            fmt.Fprintln(hctx.Writer, s, pn.IsPermitted(s...))
+        }
+        wr("action1")
+        wr("action1", "a")
+        wr("action2")
+        wr("action2", "a")
+        wr("action3", "aaa")
+        wr("action3", "bbb")
+
+        fmt.Fprintln(hctx.Writer, "")
+        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.efgh.eghh"))
+        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.\"12..34\".eghh"))
+        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.\"1.2\\\"3.4\\\"56\".eghh"))
+        fmt.Fprintln(hctx.Writer, permissionJoin([]string{"123", "4\"5.6", "67.89"}))
+
+    })
+
+
+    // API
+    srv.registerAPIV1()
+
+}
+
+func(srv *Server) registerAPIV1() {
+
+    hr := srv.httpRouter
+
+    // API Version 1
+
+    const (
+        apiName = "api/v1"
+        prefix  = "/" + apiName + "/"
+        keyMdtBox = "monitorDataTableBox"
+        keyClients = "clients"
+        keyOptions = "options"
+    )
+
+    // Helpers
+    isPermitted := func(hctx HttpContext, key string, params ...string) bool {
+        return hctx.User.IsPermitted(apiName, hctx.Request.Method, key, params...)
+    }
+
+    // monitorDataTableBox
+    //
+    // GET, DELETE
+
+    rgxMdtBox = prefix + keyMdtBox + "/([^/]+)/([^/]+)"
+    hr.Get(rgxMdtBox, func(hctx HttpContext) {
+        w := hctx.Writer
+        r := hctx.Request
+        
+        fullName, mdKey := hctx.Matches[1], hctx.Matches[2]
+        if !isPermitted(hctx, keyMdtBox, fullName, mdKey) {
+            w.WriteHeader(403)
+            return
+        }
+
+        w.Header().Set("Content-Type", "text/csv")
+        mdtBox := srv.clientMonitorDataTableBox[fullName]
+        switch mdKey {
+        case "_boundaries":
+            bds := mdtBox.Boundaries
+            rd  := bytes.NewReader(bds)
+            io.Copy(w, rd)
+        default:
+            mdt, ok := mdtBox.DataMap[mdKey]
+            Assert(ok, "Monitor data not found")
+            rd := bytes.NewReader(mdt)
+            io.Copy(w, rd)
+        }
+    })
+    hr.Delete(rgxMdtBox, func(hctx HttpContext) {
+
+    })
+
+    // Clients
+    //
+    // GET
+
+    rgxClients := prefix + keyClients
+    hr.Get(rgxClients, func(hctx HttpContext) {
+        if !isPermitted(hctx, keyClients) {
+            w.WriteHeader(403)
+            return
+        }
+
+        
     })
 
 }
 
-func(hr *httpRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+////////////////
+//-- Router --//
+////////////////
+
+type httpRouter struct {
+    // [regexp] => [method] => route
+    routes map[*regexp.Regexp] map[string] func(HttpContext)
+}
+
+var httpRouteRegexps = make(map[string] *regexp.Regexp)
+
+type HttpRequest struct {
+    Body *http.Request
+    Writer http.ResponseWriter
+    Matches []string
+}
+
+type HttpContext struct {
+    Request *http.Request
+    Writer http.ResponseWriter
+    User HttpUser
+    Matches []string
+}
+
+func(hr *httpRouter) Serve(hctx HttpContext) {
+    r := hctx.Request
     for rgx, handlers := range hr.routes {
         matches := rgx.FindStringSubmatch(r.URL.Path)
         if matches == nil || matches[0] != r.URL.Path {
             continue
         }
-        hrq := HttpRequest{
-            Body: r,
-            Writer: w,
-            Matches: matches,
-        }
+        hctx.Matches = matches
         if handler, ok := handlers[r.Method]; ok {
-            handler(hrq)
-        } else if fallback, ok := handlers[""]; ok {
-            fallback(hrq)
+            handler(hctx)
         }
         return
     }
 }
 
-func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error {
+func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpContext)) error {
 
     // Find cached regexp
     rgx, ok := httpRouteRegexps[rstr]
@@ -342,7 +446,7 @@ func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error 
 
     // Check existence
     if _, ok := hr.routes[rgx]; !ok {
-        hr.routes[rgx] = make(map[string] func(HttpRequest))
+        hr.routes[rgx] = make(map[string] func(HttpContext))
     }
 
     // Add a rotue
@@ -353,12 +457,129 @@ func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpRequest)) error 
 
 }
 
-func(hr *httpRouter) Fallback(rstr string, h func(HttpRequest)) { hr.addRoute("", rstr, h) }
-func(hr *httpRouter) Get(rstr string, h func(HttpRequest)) { hr.addRoute("GET", rstr, h) }
-func(hr *httpRouter) Head(rstr string, h func(HttpRequest)) { hr.addRoute("HEAD", rstr, h) }
-func(hr *httpRouter) Post(rstr string, h func(HttpRequest)) { hr.addRoute("POST", rstr, h) }
-func(hr *httpRouter) Put(rstr string, h func(HttpRequest)) { hr.addRoute("PUT", rstr, h) }
-func(hr *httpRouter) Delete(rstr string, h func(HttpRequest)) { hr.addRoute("DELETE", rstr, h) }
-func(hr *httpRouter) Options(rstr string, h func(HttpRequest)) { hr.addRoute("OPTIONS", rstr, h) }
-func(hr *httpRouter) Patch(rstr string, h func(HttpRequest)) { hr.addRoute("PATCH", rstr, h) }
+func(hr *httpRouter) Get(rstr string, h func(HttpContext)) { hr.addRoute("GET", rstr, h) }
+func(hr *httpRouter) Head(rstr string, h func(HttpContext)) { hr.addRoute("HEAD", rstr, h) }
+func(hr *httpRouter) Post(rstr string, h func(HttpContext)) { hr.addRoute("POST", rstr, h) }
+func(hr *httpRouter) Put(rstr string, h func(HttpContext)) { hr.addRoute("PUT", rstr, h) }
+func(hr *httpRouter) Delete(rstr string, h func(HttpContext)) { hr.addRoute("DELETE", rstr, h) }
+func(hr *httpRouter) Options(rstr string, h func(HttpContext)) { hr.addRoute("OPTIONS", rstr, h) }
+func(hr *httpRouter) Patch(rstr string, h func(HttpContext)) { hr.addRoute("PATCH", rstr, h) }
 
+
+//////////////
+//-- USER --//
+//////////////
+
+type HttpUser struct {
+    Name string `json:"name"`
+    Password string `json:"password"` // sha256 lowercase
+    Permissions []string `json:"permissions"`
+    pNode *PermissionNode
+}
+
+func(usr *HttpUser) IsPermitted(nodes ...string) bool {
+    if usr.pNode == nil {
+        usr.pNode = NewPermissionNode(usr.Permissions)
+    }
+    return usr.pNode.IsPermitted(nodes...)
+}
+
+type PermissionNode map[string] *PermissionNode
+
+const (
+    permissionSeparator = "."
+    permissionWildcard = "*"
+)
+
+func permissionSplit(s string) []string {
+    var (
+        token string
+        ret = make([]string, 0)
+        quoted = false
+        escaped = false
+    )
+
+    for i, c := range s {
+        switch {
+        case c == '\\':
+            if escaped {
+                token += string(c)
+                escaped = false
+            } else {
+                escaped = true
+            }
+        case c == '"':
+            if quoted {
+                if escaped {
+                    token += string(c)
+                    escaped = false
+                } else {
+                    quoted = false
+                }
+            } else {
+                quoted = true
+            }
+        case string(c) == permissionSeparator:
+            if quoted {
+                token += string(c)
+            } else {
+                ret = append(ret, token)
+                token = ""
+            }
+        case i == len(s) - 1:
+            token += string(c)
+            ret = append(ret, token)
+        default:
+            token += string(c)
+        }
+    }
+    return ret
+}
+
+func permissionJoin(p []string) string {
+    for i := range p {
+        if strings.Contains(p[i], "\"") {
+            p[i] = strconv.Quote(p[i])
+        }
+    }
+    return strings.Join(p, permissionSeparator)
+}
+
+func NewPermissionNode(p []string) *PermissionNode {
+    n := make(PermissionNode)
+    for _, l := range p { n.Add(l) }
+    return &n
+}
+
+func(pn *PermissionNode) Add(p string) {
+    nodes := permissionSplit(p)
+    root  := nodes[0]
+    rest  := permissionJoin(nodes[1:])
+
+    child, ok := (*pn)[root]
+    if !ok {
+        child = NewPermissionNode(nil)
+        (*pn)[root] = child
+    }
+
+    if len(nodes) > 1 {
+        child.Add(rest)
+    }
+}
+
+func(pn PermissionNode) IsPermitted(nodes ...string) bool {
+//  nodes := permissionSplit(p)
+    root  := strings.ToLower(nodes[0])
+    rest  := permissionJoin(nodes[1:])
+    switch {
+    case len(nodes) == 1:
+        _, ok   := pn[root]
+        _, wild := pn[permissionWildcard]
+        return ok || wild
+    case len(nodes) > 1:
+        if child, ok := pn[root]; ok {
+            return child.IsPermitted(rest)
+        }
+    }
+    return false
+}

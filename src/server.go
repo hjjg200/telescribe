@@ -43,8 +43,7 @@ type ServerConfig struct { // srvCfg
     AuthPrivateKeyPath string `json:"authPrivateKeyPath"`
     ClientConfigPath string `json:"clientConfigPath"`
     // Http
-    HttpUsername string `json:"http.username"`
-    HttpPassword string `json:"http.password"` // lowercase sha256
+    HttpUsers []HttpUser `json:"http.users"`
     HttpCertFilePath string `json:"http.certFilePath"` // For TLS
     HttpKeyFilePath string `json:"http.keyFilePath"` // For TLS
     // Monitor
@@ -84,8 +83,15 @@ var DefaultServerConfig = ServerConfig{
     AuthPrivateKeyPath: "./.serverAuth.priv",
     ClientConfigPath: "./clientConfig.json",
     // Http
-    HttpUsername: "user",
-    HttpPassword: "",
+    HttpUsers: []HttpUser{
+        HttpUser{
+            Name: "user1",
+            Password: "",
+            Permissions: []string{
+                "get",
+            },
+        },
+    },
     HttpCertFilePath: "",
     HttpKeyFilePath: "",
     // Monitor
