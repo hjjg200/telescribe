@@ -37,8 +37,10 @@ export default {
   },
   watch: {
     duration(newVal) {
-      if(this.drawn || this.boundaries != undefined)
+      if(this.drawn || this.boundaries != undefined) {
+      //this._xScale = this._scale();
         this._draw();
+      }
     },
     dataset(newVal) {
       this.update();
@@ -81,8 +83,6 @@ export default {
   methods: {
 
     async _draw(reset = false) {
-
-      console.log(this.boundaries, this.duration);
 
       this.drawn = true;
 
@@ -460,6 +460,7 @@ export default {
       let firstT = boundaries[0];
       let lastT = boundaries[boundaries.length - 1];
       let duration = lastT - firstT;
+    //let chartDuration = this.duration;
       let segNo = boundaries.length / 2;
       let gapNo = segNo - 1;
       let gapBoundaries = boundaries.slice(1, -1);
