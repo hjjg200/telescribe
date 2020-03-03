@@ -62,7 +62,7 @@ A role is a compound of monitoring configurations which is used to configure cli
 
 ## Range
 
-A range represents a numeric range which is used for examine the status of monitored values. Commas are used to use multiple ranges in one string and colons are used to express ranges.
+A range represents a numeric range which is used to examine the status of monitored values. Commas are used to express multiple ranges in one string and colons are used to express ranges.
 
 |Example|Description|
 |-|-|
