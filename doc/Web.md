@@ -15,6 +15,7 @@ This documentation explains the specifications for the web elements.
 A format is a string expression that is used to modify how monitored values look on the web UI.
 
 |Format|1.503|Note|
+|-|-|-|
 |`{}`|1.503|Curly brackets are used to represent the value|
 |`{.4f}`|1.5030|The formatted value will contain trailing zeros|
 |`{.f}`|2|When the precision number is omitted, 0 is assumed|
