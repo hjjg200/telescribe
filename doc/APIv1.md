@@ -8,16 +8,20 @@ This documentation explains the behavior of API that is used to communicate betw
 |-|-|
 |Base URI|`/api/v1/`|
 
-### `monitorDataTableBox/<fullName>/<mdKey>`
+### monitorDataTableBox
+
+#### URL
+
+`monitorDataTableBox/<fullName>/<mdKey>`
+
+#### Permission
+
+`api/v1.<method>.monitorDataTableBox.<fullName>.<mdKey>`
 
 #### GET
-
-* Permission: `api/v1.get.monitorDataTableBox.<fullName>.<mdKey>`
 
 Provides the user with the content of the specified monitorDataTableBox in the CSV form.
 
 #### DELETE
-
-* Permission: `api/v1.delete.monitorDataTableBox.<fullName>.<mdKey>`
 
 Immediately deletes the specified monitor data's cache.
