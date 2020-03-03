@@ -9,7 +9,7 @@ A user is an individual account used for basic authentication of HTTP requests.
 |Item|Description|
 |-|-|
 |`name`|The username of the account|
-|`password`|The string representation of sha256 hash of the password, either lowercase or uppercase|
+|`password`|The case-insensitive string representation of sha256 hash of the password|
 |`permissions`|The array of **HTTP.Permission** for the account|
 
 ## Permission
