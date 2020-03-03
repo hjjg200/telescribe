@@ -32,4 +32,4 @@ By default, `clientConfig.json` contains the client configurations.
 |Item|Description|
 |-|-|
 |`clientMap`|The map of **Client.Info**; keys of the map are ids of each client|
-|`roles`|The map of **Monitor.Role** objects which contain monitoring configuration; keys of the map are role names of each role|
+|`roles`|The map of **Client.Role** objects which contain monitoring configuration; keys of the map are role names of each role|

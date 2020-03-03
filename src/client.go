@@ -209,3 +209,35 @@ func (cl *Client) Start() error {
     return nil
 
 }
+
+
+//
+// INFO
+//
+
+type ClientInfo struct {
+    Host  string `json:"host"`
+    Alias string `json:"alias"`
+    Role  string `json:"role"`
+}
+
+//
+// ROLE
+//
+
+type ClientRole struct { // clRole
+    MonitorConfigMap map[MonitorKey] MonitorConfig
+    MonitorInterval  int
+}
+
+func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
+    lhs := clRole
+    // MonitorConfigMap
+    for mKey, mCfg := range rhs.MonitorConfigMap {
+        lhs.MonitorConfigMap[mkey] = mCfg
+    }
+    // MonitorInterval
+    lhs.MonitorInterval = rhs.MonitorInterval
+
+    return lhs
+}

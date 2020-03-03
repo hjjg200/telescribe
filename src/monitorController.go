@@ -19,8 +19,6 @@ const (
     MonitorStatusFatal
 )
 
-type Range string
-
 type MonitorDataTableBox struct {
     Boundaries []byte
     DataMap map[string/* key */] []byte
@@ -48,85 +46,10 @@ type MonitorConfig struct {
 }
 
 func init() {
-    parsedRanges = make(map[Range] func(float64) bool)
-
     // Monitor error callback
     monitor.ErrorCallback = func(err error) {
         Logger.Warnln("monitor:", err)
     }
-}
-
-//
-// RANGES
-//
-var parsedRanges map[Range] func(float64) bool
-
-func (r Range) Parse() {
-
-    // Prepare Splits
-    commaSplits := SplitComma(string(r))
-    numSplits   := make([][]float64, len(commaSplits))
-    for i := range commaSplits {
-
-        isRanged := strings.Contains(commaSplits[i], ":")
-        splits   := strings.Split(commaSplits[i], ":")
-
-        if len(splits) == 1 && isRanged  {
-            splits = append(splits, "")
-        }
-
-        numSplits[i] = make([]float64, len(splits))
-        for j := range splits {
-            var num float64
-            var err error
-            if splits[j] == "" {
-                // Empty is the either end of number
-                if j == 0 {
-                    num = -math.MaxFloat64
-                } else {
-                    num = math.MaxFloat64
-                }
-            } else {
-                // If not empty
-                num, err = strconv.ParseFloat(splits[j], 64)
-                if err != nil {
-                    parsedRanges[r] = func(val float64) bool {
-                        Logger.Warnln(r, "is a malformed range!")
-                        return false
-                    }
-                    return
-                }
-            }
-            numSplits[i][j] = num
-        }
-    }
-
-    // Assign
-    parsedRanges[r] = func(val float64) bool {
-        //
-        for _, split := range numSplits {
-            if len(split) == 1 {
-                if val == split[0] {
-                    return true
-                }
-            } else {
-                if val >= split[0] && val <= split[1] {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
-}
-
-func (r Range) Includes(val float64) bool {
-    pr, ok := parsedRanges[r]
-    if !ok || pr == nil {
-        r.Parse()
-        pr = parsedRanges[r]
-    }
-    return pr(val)
 }
 
 func (mCfg MonitorConfig) StatusOf(val float64) int {
@@ -140,8 +63,36 @@ func (mCfg MonitorConfig) StatusOf(val float64) int {
 }
 
 //
-// Monitor Keys
+// KEY
 //
+
+type MonitorKey string
+type monitorKey struct {
+    base, param, idx string
+}
+var parsedMonitorKeys map[MonitorKey] monitorKey
+
+func(mKey MonitorKey) ensure() {
+    if _, ok := parsedMonitorKeys[mKey]; !ok {
+        base, param, idx        := monitor.ParseWrapperKey(string(mKey))
+        parsedMonitorKeys[mKey]  = monitorKey{
+            base, param, idx,
+        }
+    }
+}
+func(mKey MonitorKey) Base() string {
+    mKey.ensure()
+    return parsedMonitorKeys[mKey].base
+}
+func(mKey MonitorKey) Parameter() string {
+    mKey.ensure()
+    return parsedMonitorKeys[mKey].param
+}
+func(mKey MonitorKey) Index() string {
+    mKey.ensure()
+    return parsedMonitorKeys[mKey].idx
+}
+
 func ParseMonitorrKey(key string) (base, param, idx string) {
     return monitor.ParseWrapperKey(key)
 }

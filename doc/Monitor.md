@@ -4,7 +4,7 @@ This documentation contains the specifications for monitor-related information.
 
 ## Key
 
-A key is mapped to its unique metric type. When it is written with `[]` or `()` its behavior slightly changes; in most cases, `[]` are used for indexing as in `load[1m]` and `disk-usage[xvda1]`; `()` are used as functional parameters as in `command(echo 1)`. You can use double quotation marks when you want to nest `[]` or `()` in others; e.g., `example["a[1]"]`.
+A key can be divided into three parts: base, parameter, and index; `<base>(<parameter>)[<index>]`. Base represents what type of key it basically is; parameter acts as the parameter when the base key is mapped to a functional metrics; index acts as the index when the base metrics produce mapped values. When you would like to use `[]` or `()` as plain text, you must use double quotation marks to enclose them: `someKey["a[1]"]`.
 
 |Key|Description|
 |-|-|
@@ -40,6 +40,9 @@ A key is mapped to its unique metric type. When it is written with `[]` or `()` 
 |`disk-size`|The size of the entire disks in kB|
 |`disk-size[<deviceName>]`|The size of the specified disk in kB|
 |`mount-size(<mountPoint>)`|The size of the disk mounted at the mount point in kB|
+|`disk-io-usage`|The IO usage of the entire disks in percentage|
+|`disk-io-usage[<deviceName>]`|The IO usage of the specified disk in percentage|
+|`mount-io-usage(<mountPoint>)`|The IO usage of the disk mounted at the mount point in percentage|
 |`network-in`|Incoming bytes of the entire interfaces|
 |`network-in[<interfaceName>]`|Incoming bytes of the specified interface|
 |`network-inPackets`|Incoming packets of the entire interfaces|
@@ -50,35 +53,13 @@ A key is mapped to its unique metric type. When it is written with `[]` or `()` 
 |`network-outPackets[<interfaceName>]`|Outgoing packets of the specified interface|
 |`command(<string>)`|The output of the command|
 
-
-## Role
-
-A role is a compound of monitoring configurations which is used to configure clients.
-
-|Item|Description|
-|-|-|
-|`monitorConfigMap`|The map that contains **Monitor.Config** objects; keys of the map are **Monitor.Key**|
-|`monitorInterval`|How often the client sends its metrics; in seconds|
-
-## Range
-
-A range represents a numeric range which is used to examine the status of monitored values. Commas are used to express multiple ranges in one string and colons are used to express ranges.
-
-|Example|Description|
-|-|-|
-|`1`|x = 1|
-|`1:`|x >= 1|
-|`1:2`|1 <= x <= 2|
-|`:2`|x <= 2|
-|`1:3,5:`|1 <= x <= 3 and 5 <= x|
-
 ## Config
 
 The monitor configuration contains information of fatal and warning ranges of values.
 
 |Item|Description|
 |-|-|
-|`fatalRange`|The **Monitor.Range** in which values are considered fatal|
-|`warningRange`|The **Monitor.Range** in which values are considered warning|
+|`range.fatal`|The **Util.Range** in which values are considered fatal|
+|`range.warning`|The **Util.Range** in which values are considered warning|
 |`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
 |`coefficient`|The amount that is multiplied to values; the actual value is not affected by this|
