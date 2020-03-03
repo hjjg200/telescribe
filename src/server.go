@@ -424,6 +424,7 @@ func (srv *Server) Start() (err error) {
             }
             // Assign
             srv.clientMonitorDataTableBox = tBoxMap
+            Logger.Infoln("Chart-ready data prepared")
             hs.Done(threadMain)
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
         }()}

@@ -13,7 +13,6 @@ import (
     "regexp"
     "strconv"
     "strings"
-    "sync"
     "time"
 
     . "github.com/hjjg200/go-act"
@@ -39,6 +38,16 @@ type WebAbsCsvBox struct { // csvBox
     DataMap map[string/* key */] string `json:"dataMap"`
 }
 type WebAbsLatest struct { // latest
+    Timestamp int64 `json:"timestamp"`
+    Value float64 `json:"value"`
+    Status int `json:"status"`
+}
+
+type WebClient struct { // webCl
+    LatestMap map[string/* mdKey */] WebClLatest `json:"latestMap"`
+    ConfigMap map[string/* mdKey */] MonitorConfig `json:"configMap"`
+}
+type WebClLatest struct { // latest
     Timestamp int64 `json:"timestamp"`
     Value float64 `json:"value"`
     Status int `json:"status"`
@@ -334,24 +343,27 @@ func(srv *Server) registerAPIV1() {
     const (
         apiName = "api/v1"
         prefix  = "/" + apiName + "/"
-        keyMdtBox = "monitorDataTableBox"
-        keyClients = "clients"
-        keyOptions = "options"
     )
+
+    type apiRsp map[string] interface{}
 
     // Helpers
     isPermitted := func(hctx HttpContext, key string, params ...string) bool {
-        return hctx.User.IsPermitted(apiName, hctx.Request.Method, key, params...)
+        args := []string{ apiName, hctx.Request.Method, key }
+        args = append(args, params...)
+        return hctx.User.IsPermitted(args...)
     }
 
     // monitorDataTableBox
-    //
-    // GET, DELETE
+    // @permission: <apiName>.<method>.monitorDataTableBox
+    // @GET: fetches csv as per the given parameters
+    // @DELETE: deletes the specified monitor data cache
 
-    rgxMdtBox = prefix + keyMdtBox + "/([^/]+)/([^/]+)"
+    keyMdtBox := "monitorDataTableBox"
+    rgxMdtBox := prefix + keyMdtBox + "/([^/]+)/([^/]+)"
     hr.Get(rgxMdtBox, func(hctx HttpContext) {
         w := hctx.Writer
-        r := hctx.Request
+//      r := hctx.Request
         
         fullName, mdKey := hctx.Matches[1], hctx.Matches[2]
         if !isPermitted(hctx, keyMdtBox, fullName, mdKey) {
@@ -377,18 +389,96 @@ func(srv *Server) registerAPIV1() {
 
     })
 
-    // Clients
-    //
-    // GET
+    // clientMap
+    // @permission: <apiName>.<method>.clientMap
+    // @GET: gives you the map of clients
 
-    rgxClients := prefix + keyClients
-    hr.Get(rgxClients, func(hctx HttpContext) {
-        if !isPermitted(hctx, keyClients) {
+    keyClientMap := "clientMap"
+    rgxClientMap := prefix + keyClientMap
+    hr.Get(rgxClientMap, func(hctx HttpContext) {
+        w := hctx.Writer
+        if !isPermitted(hctx, keyClientMap) {
+            w.WriteHeader(403)
+            return
+        }
+        
+        w.Header().Set("Cache-Control", "no-store")
+        w.Header().Set("Content-Type", "application/json")
+        enc       := json.NewEncoder(w)
+        clientMap := make(map[string/* fullName */] WebClient)
+        for fullName, mdMap := range srv.clientMonitorDataMap {
+            // Check permission for each client
+            if !isPermitted(hctx, keyClientMap, fullName) {
+                continue
+            }
+            latest := make(map[string/* mdKey */] WebClLatest)
+            cfgMap := make(map[string/* mdKey */] MonitorConfig)
+            for mdKey, md := range mdMap { 
+                // Check permission for each monitor data key
+                if !isPermitted(hctx, keyClientMap, fullName, mdKey) {
+                    continue
+                }
+                mCfg := srv.getMonitorConfig(fullName, mdKey)
+                le   := md[len(md) - 1]
+                latest[mdKey]  = WebClLatest{
+                    Timestamp: le.Timestamp,
+                    Status:    mCfg.StatusOf(le.Value),
+                    Value:     le.Value,
+                }
+                cfgMap[mdKey] = mCfg
+            }
+            clientMap[fullName] = WebClient{
+                LatestMap: latest,
+                ConfigMap: cfgMap,
+            }
+        }
+        
+        enc.SetIndent("", "  ")
+        enc.Encode(apiRsp{
+            "clientMap": clientMap,
+        })
+    })
+
+    // options
+    // @permission: <apiName>.<method>.options
+    // @GET: JSON object of the web option
+
+    keyOptions := "options"
+    rgxOptions := prefix + keyOptions
+    hr.Get(rgxOptions, func(hctx HttpContext) {
+        w := hctx.Writer
+        if !isPermitted(hctx, keyOptions) {
             w.WriteHeader(403)
             return
         }
 
-        
+        w.Header().Set("Content-Type", "application/json")
+        enc := json.NewEncoder(w)
+        enc.SetIndent("", "  ")
+        enc.Encode(apiRsp{
+            "options": srv.config.Web,
+        })
+    })
+
+    // version
+    // @permission: <apiName>.<method>.version
+    // @GET: prints the version
+
+    keyVersion := "version"
+    rgxVersion := prefix + keyVersion
+    hr.Get(rgxVersion, func(hctx HttpContext) {
+        w := hctx.Writer
+        if !isPermitted(hctx, keyVersion) {
+            w.WriteHeader(403)
+            return
+        }
+
+        w.Header().Set("Content-Type", "text/plain")
+        enc := json.NewEncoder(w)
+        enc.SetIndent("", "  ")
+        enc.Encode(apiRsp{
+            "version": Version,
+        })
     })
 
 }
@@ -553,7 +643,7 @@ func NewPermissionNode(p []string) *PermissionNode {
 
 func(pn *PermissionNode) Add(p string) {
     nodes := permissionSplit(p)
-    root  := nodes[0]
+    root  := strings.ToLower(nodes[0])
     rest  := permissionJoin(nodes[1:])
 
     child, ok := (*pn)[root]
@@ -570,15 +660,18 @@ func(pn *PermissionNode) Add(p string) {
 func(pn PermissionNode) IsPermitted(nodes ...string) bool {
 //  nodes := permissionSplit(p)
     root  := strings.ToLower(nodes[0])
-    rest  := permissionJoin(nodes[1:])
+
+    _, wild := pn[permissionWildcard]
+    
     switch {
+    case wild:
+        return true
     case len(nodes) == 1:
-        _, ok   := pn[root]
-        _, wild := pn[permissionWildcard]
-        return ok || wild
+        _, ok := pn[root]
+        return ok
     case len(nodes) > 1:
         if child, ok := pn[root]; ok {
-            return child.IsPermitted(rest)
+            return child.IsPermitted(nodes[1:]...)
         }
     }
     return false

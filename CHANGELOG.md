@@ -25,6 +25,8 @@ Overall refinement and system signal handling
 - [ ] `web` Tiny gaps are present in the graph
 - [ ] `web` Checkbox label can be two-lined
 - [ ] `web` Data fetching must be queued
+- [ ] `web` Quick selection changing may break functionality of web
+- [ ] When crashed web graph drawing happens to not work properly
 
 ### Alpha 0.12
 

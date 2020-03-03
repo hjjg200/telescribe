@@ -26,13 +26,29 @@
 </template>
 
 <script>
+
+import Queue from '@/lib/util/queue.js';
 export default {
   name: "Client",
-  async created() {
-    this.update();
+  created() {
+    let $ = this;
+
+    // Clean up first
+    $.dataset = {};
+    let boundaries = [];
+
+    this.queue.queue(new Promise(resolve => {
+      $.$d3.csv(TELESCRIBE_HOST + $.body.csvBox.boundaries)
+        .row(function(r) {
+          boundaries.push(+r.timestamp);
+        })
+        .get(undefined, function() {
+          $.boundaries = boundaries;
+          resolve();
+        });
+    }));
   },
-  async mounted() {
-    await this.createPromise;
+  mounted() {
     this.$refs.durations.selectIndex(0);
     this.$refs.graph.boundaries = this.boundaries;
   },
@@ -45,7 +61,8 @@ export default {
   data() {
     return {
       activeKeys: [],
-      dataset: {}
+      dataset: {},
+      queue: new Queue()
     };
   },
   computed: {
@@ -99,24 +116,6 @@ export default {
     classLegend(key) {
       var i = this.activeKeys.indexOf(key);
       return i.toSeries();
-    },
-    async update() {
-      // Clean up first
-      this.dataset = {};
-
-      var $ = this;
-      // Get boundaries
-      var boundaries = [];
-      this.createPromise = new Promise(resolve => {
-        $.$d3.csv(TELESCRIBE_HOST + this.body.csvBox.boundaries)
-          .row(function(r) {
-            boundaries.push(+r.timestamp);
-          })
-          .get(undefined, function() {
-            $.boundaries = boundaries;
-            resolve();
-          });
-      });
     },
     status(key) {
       let map = this.body.latestMap;

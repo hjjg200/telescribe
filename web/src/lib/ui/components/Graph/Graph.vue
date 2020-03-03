@@ -37,12 +37,13 @@ export default {
   },
   watch: {
     duration(newVal) {
-      this._draw();
+      if(this.drawn) this._draw();
     },
     dataset(newVal) {
       this.update();
     },
     boundaries(newVal) {
+      if(this.duration == undefined) return;
       this._xBoundary = this.$d3.extent(newVal);
       this._xScale = this._scale();
       this._draw(true);
@@ -50,9 +51,10 @@ export default {
   },
   data() {
     return {
-      duration: 86400,
+      duration: undefined,
       dataset: {},
-      boundaries: undefined
+      boundaries: undefined,
+      drawn: false
     };
   },
   computed: {
@@ -68,29 +70,20 @@ export default {
 
     // Public
 
-    // Promise
-    var r;
-    this._promise = new Promise(resolve => {
-      r = resolve;
-    });
-
     // Global Event
     window.addEventListener("resize", function() {
       $._resize_handler();
     });
 
-    // Resolve
-    r();
-
-  },
-
-  async mounted() {
-    await this._promise;
   },
 
   methods: {
 
     async _draw(reset = false) {
+
+      console.log(this.boundaries, this.duration);
+
+      this.drawn = true;
 
       // Shorthand access
       var $ = this;
@@ -587,6 +580,8 @@ export default {
     },
 
     async update() {
+
+      if(!this.drawn) return;
 
       // Shorthand
       var $ = this;
