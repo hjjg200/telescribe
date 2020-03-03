@@ -10,7 +10,7 @@ By default, `serverConfig.json` contains the configuration of a server.
 |-|-|
 |`authPrivateKeyPath`|The path, either relative or absoulte, to the private key file used to sign data|
 |`clientConfigPath`|The path, either relative or absoulte, to the config file that contains the entire client configuration|
-|`http.users`|The array of HttpUser, specified in the http documentation, objects|
+|`http.users`|The array of HTTP.User objects|
 |`http.certFilePath`|The path, either relative or absolute, to the certificate file used for SSL|
 |`http.keyFilePath`|The path, either relative or absolute, to the key file used for SSL|
 |`monitor.dataCacheInterval`|How oftern the server flushes the in-memory monitor data to files; in minutes|
@@ -26,3 +26,13 @@ By default, `serverConfig.json` contains the configuration of a server.
 |`alarm.webhookUrl`|The url the server sends fatal alarms to|
 
 ## clientConfig.json
+
+By default, `clientConfig.json` contains the client configurations.
+
+|Item|Description|
+|-|-|
+|`clientMap`|The map of client information; keys of the map are ids of each client|
+|`clientMap[key].host`|The address of the client|
+|`clientMap[key].alias`|The alias of the client|
+|`clientMap[key].role`|The role of the client; roles are separated by spaces|
+|`roles`|The map of Monitor.Role objects which contain monitoring configuration; keys of the map are role names of each role|
