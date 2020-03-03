@@ -43,14 +43,17 @@ export default {
           boundaries.push(+r.timestamp);
         })
         .get(undefined, function() {
-          $.boundaries = boundaries;
+          $.$refs.graph.boundaries = boundaries;
           resolve();
         });
     }));
   },
   mounted() {
-    this.$refs.durations.selectIndex(0);
-    this.$refs.graph.boundaries = this.boundaries;
+    let $ = this;
+    this.queue.queue(new Promise(resolve => {
+      $.$refs.durations.selectIndex(0);
+      resolve();
+    }));
   },
 
   props: {

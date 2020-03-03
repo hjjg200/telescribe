@@ -37,7 +37,8 @@ export default {
   },
   watch: {
     duration(newVal) {
-      if(this.drawn) this._draw();
+      if(this.drawn || this.boundaries != undefined)
+        this._draw();
     },
     dataset(newVal) {
       this.update();
@@ -63,7 +64,7 @@ export default {
     }
   },
 
-  async created() {
+  created() {
 
     //
     var $ = this;

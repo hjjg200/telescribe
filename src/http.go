@@ -532,6 +532,8 @@ func(hr *httpRouter) addRoute(m string, rstr string, h func(HttpContext)) error 
         if err != nil {
             return err
         }
+        // Cache regex
+        httpRouteRegexps[rstr] = rgx
     }
 
     // Check existence
