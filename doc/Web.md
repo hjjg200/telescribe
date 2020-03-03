@@ -16,8 +16,8 @@ A format is a string expression that is used to modify how monitored values look
 
 |Format|1.503|Note|
 |-|-|-|
-|`{}`|1.503|Curly brackets are used to represent the value|
+|`{}` or `{f}`|1.503|Curly brackets are used to represent the value|
 |`{.4f}`|1.5030|The formatted value will contain trailing zeros|
 |`{.f}`|2|When the precision number is omitted, 0 is assumed|
 |`{f}%`|1.503%|Prefix and suffix can be defined outside the brackets|
-|`\{{f}\}|{1.503}|Escape the brackets when you want to use them as string|
+|`\{{f}\}`|{1.503}|Escape the brackets when you want to use them as string|
