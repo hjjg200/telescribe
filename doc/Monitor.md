@@ -80,3 +80,5 @@ The monitor configuration contains information of fatal and warning ranges of va
 |-|-|
 |`fatalRange`|The **Monitor.Range** in which values are considered fatal|
 |`warningRange`|The **Monitor.Range** in which values are considered warning|
+|`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
+|`coefficient`|The amount that is multiplied to values; the actual value is not affected by this|
