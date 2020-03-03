@@ -2,17 +2,11 @@
 
 This documentation explains the behavior of API that is used to communicate between a server and a web client.
 
-## Specification
-
-|Item|Details|
-|-|-|
-|Base URL|`/api/v1/`|
-
 ## clientMap
 
 #### URL
 
-`clientMap`
+`/api/v1/clientMap`
 
 #### Permission
 
@@ -51,7 +45,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### URL
 
-`monitorDataTableBox/<fullName>/<mdKey>`
+`/api/v1/monitorDataTableBox/<fullName>/<mdKey>`
 
 #### Permission
 
@@ -88,3 +82,23 @@ timestamp,value
 **403:** No permission
 
 **500:** Internal error; most likely an I/O error
+
+
+## version
+
+#### URL
+
+`/api/v1/version`
+
+#### Permission
+
+`api/v1.get.version`
+
+#### GET
+
+**200:** JSON object that contains the version
+```text
+{
+    "version": "telescribe-..."
+}
+```
