@@ -59,3 +59,24 @@ A role is a compound of monitoring configurations which is used to configure cli
 |-|-|
 |`monitorConfigMap`|The map that contains **Monitor.Config** objects; keys of the map are **Monitor.Key**|
 |`monitorInterval`|How often the client sends its metrics; in seconds|
+
+## Range
+
+A range represents a numeric range which is used for examine the status of monitored values. Commas are used to use multiple ranges in one string and colons are used to express ranges.
+
+|Example|Description|
+|-|-|
+|`1`|x = 1|
+|`1:`|x >= 1|
+|`1:2`|1 <= x <= 2|
+|`:2`|x <= 2|
+|`1:3,5:`|1 <= x <= 3 and 5 <= x|
+
+## Config
+
+The monitor configuration contains information of fatal and warning ranges of values.
+
+|Item|Description|
+|-|-|
+|`fatalRange`|The **Monitor.Range** in which values are considered fatal|
+|`warningRange`|The **Monitor.Range** in which values are considered warning|
