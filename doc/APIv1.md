@@ -1,14 +1,51 @@
-## API v1
+# API v1
 
 This documentation explains the behavior of API that is used to communicate between a server and a web client.
 
-### Specification
+## Specification
 
 |Item|Details|
 |-|-|
-|Base URI|`/api/v1/`|
+|Base URL|`/api/v1/`|
 
-### monitorDataTableBox
+## clientMap
+
+#### URL
+
+`clientMap`
+
+#### Permission
+
+`api/v1.<method>.clientMap.<fullName>`
+
+#### GET
+
+Provides the user with a JSON object that contains client list.
+
+```json
+{
+    "clientMap": {
+        "<fullName>": {
+            "latestMap": {
+                "<mdKey>": {
+                    "timestamp": ...,
+                    "value": ...,
+                    "status": ...
+                }
+            },
+            "configMap": {
+                "<mdKey>": {
+                    "fatalRange": ...,
+                    "warningRange": ...,
+                    "format": ...
+                }
+            }
+        }
+    }
+}
+```
+
+## monitorDataTableBox
 
 #### URL
 
