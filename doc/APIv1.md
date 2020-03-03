@@ -10,7 +10,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.<method>.clientIds.<clientId>`
+`api/v1.get.clientIds.<clientId>`
 
 #### GET
 
@@ -36,7 +36,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.<method>.clientInfo.<clientId>`
+`api/v1.get.clientInfo.<clientId>`
 
 #### GET
 
@@ -64,7 +64,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.<method>.clientConfig.<clientId>`
+`api/v1.get.clientConfig.<clientId>`
 
 #### GET
 
@@ -95,7 +95,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.<method>.monitorDataBoundaries.<clientId>`
+`api/v1.get.monitorDataBoundaries.<clientId>`
 
 #### GET
 
@@ -153,7 +153,7 @@ timestamp,value
 
 #### Permission
 
-`api/v1.<method>.options`
+`api/v1.get.options`
 
 #### GET
 
