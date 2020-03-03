@@ -20,7 +20,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### GET
 
-Provides the user with a JSON object that contains client list.
+**200:** Provides the user with a JSON object that contains client list.
 
 ```json
 {
@@ -44,6 +44,8 @@ Provides the user with a JSON object that contains client list.
     }
 }
 ```
+
+**403:** No permission
 
 ## monitorDataTableBox
 
