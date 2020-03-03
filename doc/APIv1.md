@@ -22,7 +22,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 **200:** Provides the user with a JSON object that contains client list.
 
-```json
+```text
 {
     "clientMap": {
         "<fullName>": {
@@ -59,8 +59,32 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### GET
 
-Provides the user with the content of the specified monitorDataTableBox in the CSV form.
+**200:** Provides the user with the content of the specified monitorDataTableBox in the CSV form. When the `mdKey` is `boundaries` the csv only contains the timestamp column and the timestamp boundaries in it.
+
+_boundaries
+```text
+timestamp
+...
+...
+```
+
+&lt;mdKey&gt;
+```
+timestamp,value
+...,...
+...,...
+```
+
+**400:** Not found
+
+**403:** No permission
 
 #### DELETE
 
-Immediately deletes the specified monitor data's cache.
+**200:** Immediately deletes the specified monitor data's cache.
+
+**400:** Not found
+
+**403:** No permission
+
+**500:** Internal error; most likely an I/O error
