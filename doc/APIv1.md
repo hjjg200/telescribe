@@ -2,37 +2,82 @@
 
 This documentation explains the behavior of API that is used to communicate between a server and a web client.
 
-## clientMap
+## clientIds
 
 #### URL
 
-`/api/v1/clientMap`
+`/api/v1/clientIds`
 
 #### Permission
 
-`api/v1.<method>.clientMap.<fullName>`
+`api/v1.<method>.clientIds.<clientId>`
 
 #### GET
 
-**200:** Provides the user with a JSON object that contains client list.
+**200:** Provides the user with a JSON object that contains client id array.
 
 ```text
 {
-    "clientMap": {
-        "<fullName>": {
-            "latestMap": {
-                "<mdKey>": {
-                    "timestamp": ...,
-                    "value": ...,
-                    "status": ...
-                }
-            },
-            "configMap": {
-                "<mdKey>": {
-                    "fatalRange": ...,
-                    "warningRange": ...,
-                    "format": ...
-                }
+    "clientIds": [
+        "...",
+        "..."
+    ]
+}
+```
+
+**403:** No permission
+
+
+## clientInfo
+
+#### URL
+
+`/api/v1/clientInfo/<clientId>`
+
+#### Permission
+
+`api/v1.<method>.clientInfo.<clientId>`
+
+#### GET
+
+**200:** Provides the user with a JSON object that contains client info.
+
+```text
+{
+    "clientInfo": {
+        "id": ...,
+        "host": ...,
+        "alias": ...,
+        "role": ...
+    }
+}
+```
+
+**403:** No permission
+
+
+## clientConfig
+
+#### URL
+
+`/api/v1/clientConfig/<clientId>`
+
+#### Permission
+
+`api/v1.<method>.clientConfig.<clientId>`
+
+#### GET
+
+**200:** Provides the user with a JSON object that contains client configuration.
+
+```text
+{
+    "clientConfig": {
+        "monitorConfig": {
+            "<mdKey>": {
+                "fatalRange": ...,
+                "warningRange": ...,
+                "format": ...
             }
         }
     }
@@ -41,29 +86,45 @@ This documentation explains the behavior of API that is used to communicate betw
 
 **403:** No permission
 
-## monitorDataTableBox
+
+## monitorDataBoundaries
 
 #### URL
 
-`/api/v1/monitorDataTableBox/<fullName>/<mdKey>`
+`/api/v1/monitorDataBoundaries/<clientId>`
 
 #### Permission
 
-`api/v1.<method>.monitorDataTableBox.<fullName>.<mdKey>`
+`api/v1.<method>.monitorDataBoundaries.<clientId>`
 
 #### GET
 
-**200:** Provides the user with the content of the specified monitorDataTableBox in the CSV form. When the `mdKey` is `boundaries` the csv only contains the timestamp column and the timestamp boundaries in it.
+**200:** Provides the user with a csv table that contains timestamp boundaries of a client.
 
-_boundaries
 ```text
 timestamp
 ...
 ...
 ```
 
-&lt;mdKey&gt;
-```
+**403:** No permission
+
+
+## monitorDataTable
+
+#### URL
+
+`/api/v1/monitorDataTable/<clientId>/<mdKey>`
+
+#### Permission
+
+`api/v1.<method>.monitorDataTable.<clientId>.<mdKey>`
+
+#### GET
+
+**200:** Provides the user with a csv table that contains timestamps and values.
+
+```text
 timestamp,value
 ...,...
 ...,...
@@ -82,6 +143,31 @@ timestamp,value
 **403:** No permission
 
 **500:** Internal error; most likely an I/O error
+
+
+## options
+
+#### URL
+
+`/api/v1/options`
+
+#### Permission
+
+`api/v1.<method>.options`
+
+#### GET
+
+**200:** Provides the user with a JSON object that contains the options
+
+```text
+{
+    "options": {
+        ...
+    }
+}
+```
+
+**403:** No permission
 
 
 ## version
