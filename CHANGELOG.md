@@ -10,6 +10,7 @@ Overall refinement and system signal handling
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [ ] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
+- [ ] **Changed:** `overall` changes as per specification documentations
 
 #### Experiments
 

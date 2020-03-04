@@ -226,10 +226,14 @@ type ClientInfo struct {
 //
 
 type ClientRole struct { // clRole
-    MonitorConfigMap map[MonitorKey] MonitorConfig
-    MonitorInterval  int
+    MonitorConfigMap map[MonitorKey] MonitorConfig `json:"monitorConfigMap"`
+    MonitorInterval  int                           `json:"monitorInterval"`
 }
 
+func(clRole ClientRole) Version() string {
+    j, _ := json.Marshal(clRole)
+    return fmt.Sprintf("%x", Sha256Sum(j))[:6]
+}
 func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
     lhs := clRole
     // MonitorConfigMap

@@ -18,12 +18,6 @@ import (
     . "github.com/hjjg200/go-act"
 )
 
-type WebOptions struct {
-    Durations []int `json:"durations"`
-    FormatNumber string `json:"format.number"`
-    FormatDateLong string `json:"format.date.long"`
-    FormatDateShort string `json:"format.date.short"`
-}
 
 type WebAbstract struct { // webAbs
     ClientMap map[string/* fullName */] WebAbsClient `json:"clientMap"`

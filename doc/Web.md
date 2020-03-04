@@ -6,7 +6,8 @@ This documentation explains the specifications for the web elements.
 
 |Item|Description|
 |-|-|
-|`durations`|The array of duration choices for graph plotting; in hours|
+|`durations`|The array of duration choices for graph plotting; in minutes|
+|`format.value`|The default moment.js format used for monitored values|
 |`format.date.long`|moment.js format used for long date|
 |`format.date.short`|moment.js format used for short date|
 

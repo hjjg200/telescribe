@@ -13,18 +13,26 @@ import (
     . "github.com/hjjg200/go-act"
 )
 
+//
+// STATUS
+//
+
 const (
-    MonitorStatusNormal = 8 * iota
-    MonitorStatusWarning
-    MonitorStatusFatal
+    MonitorStatusNormal  = 0
+    MonitorStatusWarning = 8
+    MonitorStatusFatal   = 16
 )
+
+//
+// DATA
+//
 
 type MonitorDataTableBox struct {
     Boundaries []byte
-    DataMap map[string/* key */] []byte
+    DataMap map[MonitorKey] []byte
 }
 
-type MonitorDataMap map[string/* key */] MonitorData
+type MonitorDataMap map[MonitorKey] MonitorData
 type MonitorData []MonitorDatum
 type MonitorDatum struct {
     Timestamp int64
@@ -92,13 +100,11 @@ func(mKey MonitorKey) Index() string {
     mKey.ensure()
     return parsedMonitorKeys[mKey].idx
 }
-
-func ParseMonitorrKey(key string) (base, param, idx string) {
-    return monitor.ParseWrapperKey(key)
+func(mKey MonitorKey) WithParameter(param string) string {
+    return monitor.FormatWrapperKey(mKey.Base(), param, mKey.Index())
 }
-
-func FormatMonitorrKey(base, param, idx string) string {
-    return monitor.FormatWrapperKey(base, param, idx)
+func(mKey MonitorKey) WithIndex(idx string) string {
+    return monitor.FormatWrapperKey(mKey.Base(), mKey.Parameter(), idx)
 }
 
 //
