@@ -11,7 +11,7 @@ type WebConfig struct {
 
 var DefaultWebConfig = WebConfig{
     Durations:       []int{60*3, 60*24, 60*24*5},
-    FormatNumber:    "{.2f}",
+    FormatValue:     "{.2f}",
     FormatDateLong:  "DD HH:mm",
     FormatDateShort: "MM/DD",
 }

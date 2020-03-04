@@ -211,7 +211,7 @@ func main() {
         }
     case flServer: // Server
         srv := NewServer()
-        Logger.Panicln(srv.Start())
+        srv.Start()
     }
 
 }

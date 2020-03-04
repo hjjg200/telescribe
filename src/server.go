@@ -90,8 +90,8 @@ var DefaultServerConfig = ServerConfig{
 // CLIENT CONFIG ---
 
 type ClientConfig struct { // clCfg
-    ClientMap map[string/* clientId */] ClientInfo `json:"clientMap"`
-    RoleMap                             RoleMap `json:"roleMap"`
+    ClientMap map[string/* clId */] ClientInfo    `json:"clientMap"`
+    RoleMap                         ClientRoleMap `json:"roleMap"`
 }
 
 var DefaultClientConfig = ClientConfig{
@@ -104,7 +104,7 @@ var DefaultClientConfig = ClientConfig{
         },
     },
     // Roles
-    RoleMap: RoleMap{
+    RoleMap: ClientRoleMap{
         "foo": {
             MonitorConfigMap: map[MonitorKey] MonitorConfig{
                 "cpu-usage": MonitorConfig{
@@ -184,7 +184,7 @@ func (srv *Server) LoadConfig(p string) (err error) {
 func(srv *Server) loadClientConfig() (err error) {
 
     // Catch
-    defer Catch(&err)
+    defer CatchFunc(&err, Logger.Warnln)
 
     // File path
     fn := srv.config.ClientConfigPath
@@ -203,7 +203,7 @@ func(srv *Server) loadClientConfig() (err error) {
         enc := json.NewEncoder(f2)
         enc.SetIndent("", "  ")
         Try(enc.Encode(srv.clientConfig))
-        Try(f.Close())
+        Try(f2.Close())
 
     default: // Exists
         dec := json.NewDecoder(f)
@@ -255,7 +255,7 @@ func(srv *Server) Addr() string {
 
 func(srv *Server) Start() (err error) {
 
-    defer Catch(&err)
+    defer CatchFunc(&err, Logger.Panicln)
 
     // Config
     Try(srv.LoadConfig(flServerConfigPath))
@@ -309,7 +309,7 @@ func(srv *Server) Start() (err error) {
     go func() {
         for {func() {
             // Function wrapping in order to use defer
-            defer CatchFunc(Logger.Warnln)
+            defer CatchFunc(nil, Logger.Warnln)
 
             // Sleep at beginning
             time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
@@ -332,7 +332,7 @@ func(srv *Server) Start() (err error) {
         lastMod := st.ModTime()
         for {func() {
             // Catch
-            defer CatchFunc(Logger.Warnln)
+            defer CatchFunc(nil, Logger.Warnln)
 
             // Sleep at beginning
             time.Sleep(clientConfigWatchInterval)
@@ -358,7 +358,7 @@ func(srv *Server) Start() (err error) {
     // Chart-ready Data Preparing Thread
     go func() {
         for {func() {
-            defer CatchFunc(Logger.Warnln)
+            defer CatchFunc(nil, Logger.Warnln)
 
             // Add task
             hs.Add(threadMain, 1)
@@ -457,7 +457,7 @@ func(srv *Server) Start() (err error) {
 
         go func() {
             var host string
-            defer CatchFunc(Logger.Warnln, host)
+            defer CatchFunc(nil, Logger.Warnln, host)
 
             host, _  = HostnameOf(conn)
             rd      := bufio.NewReader(conn)
@@ -520,7 +520,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
     Try(err)
 
     for _, match := range matches {func() {
-        defer CatchFunc(Logger.Warnln, "Failed to read cache:" + match)
+        defer CatchFunc(nil, Logger.Warnln, "Failed to read cache:" + match)
 
         f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
         Try(err2)
@@ -546,7 +546,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
         if !ok {
             srv.clientMonitorDataMap[clId] = make(MonitorDataMap)
         }
-        srv.clientMonitorDataMap[clId][mKey] = md
+        srv.clientMonitorDataMap[clId][mKey] = mData
     }()}
 
     return
@@ -560,7 +560,7 @@ func(srv *Server) CacheClientMonitorDataMap() (err error) {
     for clId, mDataMap := range srv.clientMonitorDataMap {
         
         for mKey, mData := range mDataMap {func() {
-            defer CatchFunc(Logger.Warnln, "Failed to cache:", clId, mKey)
+            defer CatchFunc(nil, Logger.Warnln, "Failed to cache:", clId, mKey)
 
             // Compress
             cmp, err2 := CompressMonitorData(mData)
@@ -703,11 +703,10 @@ func(srv *Server) getMonitorConfig(clId string, mKey MonitorKey) (MonitorConfig)
     // Base + parameter match
     var bpMatch MonitorConfig
 
-    clCfg       := srv.ClientConfig
-    clInfo      := clCfg.ClientMap[clId]
-    host, alias := clInfo.Host, clInfo.Alias
-    clRole      := clCfg.RoleMap.Get(clInfo.Role)
-    mCfgMap     := clRole.MonitorConfigMap
+    clCfg   := srv.clientConfig
+    clInfo  := clCfg.ClientMap[clId]
+    clRole  := clCfg.RoleMap.Get(clInfo.Role)
+    mCfgMap := clRole.MonitorConfigMap
     for b, mCfg := range mCfgMap {
         bBase, bParam, bIdx := b.Base(), b.Parameter(), b.Index()
         if aBase == bBase && aParam == bParam {

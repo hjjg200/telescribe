@@ -6,8 +6,6 @@ import (
     "compress/gzip"
     "encoding/gob"
     "math"
-    "strconv"
-    "strings"
     "./monitor"
 
     . "github.com/hjjg200/go-act"
@@ -100,11 +98,11 @@ func(mKey MonitorKey) Index() string {
     mKey.ensure()
     return parsedMonitorKeys[mKey].idx
 }
-func(mKey MonitorKey) WithParameter(param string) string {
-    return monitor.FormatWrapperKey(mKey.Base(), param, mKey.Index())
+func(mKey MonitorKey) WithParameter(param string) MonitorKey {
+    return MonitorKey(monitor.FormatWrapperKey(mKey.Base(), param, mKey.Index()))
 }
-func(mKey MonitorKey) WithIndex(idx string) string {
-    return monitor.FormatWrapperKey(mKey.Base(), mKey.Parameter(), idx)
+func(mKey MonitorKey) WithIndex(idx string) MonitorKey {
+    return MonitorKey(monitor.FormatWrapperKey(mKey.Base(), mKey.Parameter(), idx))
 }
 
 //

@@ -149,16 +149,16 @@ func (cl *Client) Start() error {
             cl.s.SetConn(conn)
 
             // Monitored values
-            valMap := make(map[string/* key */] interface{})
+            valMap := make(map[MonitorKey] interface{})
             for rawKey := range cl.role.MonitorConfigMap {
-                getter, ok := monitor.Getter(rawKey)
+                getter, ok := monitor.Getter(string(rawKey))
                 if !ok {
                     valMap[rawKey] = nil
                     continue
                 }
                 got := getter()
                 for key, val := range got {
-                    valMap[key] = val
+                    valMap[MonitorKey(key)] = val
                 }
             }
 
@@ -237,11 +237,27 @@ func(clRole ClientRole) Version() string {
 func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
     lhs := clRole
     // MonitorConfigMap
+    if lhs.MonitorConfigMap == nil {
+        lhs.MonitorConfigMap = make(map[MonitorKey] MonitorConfig)
+    }
     for mKey, mCfg := range rhs.MonitorConfigMap {
-        lhs.MonitorConfigMap[mkey] = mCfg
+        lhs.MonitorConfigMap[mKey] = mCfg
     }
     // MonitorInterval
     lhs.MonitorInterval = rhs.MonitorInterval
 
     return lhs
+}
+
+type ClientRoleMap map[string/* roleName */] ClientRole
+
+func(roleMap ClientRoleMap) Get(r string) ClientRole {
+    split := SplitWhitespace(r)
+    ret   := ClientRole{}
+    for _, n := range split {
+        if clRole, ok := roleMap[n]; ok {
+            ret = ret.Merge(clRole)
+        }
+    }
+    return ret
 }

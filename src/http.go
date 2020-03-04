@@ -8,7 +8,7 @@ import (
     "io"
     "net"
     "net/http"
-    netUrl "net/url"
+  //netUrl "net/url"
     "os"
     "regexp"
     "strconv"
@@ -182,115 +182,6 @@ func(srv *Server) populateHttpRouter() {
         serveStatic(hctx)
     })
     hr.Get("/static/(.+)", serveStatic)
-    hr.Get("/version", func(hctx HttpContext) {
-        w := hctx.Writer
-        w.Header().Set("Cache-Control", "no-store")
-        w.Header().Set("Content-Type", "text/plain")
-        fmt.Fprint(w, Version)
-    })
-    hr.Get("/options.json", func(hctx HttpContext) {
-        w := hctx.Writer
-        w.Header().Set("Cache-Control", "no-store")
-        w.Header().Set("Content-Type", "application/json")
-        enc := json.NewEncoder(hctx.Writer)
-        enc.Encode(srv.config.Web)
-    })
-    hr.Get("/abstract.json", func(hctx HttpContext) {
-        w := hctx.Writer
-        w.Header().Set("Cache-Control", "no-store")
-        w.Header().Set("Content-Type", "application/json")
-        enc       := json.NewEncoder(w)
-        clientMap := make(map[string/* fullName */] WebAbsClient)
-        for fullName, mdMap := range srv.clientMonitorDataMap {
-            efn     := netUrl.QueryEscape(fullName)
-            csvBds  := prefixMdtBox + efn + "/_boundaries.csv"
-            csvMap  := make(map[string/* key */] string)
-            latest  := make(map[string/* key */] WebAbsLatest)
-            cfgMap  := make(map[string/* key */] MonitorConfig)
-            for key, md := range mdMap {
-                mCfg := srv.getMonitorConfig(fullName, key)
-                le   := md[len(md) - 1]
-                csvMap[key] = prefixMdtBox + efn + "/" + netUrl.QueryEscape(key) + ".csv"
-                latest[key]  = WebAbsLatest{
-                    Timestamp: le.Timestamp,
-                    Status:    mCfg.StatusOf(le.Value),
-                    Value:     le.Value,
-                }
-                cfgMap[key] = mCfg
-            }
-            //
-            clientMap[fullName] = WebAbsClient{
-                CsvBox: WebAbsCsvBox{
-                    Boundaries: csvBds,
-                    DataMap: csvMap,
-                },
-                LatestMap: latest,
-                ConfigMap: cfgMap,
-            }
-        }
-        abs := WebAbstract{
-            ClientMap: clientMap,
-        }
-        enc.Encode(abs)
-    })
-
-    // DATA RELATED
-
-    parseMdtBox := func(hctx HttpContext) (string, string) {
-        return hctx.Matches[1], hctx.Matches[2]
-    }
-    hr.Get(rgxMdtBox, func(hctx HttpContext) {
-        w := hctx.Writer
-        fullName, key := parseMdtBox(hctx)
-
-        // CSV
-        w.Header().Set("content-type", "text/csv")
-        mdtBox := srv.clientMonitorDataTableBox[fullName]
-        switch key {
-        case "_boundaries":
-            bds := mdtBox.Boundaries
-            rd  := bytes.NewReader(bds)
-            io.Copy(w, rd)
-        default:
-            mdt, ok := mdtBox.DataMap[key]
-            Assert(ok, "Monitor data not found")
-            rd := bytes.NewReader(mdt)
-            io.Copy(w, rd)
-        }
-    })
-    hr.Delete(rgxMdtBox, func(hctx HttpContext) {
-        w := hctx.Writer
-        //fullName, key := parseMdtBox(req)
-
-        // JSON Response
-        w.Header().Set("content-type", "application/json")
-        
-        /*
-{
-    "data": {
-        "fullName": "...",
-        "key": "..."
-    },
-    "meta": {
-        "action": "deleteMonitorDataTableBox",
-        "timestamp": ...,
-        "executor": ... // http username
-    }
-}
-
-{
-    "error": {
-        "code": 300,
-        "message": "not found"
-    },
-    "meta": {
-        "action": "deleteMonitorDataTableBox",
-        "timestamp": ...,
-        "executor": ... // http username
-    }
-}
-        */
-    })
 
     hr.Get("/test1", func(hctx HttpContext) {
         if !hctx.User.IsPermitted("get", "test1") {
@@ -352,7 +243,7 @@ func(srv *Server) registerAPIV1() {
     // @permission: <apiName>.<method>.monitorDataTableBox
     // @GET: fetches csv as per the given parameters
     // @DELETE: deletes the specified monitor data cache
-
+/*
     keyMdtBox := "monitorDataTableBox"
     rgxMdtBox := prefix + keyMdtBox + "/([^/]+)/([^/]+)"
     hr.Get(rgxMdtBox, func(hctx HttpContext) {
@@ -382,11 +273,12 @@ func(srv *Server) registerAPIV1() {
     hr.Delete(rgxMdtBox, func(hctx HttpContext) {
 
     })
+*/
 
     // clientMap
     // @permission: <apiName>.<method>.clientMap
     // @GET: gives you the map of clients
-
+/*
     keyClientMap := "clientMap"
     rgxClientMap := prefix + keyClientMap
     hr.Get(rgxClientMap, func(hctx HttpContext) {
@@ -399,14 +291,14 @@ func(srv *Server) registerAPIV1() {
         w.Header().Set("Cache-Control", "no-store")
         w.Header().Set("Content-Type", "application/json")
         enc       := json.NewEncoder(w)
-        clientMap := make(map[string/* fullName */] WebClient)
+        clientMap := make(map[string/* fullName /] WebClient)
         for fullName, mdMap := range srv.clientMonitorDataMap {
             // Check permission for each client
             if !isPermitted(hctx, keyClientMap, fullName) {
                 continue
             }
-            latest := make(map[string/* mdKey */] WebClLatest)
-            cfgMap := make(map[string/* mdKey */] MonitorConfig)
+            latest := make(map[string/* mdKey /] WebClLatest)
+            cfgMap := make(map[string/* mdKey /] MonitorConfig)
             for mdKey, md := range mdMap { 
                 // Check permission for each monitor data key
                 if !isPermitted(hctx, keyClientMap, fullName, mdKey) {
@@ -432,7 +324,7 @@ func(srv *Server) registerAPIV1() {
             "clientMap": clientMap,
         })
     })
-
+*/
     // options
     // @permission: <apiName>.<method>.options
     // @GET: JSON object of the web option
