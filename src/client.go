@@ -259,5 +259,6 @@ func(roleMap ClientRoleMap) Get(r string) ClientRole {
             ret = ret.Merge(clRole)
         }
     }
+    Logger.Debugln(r, ret)
     return ret
 }

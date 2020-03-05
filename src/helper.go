@@ -153,7 +153,7 @@ func connCopy(dest, src net.Conn) {
 func rewriteFile(path string, rd io.Reader) error {
 
     // Temp
-    tmpPath := path + ".tmp"
+    tmpPath  := path + ".tmp"
     tmp, err := os.OpenFile(tmpPath, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
     if err != nil {
         return err

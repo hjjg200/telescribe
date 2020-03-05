@@ -76,7 +76,7 @@ type MonitorKey string
 type monitorKey struct {
     base, param, idx string
 }
-var parsedMonitorKeys map[MonitorKey] monitorKey
+var parsedMonitorKeys = make(map[MonitorKey] monitorKey)
 
 func(mKey MonitorKey) ensure() {
     if _, ok := parsedMonitorKeys[mKey]; !ok {

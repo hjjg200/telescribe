@@ -240,7 +240,7 @@ func(srv *Server) cacheExecutable() (err error) {
     io.Copy(buf, f)
 
     srv.cachedExecutable = buf.Bytes()
-    return nil
+    return
 
 }
 
@@ -555,7 +555,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
 
 func(srv *Server) CacheClientMonitorDataMap() (err error) {
 
-    defer Catch(&err)
+    defer CatchFunc(&err, Logger.Warnln)
 
     for clId, mDataMap := range srv.clientMonitorDataMap {
         
@@ -653,6 +653,8 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[Monito
 
 }
 
+// WEBHOOK ---
+
 type alarmWebhook struct {
     ClientId    string `json:"clientId"`
     Timestamp   int64 `json:"timestamp"`
@@ -724,7 +726,7 @@ func(srv *Server) getMonitorConfig(clId string, mKey MonitorKey) (MonitorConfig)
 
 func(srv *Server) HandleSession(s *Session) (err error) {
 
-    defer Catch(&err)
+    defer CatchFunc(&err, Logger.Warnln)
 
     // Get Address
     host, err := s.RemoteHost()
@@ -795,10 +797,14 @@ func(srv *Server) HandleSession(s *Session) (err error) {
 
     case "monitor-record":
         //
-        valMap, ok := clRsp.Args()["valueMap"].(map[MonitorKey] interface{})
+        valMap, ok := clRsp.Args()["valueMap"].(map[string] interface{})
         Assert(ok, "Malformed value map")
+        castMap := make(map[MonitorKey] interface{})
+        for key, val := range valMap {
+            castMap[MonitorKey(key)] = val
+        }
         timestamp := clRsp.Int64("timestamp")
-        srv.RecordValueMap(clId, timestamp, valMap)
+        srv.RecordValueMap(clId, timestamp, castMap)
     default:
         panic("Unknown response")
     }
