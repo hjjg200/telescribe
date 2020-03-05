@@ -320,6 +320,9 @@ func(srv *Server) registerAPIV1() {
         rd := bytes.NewReader(mdt)
         io.Copy(w, rd)
     })
+    hr.Delete(rgxMdt, func(hctx HttpContext) {
+        
+    })
 
     // webConfig
     keyWebCfg := "webConfig"

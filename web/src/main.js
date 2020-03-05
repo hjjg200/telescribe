@@ -10,7 +10,20 @@ import UI from '@/lib/ui';
 
 Vue.use(UI);
 
+// API
+import * as api from '@/lib/api';
+
+(async function() {
+  try {
+    console.log(await api.v1.getVersion());
+    console.log(await api.v1.getClientMap());
+  } catch(apiErr) {
+    console.error(apiErr.toString());
+  }
+})();
+
 // Prototype
+Vue.prototype.$api = api;
 Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
 
