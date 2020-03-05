@@ -143,7 +143,7 @@ func(srv *Server) populateHttpRouter() {
         bytes []byte
     }
     staticCacheMap := make(map[string] staticCache)
-    serveStatic := func(hctx HttpContext) {
+    serveStatic    := func(hctx HttpContext) {
 
         defer func() {
             r := recover()
@@ -183,37 +183,6 @@ func(srv *Server) populateHttpRouter() {
     })
     hr.Get("/static/(.+)", serveStatic)
 
-    hr.Get("/test1", func(hctx HttpContext) {
-        if !hctx.User.IsPermitted("get", "test1") {
-            hctx.Writer.WriteHeader(403)
-            return
-        }
-        pn := NewPermissionNode([]string{
-            "action1",
-            "action2.*",
-            "action3.abc",
-            "action3.def",
-        })
-
-        wr := func(s ...string) {
-            fmt.Fprintln(hctx.Writer, s, pn.IsPermitted(s...))
-        }
-        wr("action1")
-        wr("action1", "a")
-        wr("action2")
-        wr("action2", "a")
-        wr("action3", "aaa")
-        wr("action3", "bbb")
-
-        fmt.Fprintln(hctx.Writer, "")
-        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.efgh.eghh"))
-        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.\"12..34\".eghh"))
-        fmt.Fprintln(hctx.Writer, permissionSplit("abcd.\"1.2\\\"3.4\\\"56\".eghh"))
-        fmt.Fprintln(hctx.Writer, permissionJoin([]string{"123", "4\"5.6", "67.89"}))
-
-    })
-
-
     // API
     srv.registerAPIV1()
 
@@ -232,7 +201,7 @@ func(srv *Server) registerAPIV1() {
     type s2i map[string] interface{}
 
     // Helpers
-    respond     := func(hctx HttpContext, val s2i) {
+    respond := func(hctx HttpContext, val s2i) {
         w := hctx.Writer
         w.Header().Set("Content-Type", "application/json")
         j, err := json.MarshalIndent(val, "", "  ")
@@ -248,127 +217,135 @@ func(srv *Server) registerAPIV1() {
         args = append(args, params...)
         return hctx.User.IsPermitted(args...)
     }
-
-    // clientIds
-    keyClientIds := "clientIds"
-
-    // monitorDataTableBox
-    // @permission: <apiName>.<method>.monitorDataTableBox
-    // @GET: fetches csv as per the given parameters
-    // @DELETE: deletes the specified monitor data cache
-/*
-    keyMdtBox := "monitorDataTableBox"
-    rgxMdtBox := prefix + keyMdtBox + "/([^/]+)/([^/]+)"
-    hr.Get(rgxMdtBox, func(hctx HttpContext) {
-        w := hctx.Writer
-//      r := hctx.Request
-        
-        fullName, mdKey := hctx.Matches[1], hctx.Matches[2]
-        if !isPermitted(hctx, keyMdtBox, fullName, mdKey) {
-            w.WriteHeader(403)
-            return
+    formatRgx := func(key string, argc int) string {
+        return prefix + key + strings.Repeat("/([^/]+)", argc)
+    }
+    assertStatus := func(ok bool, st int) {
+        if !ok { panic(st) }
+    }
+    catchStatus := func(hctx HttpContext) {
+        r := recover()
+        if st, ok := r.(int); r != nil && ok {
+            hctx.Writer.WriteHeader(st)
         }
-
-        w.Header().Set("Content-Type", "text/csv")
-        mdtBox := srv.clientMonitorDataTableBox[fullName]
-        switch mdKey {
-        case "_boundaries":
-            bds := mdtBox.Boundaries
-            rd  := bytes.NewReader(bds)
-            io.Copy(w, rd)
-        default:
-            mdt, ok := mdtBox.DataMap[mdKey]
-            Assert(ok, "Monitor data not found")
-            rd := bytes.NewReader(mdt)
-            io.Copy(w, rd)
-        }
-    })
-    hr.Delete(rgxMdtBox, func(hctx HttpContext) {
-
-    })
-*/
+    }
 
     // clientMap
-    // @permission: <apiName>.<method>.clientMap
-    // @GET: gives you the map of clients
-/*
     keyClientMap := "clientMap"
-    rgxClientMap := prefix + keyClientMap
+    rgxClientMap := formatRgx(keyClientMap, 0)
     hr.Get(rgxClientMap, func(hctx HttpContext) {
-        w := hctx.Writer
-        if !isPermitted(hctx, keyClientMap) {
-            w.WriteHeader(403)
-            return
-        }
-        
-        w.Header().Set("Cache-Control", "no-store")
-        w.Header().Set("Content-Type", "application/json")
-        enc       := json.NewEncoder(w)
-        clientMap := make(map[string/* fullName /] WebClient)
-        for fullName, mdMap := range srv.clientMonitorDataMap {
-            // Check permission for each client
-            if !isPermitted(hctx, keyClientMap, fullName) {
+        defer catchStatus(hctx)
+
+        // Permission
+        assertStatus(isPermitted(hctx, keyClientMap), 403)
+
+        ret := make(map[string] ClientInfo)
+        clMap := srv.clientConfig.ClientMap
+        for clId, clInfo := range clMap {
+            if !isPermitted(hctx, keyClientMap, clId) {
                 continue
             }
-            latest := make(map[string/* mdKey /] WebClLatest)
-            cfgMap := make(map[string/* mdKey /] MonitorConfig)
-            for mdKey, md := range mdMap { 
-                // Check permission for each monitor data key
-                if !isPermitted(hctx, keyClientMap, fullName, mdKey) {
-                    continue
-                }
-                mCfg := srv.getMonitorConfig(fullName, mdKey)
-                le   := md[len(md) - 1]
-                latest[mdKey]  = WebClLatest{
-                    Timestamp: le.Timestamp,
-                    Status:    mCfg.StatusOf(le.Value),
-                    Value:     le.Value,
-                }
-                cfgMap[mdKey] = mCfg
-            }
-            clientMap[fullName] = WebClient{
-                LatestMap: latest,
-                ConfigMap: cfgMap,
-            }
+            ret[clId] = clInfo
         }
-        
-        enc.SetIndent("", "  ")
-        enc.Encode(apiRsp{
-            "clientMap": clientMap,
+
+        // Respond
+        respond(hctx, s2i{
+            "clientMap": ret,
         })
     })
-*/
-    // options
-    // @permission: <apiName>.<method>.options
-    // @GET: JSON object of the web option
 
-    keyOptions := "options"
-    rgxOptions := prefix + keyOptions
-    hr.Get(rgxOptions, func(hctx HttpContext) {
-        w := hctx.Writer
-        if !isPermitted(hctx, keyOptions) {
-            w.WriteHeader(403)
-            return
-        }
+    // clientRole
+    keyClientRole := "clientRole"
+    rgxClientRole := formatRgx(keyClientRole, 1)
+    hr.Get(rgxClientRole, func(hctx HttpContext) {
+        defer catchStatus(hctx)
 
+        // Vars
+        clId := hctx.Matches[1]
+        // Permission
+        assertStatus(isPermitted(hctx, keyClientRole, clId), 403)
+
+        clInfo, ok := srv.clientConfig.ClientMap[clId]
+        assertStatus(ok, 400)
+        clRole := srv.clientConfig.RoleMap.Get(clInfo.Role)
+
+        // Respond
         respond(hctx, s2i{
-            "options": srv.config.Web,
+            "clientRole": clRole,
+        })
+    })
+
+    // monitorDataBoundaries
+    keyMdb := "monitorDataBoundaries"
+    rgxMdb := formatRgx(keyMdb, 1)
+    hr.Get(rgxMdb, func(hctx HttpContext) {
+        defer catchStatus(hctx)
+
+        // Vars
+        w    := hctx.Writer
+        clId := hctx.Matches[1]
+        // Permission
+        assertStatus(isPermitted(hctx, keyMdb, clId), 403)
+
+        box, ok  := srv.clientMonitorDataTableBox[clId]
+        assertStatus(ok, 400)
+
+        // Respond
+        w.Header().Set("Content-Type", "text/csv")
+        bds := box.Boundaries
+        rd  := bytes.NewReader(bds)
+        io.Copy(w, rd)
+    })
+
+    // monitorDataTable
+    keyMdt := "monitorDataTable"
+    rgxMdt := formatRgx(keyMdt, 2)
+    hr.Get(rgxMdt, func(hctx HttpContext) {
+        defer catchStatus(hctx)
+
+        // Vars
+        w          := hctx.Writer
+        clId, mKey := hctx.Matches[1], hctx.Matches[2]
+        // Permission
+        assertStatus(isPermitted(hctx, keyMdt, clId, mKey), 403)
+
+        box, ok  := srv.clientMonitorDataTableBox[clId]
+        assertStatus(ok, 400)
+
+        mdt, ok := box.DataMap[mKey]
+        assertStatus(ok, 400)
+
+        // Respond
+        w.Header().Set("Content-Type", "text/csv")
+        rd := bytes.NewReader(mdt)
+        io.Copy(w, rd)
+    })
+
+    // webConfig
+    keyWebCfg := "webConfig"
+    rgxWebCfg := formatRgx(keyWebCfg, 0)
+    hr.Get(rgxWebCfg, func(hctx HttpContext) {
+        defer catchStatus(hctx)
+
+        // Permission
+        assertStatus(isPermitted(hctx, keyWebCfg), 403)
+
+        // Respond
+        respond(hctx, s2i{
+            "webConfig": srv.config.Web,
         })
     })
 
     // version
-    // @permission: <apiName>.<method>.version
-    // @GET: prints the version
-
     keyVersion := "version"
     rgxVersion := prefix + keyVersion
     hr.Get(rgxVersion, func(hctx HttpContext) {
-        w := hctx.Writer
-        if !isPermitted(hctx, keyVersion) {
-            w.WriteHeader(403)
-            return
-        }
+        defer catchStatus(hctx)
 
+        // Permission
+        assertStatus(isPermitted(hctx, keyVersion), 403)
+
+        // Respond
         respond(hctx, s2i{
             "version": Version,
         })
