@@ -149,7 +149,7 @@ func (cl *Client) Start() error {
             cl.s.SetConn(conn)
 
             // Monitored values
-            valMap := make(map[MonitorKey] interface{})
+            valMap := make(map[string] interface{})
             for rawKey := range cl.role.MonitorConfigMap {
                 getter, ok := monitor.Getter(string(rawKey))
                 if !ok {
@@ -158,7 +158,7 @@ func (cl *Client) Start() error {
                 }
                 got := getter()
                 for key, val := range got {
-                    valMap[MonitorKey(key)] = val
+                    valMap[key] = val
                 }
             }
 
@@ -226,8 +226,8 @@ type ClientInfo struct {
 //
 
 type ClientRole struct { // clRole
-    MonitorConfigMap map[MonitorKey] MonitorConfig `json:"monitorConfigMap"`
-    MonitorInterval  int                           `json:"monitorInterval"`
+    MonitorConfigMap map[string] MonitorConfig `json:"monitorConfigMap"`
+    MonitorInterval  int                       `json:"monitorInterval"`
 }
 
 func(clRole ClientRole) Version() string {
@@ -238,7 +238,7 @@ func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
     lhs := clRole
     // MonitorConfigMap
     if lhs.MonitorConfigMap == nil {
-        lhs.MonitorConfigMap = make(map[MonitorKey] MonitorConfig)
+        lhs.MonitorConfigMap = make(map[string] MonitorConfig)
     }
     for mKey, mCfg := range rhs.MonitorConfigMap {
         lhs.MonitorConfigMap[mKey] = mCfg
@@ -259,6 +259,5 @@ func(roleMap ClientRoleMap) Get(r string) ClientRole {
             ret = ret.Merge(clRole)
         }
     }
-    Logger.Debugln(r, ret)
     return ret
 }

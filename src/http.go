@@ -229,15 +229,28 @@ func(srv *Server) registerAPIV1() {
         apiName = "api/v1"
         prefix  = "/" + apiName + "/"
     )
-
-    type apiRsp map[string] interface{}
+    type s2i map[string] interface{}
 
     // Helpers
+    respond     := func(hctx HttpContext, val s2i) {
+        w := hctx.Writer
+        w.Header().Set("Content-Type", "application/json")
+        j, err := json.MarshalIndent(val, "", "  ")
+        if err != nil {
+            w.WriteHeader(500)
+            w.Write([]byte("{}"))
+            return
+        }
+        w.Write(j)
+    }
     isPermitted := func(hctx HttpContext, key string, params ...string) bool {
         args := []string{ apiName, hctx.Request.Method, key }
         args = append(args, params...)
         return hctx.User.IsPermitted(args...)
     }
+
+    // clientIds
+    keyClientIds := "clientIds"
 
     // monitorDataTableBox
     // @permission: <apiName>.<method>.monitorDataTableBox
@@ -338,10 +351,7 @@ func(srv *Server) registerAPIV1() {
             return
         }
 
-        w.Header().Set("Content-Type", "application/json")
-        enc := json.NewEncoder(w)
-        enc.SetIndent("", "  ")
-        enc.Encode(apiRsp{
+        respond(hctx, s2i{
             "options": srv.config.Web,
         })
     })
@@ -359,10 +369,7 @@ func(srv *Server) registerAPIV1() {
             return
         }
 
-        w.Header().Set("Content-Type", "text/plain")
-        enc := json.NewEncoder(w)
-        enc.SetIndent("", "  ")
-        enc.Encode(apiRsp{
+        respond(hctx, s2i{
             "version": Version,
         })
     })

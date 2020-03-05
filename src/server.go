@@ -106,7 +106,7 @@ var DefaultClientConfig = ClientConfig{
     // Roles
     RoleMap: ClientRoleMap{
         "foo": {
-            MonitorConfigMap: map[MonitorKey] MonitorConfig{
+            MonitorConfigMap: map[string] MonitorConfig{
                 "cpu-usage": MonitorConfig{
                     FatalRange:   "80:",
                     WarningRange: "50:",
@@ -117,7 +117,7 @@ var DefaultClientConfig = ClientConfig{
             MonitorInterval: 60,
         },
         "bar": {
-            MonitorConfigMap: map[MonitorKey] MonitorConfig{
+            MonitorConfigMap: map[string] MonitorConfig{
                 "swap-usage":   MonitorConfig{},
                 "memory-usage": MonitorConfig{
                     Format: "Using {.f}%",
@@ -367,7 +367,7 @@ func(srv *Server) Start() (err error) {
             for clId, mdMap := range srv.clientMonitorDataMap {
                 // MonitorData
                 tsMap  := make(map[int64/* timestamp */] struct{})
-                mdtMap := make(map[MonitorKey] []byte)
+                mdtMap := make(map[string] []byte)
                 // Table-writing loop
                 for mKey, mData := range mdMap {
                     // Decimate monitor data
@@ -527,7 +527,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
 
         var (
             clId string
-            mKey MonitorKey
+            mKey string
             cmp  []byte
         )
 
@@ -588,7 +588,7 @@ func(srv *Server) CacheClientMonitorDataMap() (err error) {
 
 }
 
-func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[MonitorKey] interface{}) {
+func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string] interface{}) {
 
     // Ensure
     _, ok := srv.clientMonitorDataMap[clId]
@@ -598,8 +598,8 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[Monito
 
     //
     initialized := make(MonitorData, 0)
-    fatalValues := make(map[MonitorKey] float64)
-    appendValue := func(mKey MonitorKey, val float64) {
+    fatalValues := make(map[string] float64)
+    appendValue := func(mKey string, val float64) {
 
         short, ok := srv.clientMonitorDataMap[clId][mKey]
         if !ok {
@@ -637,7 +637,8 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[Monito
             appendValue(mKey, cast)
         case map[string] float64:
             for idx, subVal := range cast {
-                longKey := mKey.WithIndex(idx)
+                b, p, _ := ParseMonitorKey(mKey)
+                longKey := FormatMonitorKey(b, p, idx)
                 appendValue(longKey, subVal)
             }
         }
@@ -658,9 +659,9 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[Monito
 type alarmWebhook struct {
     ClientId    string `json:"clientId"`
     Timestamp   int64 `json:"timestamp"`
-    FatalValues map[MonitorKey] float64 `json:"fatalValues"`
+    FatalValues map[string] float64 `json:"fatalValues"`
 }
-func(srv *Server) sendAlarmWebhook(clId string, timestamp int64, fatalValues map[MonitorKey] float64) error {
+func(srv *Server) sendAlarmWebhook(clId string, timestamp int64, fatalValues map[string] float64) error {
 
     // Empty Values
     if len(fatalValues) == 0 {
@@ -699,9 +700,9 @@ func(srv *Server) sendAlarmWebhook(clId string, timestamp int64, fatalValues map
 
 }
 
-func(srv *Server) getMonitorConfig(clId string, mKey MonitorKey) (MonitorConfig) {
+func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig) {
 
-    aBase, aParam, aIdx := mKey.Base(), mKey.Parameter(), mKey.Index()
+    aBase, aParam, aIdx := ParseMonitorKey(mKey)
     // Base + parameter match
     var bpMatch MonitorConfig
 
@@ -710,7 +711,7 @@ func(srv *Server) getMonitorConfig(clId string, mKey MonitorKey) (MonitorConfig)
     clRole  := clCfg.RoleMap.Get(clInfo.Role)
     mCfgMap := clRole.MonitorConfigMap
     for b, mCfg := range mCfgMap {
-        bBase, bParam, bIdx := b.Base(), b.Parameter(), b.Index()
+        bBase, bParam, bIdx := ParseMonitorKey(b)
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {
                 // Exact match
@@ -799,12 +800,8 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         //
         valMap, ok := clRsp.Args()["valueMap"].(map[string] interface{})
         Assert(ok, "Malformed value map")
-        castMap := make(map[MonitorKey] interface{})
-        for key, val := range valMap {
-            castMap[MonitorKey(key)] = val
-        }
         timestamp := clRsp.Int64("timestamp")
-        srv.RecordValueMap(clId, timestamp, castMap)
+        srv.RecordValueMap(clId, timestamp, valMap)
     default:
         panic("Unknown response")
     }

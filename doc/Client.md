@@ -2,6 +2,11 @@
 
 This documentaion contains the specifications for client-related elements.
 
+## ID
+
+A client ID is typically key to a **Client.Info** object in maps, which must be unique to its own client.
+
+
 ## Info
 
 |Item|Description|

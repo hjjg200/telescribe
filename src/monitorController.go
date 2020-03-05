@@ -27,10 +27,10 @@ const (
 
 type MonitorDataTableBox struct {
     Boundaries []byte
-    DataMap map[MonitorKey] []byte
+    DataMap    map[string] []byte
 }
 
-type MonitorDataMap map[MonitorKey] MonitorData
+type MonitorDataMap map[string] MonitorData
 type MonitorData []MonitorDatum
 type MonitorDatum struct {
     Timestamp int64
@@ -72,37 +72,24 @@ func (mCfg MonitorConfig) StatusOf(val float64) int {
 // KEY
 //
 
-type MonitorKey string
 type monitorKey struct {
     base, param, idx string
 }
-var parsedMonitorKeys = make(map[MonitorKey] monitorKey)
+var parsedMonitorKeys = make(map[string] monitorKey)
 
-func(mKey MonitorKey) ensure() {
-    if _, ok := parsedMonitorKeys[mKey]; !ok {
-        base, param, idx        := monitor.ParseWrapperKey(string(mKey))
-        parsedMonitorKeys[mKey]  = monitorKey{
+func ParseMonitorKey(mKey string) (base, param, idx string) {
+    if m, ok := parsedMonitorKeys[mKey]; ok {
+        base, param, idx = m.base, m.param, m.idx
+    } else {
+        base, param, idx        = monitor.ParseWrapperKey(mKey)
+        parsedMonitorKeys[mKey] = monitorKey{
             base, param, idx,
         }
     }
+    return
 }
-func(mKey MonitorKey) Base() string {
-    mKey.ensure()
-    return parsedMonitorKeys[mKey].base
-}
-func(mKey MonitorKey) Parameter() string {
-    mKey.ensure()
-    return parsedMonitorKeys[mKey].param
-}
-func(mKey MonitorKey) Index() string {
-    mKey.ensure()
-    return parsedMonitorKeys[mKey].idx
-}
-func(mKey MonitorKey) WithParameter(param string) MonitorKey {
-    return MonitorKey(monitor.FormatWrapperKey(mKey.Base(), param, mKey.Index()))
-}
-func(mKey MonitorKey) WithIndex(idx string) MonitorKey {
-    return MonitorKey(monitor.FormatWrapperKey(mKey.Base(), mKey.Parameter(), idx))
+func FormatMonitorKey(base, param, idx string) string {
+    return monitor.FormatWrapperKey(base, param, idx)
 }
 
 //

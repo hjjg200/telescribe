@@ -2,53 +2,26 @@
 
 This documentation explains the behavior of API that is used to communicate between a server and a web client.
 
-## clientIds
+## clientMap
 
 #### URL
 
-`/api/v1/clientIds`
+`/api/v1/clientMap`
 
 #### Permission
 
-`api/v1.get.clientIds.<clientId>`
+`api/v1.get.clientMap.<Client.ID>`
 
 #### GET
 
-**200:** Provides the user with a JSON object that contains client id array.
+**200:** Provides the user with a JSON object that contains a **Client.ID** to **Client.Info** map. The user will only have access to the clients he or she has access to, as defined in their permissions.
 
 ```text
 {
-    "clientIds": [
-        "...",
-        "..."
-    ]
-}
-```
-
-**403:** No permission
-
-
-## clientInfo
-
-#### URL
-
-`/api/v1/clientInfo/<clientId>`
-
-#### Permission
-
-`api/v1.get.clientInfo.<clientId>`
-
-#### GET
-
-**200:** Provides the user with a JSON object that contains client info.
-
-```text
-{
-    "clientInfo": {
-        "id": ...,
-        "host": ...,
-        "alias": ...,
-        "role": ...
+    "clientMap": {
+        "<Client.ID>": {
+            Client.Info
+        }
     }
 }
 ```
@@ -56,30 +29,24 @@ This documentation explains the behavior of API that is used to communicate betw
 **403:** No permission
 
 
-## clientConfig
+## clientRole
 
 #### URL
 
-`/api/v1/clientConfig/<clientId>`
+`/api/v1/clientRole/<Client.ID>`
 
 #### Permission
 
-`api/v1.get.clientConfig.<clientId>`
+`api/v1.get.clientRole.<Client.ID>`
 
 #### GET
 
-**200:** Provides the user with a JSON object that contains client configuration.
+**200:** Provides the user with a **Client.Role** object.
 
 ```text
 {
-    "clientConfig": {
-        "monitorConfig": {
-            "<mdKey>": {
-                "fatalRange": ...,
-                "warningRange": ...,
-                "format": ...
-            }
-        }
+    "clientRole": {
+        Client.Role
     }
 }
 ```
@@ -91,11 +58,11 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### URL
 
-`/api/v1/monitorDataBoundaries/<clientId>`
+`/api/v1/monitorDataBoundaries/<Client.ID>`
 
 #### Permission
 
-`api/v1.get.monitorDataBoundaries.<clientId>`
+`api/v1.get.monitorDataBoundaries.<Client.ID>`
 
 #### GET
 
@@ -114,11 +81,11 @@ timestamp
 
 #### URL
 
-`/api/v1/monitorDataTable/<clientId>/<mdKey>`
+`/api/v1/monitorDataTable/<Client.ID>/<Monitor.Key>`
 
 #### Permission
 
-`api/v1.<method>.monitorDataTable.<clientId>.<mdKey>`
+`api/v1.<method>.monitorDataTable.<Client.ID>.<Monitor.Key>`
 
 #### GET
 
@@ -145,24 +112,24 @@ timestamp,value
 **500:** Internal error; most likely an I/O error
 
 
-## options
+## webConfig
 
 #### URL
 
-`/api/v1/options`
+`/api/v1/webConfig`
 
 #### Permission
 
-`api/v1.get.options`
+`api/v1.get.webConfig`
 
 #### GET
 
-**200:** Provides the user with a JSON object that contains the options
+**200:** Provides the user with a **Web.Config** object
 
 ```text
 {
-    "options": {
-        ...
+    "webConfig": {
+        Web.Config
     }
 }
 ```
