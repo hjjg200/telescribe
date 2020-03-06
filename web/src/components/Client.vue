@@ -5,6 +5,7 @@
       <li v-for="(status, mKey) in statusMap"
         :key="mKey" :data-status="status.status">
         <Checkbox :value="mKey" v-model="activeKeys"
+          class="is-white"
           :class="[classLegend(mKey), 'legend']">
           <span class="key">{{ mKey }}</span>
           <span class="value">{{ status.value.format() }}</span>

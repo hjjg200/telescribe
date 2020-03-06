@@ -11,6 +11,8 @@
 </template>
 
 <script>
+import {colorify} from '@/lib/ui/util/util.js';
+
 export default {
   name: "SidebarItem",
   props: {
@@ -25,11 +27,13 @@ export default {
     };
   },
   mounted() {
-    let titleEl = this.$el.querySelectorAll("strong, b")[0];
-    this.iconFallback = titleEl.textContent.substring(0, 2);
+    let icon  = this.$el.querySelector(".icon");
+    let title = this.$el.querySelectorAll("strong, b")[0].textContent;
+    this.iconFallback = title.substring(0, 2);
+    icon.style.backgroundColor = colorify(title);
 
     if(this.icon !== '') {
-      this.$el.style.backgroundImage = `url("${this.icon}")`;
+      icon.style.backgroundImage = `url("${this.icon}")`;
     }
   }
 }

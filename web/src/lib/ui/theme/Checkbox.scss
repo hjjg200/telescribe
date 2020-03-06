@@ -26,6 +26,11 @@
         text-align: center;
         margin-right: 0.5rem;
     }
+    &.is-white .mark {
+        background: none;
+        border: 1px solid white;
+        color: white;
+    }
     .label {
         display: inline-block;
     }
