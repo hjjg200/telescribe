@@ -91,7 +91,7 @@ export default {
     
     // Vars
       var chart = this.$d3.select(this.$el);
-      var chartDuration = this.duration;
+      var chartDuration = this.duration * 60; // Into seconds
       var chartMargin = {
         top: remToPx(0.5),
         left: remToPx(2.5),

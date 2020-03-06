@@ -1,12 +1,12 @@
 <template>
   <article class="client">
-    <h2>{{ fullName }}</h2>
+    <h2>{{ info.alias }}</h2>
     <ul class="checkboxes">
-      <li v-for="(latest, key) in body.latestMap"
-        :key="key" :data-status="status(key)">
-        <Checkbox :value="key" v-model="activeKeys"
-          :class="[classLegend(key), 'legend']">
-          <span class="key">{{ key }}</span>
+      <li v-for="(latest, mKey) in info.latestMap"
+        :key="mKey" :data-status="status(mKey)">
+        <Checkbox :value="mKey" v-model="activeKeys"
+          :class="[classLegend(mKey), 'legend']">
+          <span class="key">{{ mKey }}</span>
           <span class="value">{{ latest.value.format() }}</span>
         </Checkbox>
       </li>
@@ -14,7 +14,7 @@
     <div class="options-wrap">
       <Dropdown ref="durations" name="duration" @change="onDurationChange">
         <DropdownLabel>Duration</DropdownLabel>
-        <DropdownItem v-for="(duration, i) in $root.options.durations"
+        <DropdownItem v-for="(duration, i) in $root.webCfg.durations"
           :key="i" :value="duration"
           :selected="i == 0">{{ formatDuration(duration) }}</DropdownItem>
       </Dropdown>
@@ -38,11 +38,11 @@ export default {
     let boundaries = [];
 
     this.queue.queue(new Promise(resolve => {
-      $.$d3.csv(TELESCRIBE_HOST + $.body.csvBox.boundaries)
-        .row(function(r) {
-          boundaries.push(+r.timestamp);
-        })
-        .get(undefined, function() {
+      $.$api.v1.getMonitorDataBoundaries($.id)
+        .then(function(csv) {
+          $.$d3.csvParse(csv, row => {
+            boundaries.push(+row.timestamp);
+          });
           $.$refs.graph.boundaries = boundaries;
           resolve();
         });
@@ -57,7 +57,7 @@ export default {
   },
 
   props: {
-    body: {
+    info: {
       type: Object
     }
   },
@@ -69,7 +69,7 @@ export default {
     };
   },
   computed: {
-    fullName() {
+    id() {
       return this.$vnode.key;
     }
   },
@@ -83,31 +83,31 @@ export default {
           return;
         }
 
-        var key = newVal[i];
-        if($.dataset[key] == undefined) {
+        var mKey = newVal[i];
+        if($.dataset[mKey] == undefined) {
           (async function() {
             var p = new Promise(resolve => {
               // Make buf so as not to invoke watchers
               let buf = [];
-              $.$d3.csv(TELESCRIBE_HOST + $.body.csvBox.dataMap[key])
-              .row(function(r) {
-                buf.push({
-                  timestamp: +r.timestamp,
-                  value: +r.value
+
+              $.$api.v1.getMonitorDataTable($.id, mKey)
+                .then(function(csv) {
+                  $.$d3.csvParse(csv, row => {
+                    buf.push({
+                      timestamp: +row.timestamp,
+                      value: +row.value
+                    });
+                    $.$set($.dataset, mKey, buf);
+                    resolve();
+                  });
                 });
-              })
-              .get(undefined, function() {
-                // $set so as to make watchers work
-                $.$set($.dataset, key, buf);
-                resolve();
-              });
             });
             await p;
-            activeDataset[key] = $.dataset[key];
+            activeDataset[mKey] = $.dataset[mKey];
             ensure(++i);
           })();
         } else {
-          activeDataset[key] = $.dataset[key];
+          activeDataset[mKey] = $.dataset[mKey];
           ensure(++i);
         }
       };
@@ -116,26 +116,26 @@ export default {
     }
   },
   methods: {
-    classLegend(key) {
-      var i = this.activeKeys.indexOf(key);
+    classLegend(mKey) {
+      var i = this.activeKeys.indexOf(mKey);
       return i.toSeries();
     },
-    status(key) {
-      let map = this.body.latestMap;
-      if(key === undefined) {
+    status(mKey) {
+      let map = this.info.latestMap;
+      if(mKey === undefined) {
         let max = -1;
-        for(let key in map) {
-          let st = map[key].status;
+        for(let mKey in map) {
+          let st = map[mKey].status;
           max = st > max ? st : max;
         }
         return max;
       }
-      return map[key].status;
+      return map[mKey].status;
     },
     formatDuration(t) {
-      if(t <= 3600) return Math.round(t / 60) + "m";
-      else if(t <= 24 * 3600) return Math.round(t / 3600) + "h";
-      else return Math.round(t / 86400) + "d";
+      if(t <= 60) return `${t}m`;
+      else if(t <= 24 * 60) return Math.round(t / 60) + "h";
+      else return Math.round(t / 1440) + "d";
     },
     onDurationChange(val) {
       this.$refs.graph.duration = val;

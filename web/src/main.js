@@ -13,26 +13,10 @@ Vue.use(UI);
 // API
 import * as api from '@/lib/api';
 
-(async function() {
-  try {
-    console.log(await api.v1.getVersion());
-    console.log(await api.v1.getClientMap());
-  } catch(apiErr) {
-    console.error(apiErr.toString());
-  }
-})();
-
 // Prototype
 Vue.prototype.$api = api;
 Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
-
-// Global
-
-// + Host for telescribe resources
-// + empty host is the same host as web
-// + this variable is for development purpose to separate npm server and telescribe server
-window.TELESCRIBE_HOST = process.env.VUE_APP_TELESCRIBE_HOST;
 
 //
 
@@ -102,17 +86,13 @@ function formatComma(x) {
 
 // MAIN
 (async function() {
-  var abstract = await fetchJson(TELESCRIBE_HOST + "/abstract.json");
-  var options = await fetchJson(TELESCRIBE_HOST + "/options.json");
-  var version = await fetchText(TELESCRIBE_HOST + "/version");
+  let clMap   = await api.v1.getClientMap();
+  let webCfg  = await api.v1.getWebConfig();
+  let version = await api.v1.getVersion();
 
   new Vue({
-    data: {
-      abstract: abstract,
-      options: options,
-      version: version
-    },
-    created: function() {
+    data: {clMap, webCfg, version},
+    created() {
       document.title = "Telescribe";
     },
     render: h => h(App)

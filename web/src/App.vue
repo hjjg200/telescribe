@@ -3,20 +3,20 @@
     <main>
       <Sidebar>
         <SidebarLabel>Hosts</SidebarLabel>
-        <SidebarItem v-for="(client, fullName) in abstract.clientMap"
-          :key="fullName"
-          @click="visibleClient = fullName">
-          <strong>{{ fullName }}</strong>
-          Details
+        <SidebarItem v-for="(clInfo, clId) in clMap"
+          :key="clId"
+          @click="visibleClient = clId">
+          <strong>{{ clInfo.alias }}</strong>
+          clInfo.host
         </SidebarItem>
         <SidebarLabel class="version">{{ version }}</SidebarLabel>
       </Sidebar>
       <section>
         
-        <Client v-for="(client, fullName) in abstract.clientMap"
-          :key="fullName"
-          :body="client"
-          :class="{visible: (visibleClient === fullName)}"></Client>
+        <Client v-for="(clInfo, clId) in clMap"
+          :key="clId"
+          :info="clInfo"
+          :class="{visible: (visibleClient === clId)}"></Client>
       </section>
     </main>
   </div>
@@ -27,19 +27,10 @@ import Client from '@/components/Client.vue';
 export default {
   name: "App",
   components: {Client},
-  computed: {
-    abstract() {
-      return this.$root.abstract;
-    },
-    options() {
-      return this.$root.options;
-    },
-    version() {
-      return this.$root.version;
-    }
-  },
   data() {
+    let {clMap, webCfg, version} = this.$root;
     return {
+      clMap, webCfg, version,
       visibleClient: undefined
     };
   }
