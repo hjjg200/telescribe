@@ -8,7 +8,6 @@ export default {
   mounted() {
     if(this.$parent.$options.name === "Dropdown") {
       this.$parent.title = this.$el.textContent;
-      this.remove();
     }
   }
 }

@@ -211,9 +211,7 @@ func (cl *Client) Start() error {
 }
 
 
-//
-// INFO
-//
+// INFO ---
 
 type ClientInfo struct {
     Host  string `json:"host"`
@@ -221,12 +219,10 @@ type ClientInfo struct {
     Role  string `json:"role"`
 }
 
-//
-// ROLE
-//
+// ROLE ---
 
 type ClientRole struct { // clRole
-    MonitorConfigMap map[string] MonitorConfig `json:"monitorConfigMap"`
+    MonitorConfigMap map[string/* mKey */] MonitorConfig `json:"monitorConfigMap"`
     MonitorInterval  int                       `json:"monitorInterval"`
 }
 
@@ -260,4 +256,12 @@ func(roleMap ClientRoleMap) Get(r string) ClientRole {
         }
     }
     return ret
+}
+
+// STATUS ---
+
+type ClientStatus struct { // clStat
+    Timestamp int64   `json:"timestamp"`
+    Value     float64 `json:"value"`
+    Status    int     `json:"status"`
 }

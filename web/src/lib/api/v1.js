@@ -41,6 +41,13 @@ export default {
     );
   },
 
+  keyClientStatus: "clientStatus",
+  async getClientStatus(clId) { 
+    return await apiFetch(
+      "GET", "json", this.keyClientStatus, clId
+    );
+  },
+
   keyMdb: "monitorDataBoundaries",
   async getMonitorDataBoundaries(clId) {
     return await apiFetch(

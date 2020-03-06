@@ -24,3 +24,14 @@ A role is a compound of monitoring configurations which is used to configure cli
 |-|-|
 |`MonitorConfigMap`|The map that contains **Monitor.Config** objects; keys of the map are **Monitor.Key**|
 |`MonitorInterval`|How often the client sends its metrics; in seconds|
+
+
+## Status
+
+A status object typically has the most recent information about the client. This should not be confused with **Monitor.Status**.
+
+|Item|Description|
+|-|-|
+|`Timestamp`|Latest timestamp|
+|`Value`|Latest value|
+|`Status`|Integer value as documented at **Monitor.Status**|

@@ -45,6 +45,7 @@ Telescribe is designed in such a way that the only thing you have to worry about
 1. Scalable
 1. Well-documented
 1. Config validators
+1. Separate access log and event log
 
 ## TODO (alpha)
 

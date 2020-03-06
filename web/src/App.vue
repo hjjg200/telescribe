@@ -7,7 +7,7 @@
           :key="clId"
           @click="visibleClient = clId">
           <strong>{{ clInfo.alias }}</strong>
-          clInfo.host
+          {{ clInfo.host }}
         </SidebarItem>
         <SidebarLabel class="version">{{ version }}</SidebarLabel>
       </Sidebar>

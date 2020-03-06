@@ -2,12 +2,12 @@
   <article class="client">
     <h2>{{ info.alias }}</h2>
     <ul class="checkboxes">
-      <li v-for="(latest, mKey) in info.latestMap"
-        :key="mKey" :data-status="status(mKey)">
+      <li v-for="(status, mKey) in statusMap"
+        :key="mKey" :data-status="status.status">
         <Checkbox :value="mKey" v-model="activeKeys"
           :class="[classLegend(mKey), 'legend']">
           <span class="key">{{ mKey }}</span>
-          <span class="value">{{ latest.value.format() }}</span>
+          <span class="value">{{ status.value.format() }}</span>
         </Checkbox>
       </li>
     </ul>
@@ -38,42 +38,52 @@ export default {
     let boundaries = [];
 
     this.queue.queue(new Promise(resolve => {
+      $.$api.v1.getClientStatus($.id)
+        .then(function(rsp) {
+          $.statusMap = rsp.clientStatus;
+          resolve();
+        });
+    }));
+    this.queue.queue(new Promise(resolve => {
       $.$api.v1.getMonitorDataBoundaries($.id)
         .then(function(csv) {
           $.$d3.csvParse(csv, row => {
             boundaries.push(+row.timestamp);
           });
-          $.$refs.graph.boundaries = boundaries;
+          $.boundaries = boundaries;
           resolve();
         });
     }));
   },
   mounted() {
     let $ = this;
-    this.queue.queue(new Promise(resolve => {
-      $.$refs.durations.selectIndex(0);
-      resolve();
-    }));
+    this.mounted = true;
   },
 
   props: {
-    info: {
-      type: Object
-    }
+    info: {type: Object}
   },
   data() {
     return {
       activeKeys: [],
-      dataset: {},
-      queue: new Queue()
+      boundaries: [],
+      dataset:    {},
+      queue:      new Queue(),
+      statusMap:  {},
+      mounted:    false
     };
   },
   computed: {
-    id() {
-      return this.$vnode.key;
-    }
+    id() {return this.$vnode.key;},
+    graphReady() {return this.boundaries.length > 0 && this.mounted;}
   },
   watch: {
+    graphReady(newVal) {
+      if(newVal === true) {
+        this.$refs.graph.boundaries = this.boundaries;
+        this.$refs.durations.selectIndex(0);
+      }
+    },
     activeKeys(newVal, oldVal) {
       var $ = this;
       var activeDataset = {};
@@ -97,9 +107,9 @@ export default {
                       timestamp: +row.timestamp,
                       value: +row.value
                     });
-                    $.$set($.dataset, mKey, buf);
-                    resolve();
                   });
+                  $.$set($.dataset, mKey, buf);
+                  resolve();
                 });
             });
             await p;

@@ -18,35 +18,6 @@ import (
     . "github.com/hjjg200/go-act"
 )
 
-
-type WebAbstract struct { // webAbs
-    ClientMap map[string/* fullName */] WebAbsClient `json:"clientMap"`
-}
-type WebAbsClient struct { // absCl
-    CsvBox WebAbsCsvBox `json:"csvBox"`
-    LatestMap map[string/* key */] WebAbsLatest `json:"latestMap"`
-    ConfigMap map[string/* key */] MonitorConfig `json:"configMap"`
-}
-type WebAbsCsvBox struct { // csvBox
-    Boundaries string `json:"boundaries"`
-    DataMap map[string/* key */] string `json:"dataMap"`
-}
-type WebAbsLatest struct { // latest
-    Timestamp int64 `json:"timestamp"`
-    Value float64 `json:"value"`
-    Status int `json:"status"`
-}
-
-type WebClient struct { // webCl
-    LatestMap map[string/* mdKey */] WebClLatest `json:"latestMap"`
-    ConfigMap map[string/* mdKey */] MonitorConfig `json:"configMap"`
-}
-type WebClLatest struct { // latest
-    Timestamp int64 `json:"timestamp"`
-    Value float64 `json:"value"`
-    Status int `json:"status"`
-}
-
 func (srv *Server) startHttpServer() error {
     var err error
     srv.httpListener, err = net.Listen("tcp", "127.0.0.1:0") // Random port
@@ -272,6 +243,40 @@ func(srv *Server) registerAPIV1() {
         // Respond
         respond(hctx, s2i{
             "clientRole": clRole,
+        })
+    })
+
+    // clientStatus
+    keyClientStatus := "clientStatus"
+    rgxClientStatus := formatRgx(keyClientStatus, 1)
+    hr.Get(rgxClientStatus, func(hctx HttpContext) {
+        defer catchStatus(hctx)
+
+        // Vars
+        ret  := make(map[string/* mKey */] ClientStatus)
+        clId := hctx.Matches[1]
+        // Permission
+        assertStatus(isPermitted(hctx, keyClientStatus, clId), 403)
+
+        mdMap, ok :=  srv.clientMonitorDataMap[clId]
+        assertStatus(ok, 400)
+
+        for mKey, mData := range mdMap {
+            if !isPermitted(hctx, keyClientStatus, clId, mKey) {
+                continue
+            }
+            mCfg := srv.getMonitorConfig(clId, mKey)
+            le   := mData[len(mData) - 1]
+            ret[mKey] = ClientStatus{
+                Timestamp: le.Timestamp,
+                Value:     le.Value,
+                Status:    mCfg.StatusOf(le.Value),
+            }
+        }
+
+        // Respond
+        respond(hctx, s2i{
+            "clientStatus": ret,
         })
     })
 
