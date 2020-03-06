@@ -14,7 +14,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### GET
 
-**200:** Provides the user with a JSON object that contains a **Client.ID** to **Client.Info** map. The user will only have access to the clients he or she has access to, as defined in their permissions.
+* **200:** Provides the user with a JSON object that contains a **Client.ID** to **Client.Info** map. The user will only have access to the clients he or she has access to, as defined in their permissions.
 
 ```text
 {
@@ -26,7 +26,7 @@ This documentation explains the behavior of API that is used to communicate betw
 }
 ```
 
-**403:** No permission
+* **403:** No permission
 
 
 ## clientRole
@@ -41,7 +41,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### GET
 
-**200:** Provides the user with a **Client.Role** object.
+* **200:** Provides the user with a **Client.Role** object.
 
 ```text
 {
@@ -51,7 +51,7 @@ This documentation explains the behavior of API that is used to communicate betw
 }
 ```
 
-**403:** No permission
+* **403:** No permission
 
 
 ## clientStatus
@@ -95,7 +95,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### GET
 
-**200:** Provides the user with a csv table that contains timestamp boundaries of a client.
+* **200:** Provides the user with a csv table that contains timestamp boundaries of a client.
 
 ```text
 timestamp
@@ -103,7 +103,7 @@ timestamp
 ...
 ```
 
-**403:** No permission
+* **403:** No permission
 
 
 ## monitorDataTable
@@ -118,7 +118,7 @@ timestamp
 
 #### GET
 
-**200:** Provides the user with a csv table that contains timestamps and values.
+* **200:** Provides the user with a csv table that contains timestamps and values.
 
 ```text
 timestamp,value
@@ -126,19 +126,19 @@ timestamp,value
 ...,...
 ```
 
-**400:** Not found
+* **400:** Not found
 
-**403:** No permission
+* **403:** No permission
 
 #### DELETE
 
-**200:** Immediately deletes the specified monitor data's cache.
+* **200:** Immediately deletes the specified monitor data's cache.
 
-**400:** Not found
+* **400:** Not found
 
-**403:** No permission
+* **403:** No permission
 
-**500:** Internal error; most likely an I/O error
+* **500:** Internal error; most likely an I/O error
 
 
 ## webConfig
@@ -153,7 +153,7 @@ timestamp,value
 
 #### GET
 
-**200:** Provides the user with a **Web.Config** object
+* **200:** Provides the user with a **Web.Config** object
 
 ```text
 {
@@ -163,7 +163,7 @@ timestamp,value
 }
 ```
 
-**403:** No permission
+* **403:** No permission
 
 
 ## version
@@ -178,7 +178,7 @@ timestamp,value
 
 #### GET
 
-**200:** JSON object that contains the version
+* **200:** JSON object that contains the version
 ```text
 {
     "version": "telescribe-..."
