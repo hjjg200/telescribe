@@ -33,18 +33,37 @@ There are two statuses for layout:
 * **Wide:** when the width is >= 35rem
 
 
+## Client
+
+
+
+
 ## Sidebar
 
-|Layout|Description|
+* Fixtures
+
+|Item|Description|
 |-|-|
-|Narrow|It is always at the expanded status and visibility is toggled by a button|
-|Wide|It is normally at the collapsed status and is expandable by a button|
+|Expand Button|It is used to expand or collapse the sidebar|
+|Toggle Button|It is used to toggle the visibility of the sidebar|
+
+* Per-layout Specs
+
+|Item|Narrow|Wide|
+|-|-|-|
+|Sidebar|Always expanded; visibility toggleable|Always visible; collapsed or expanded|
+|Expand Button|Invisible|Visible at the top of the sidebar|
+|Toggle Button|Visible at the top right corner|Invisible|
+
+### SidebarLabel
+
+Labels act as separators in a sidebar and they are shown as horizontal rules when the sidebar is collapsed.
 
 ### SidebarItem
 
 Items typically are mapped to their own client and when clicked the assigned client becomes visible. The background color is randomly chosen by its client id and the text is the first two letters of the client alias in lowercase.
 
-#### Background Color
+* Background Color
 
 |Item|Range|
 |-|-|
@@ -52,3 +71,13 @@ Items typically are mapped to their own client and when clicked the assigned cli
 |Saturation|25% to 30% and 70% to 95%|
 |Lightness|50%|
 
+* Content
+
+An `h4` element must be present and it will become the title of the item. And if a span element follows, it will be considered as the description for the item.
+
+```html
+<SidebarItem>
+  <h4>Title</h4>
+  <span>Description</span>
+</SidebarItem>
+```
