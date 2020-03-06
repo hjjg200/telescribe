@@ -287,7 +287,7 @@ func(srv *Server) registerAPIV1() {
         // Permission
         assertStatus(isPermitted(hctx, keyMdb, clId), 403)
 
-        box, ok  := srv.clientMonitorDataTableBox[clId]
+        box, ok := srv.clientMonitorDataTableBox[clId]
         assertStatus(ok, 400)
 
         // Respond

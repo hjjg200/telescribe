@@ -50,21 +50,6 @@ Element.prototype.hasClass = function(className) {
   return (' ' + this.getAttribute('class') + ' ').indexOf(' ' + className + ' ') > -1;
 }
 
-async function fetchJson(url) {
-  var response = await fetch(url, {
-    method: "GET"
-  });
-  console.log(response.status);
-  return await response.json();
-}
-
-async function fetchText(url) {
-  var response = await fetch(url, {
-    method: "GET"
-  });
-  return await response.text();
-}
-
 function getSeriesIdx(i) {
   return "abcdefghijklmnopqrstuvwxyz".charAt(i - 1);
 }
@@ -86,9 +71,11 @@ function formatComma(x) {
 
 // MAIN
 (async function() {
-  let clMap   = await api.v1.getClientMap();
-  let webCfg  = await api.v1.getWebConfig();
-  let version = await api.v1.getVersion();
+  let clMap   = (await api.v1.getClientMap()).clientMap;
+  let webCfg  = (await api.v1.getWebConfig()).webConfig;
+  let version = (await api.v1.getVersion()).version;
+
+  console.log(webCfg);
 
   new Vue({
     data: {clMap, webCfg, version},

@@ -54,6 +54,35 @@ This documentation explains the behavior of API that is used to communicate betw
 **403:** No permission
 
 
+## clientStatus
+
+#### URL
+
+`/api/v1/clientStatus/<Client.ID>`
+
+#### Permission
+
+`api/v1.get.clientStatus.<Client.ID>.<Monitor.Key>`
+
+#### GET
+
+* **200:** Provides the user with a **Monitor.Key** to **Client.Status** object.
+
+```text
+{
+    "clientStatus": {
+        "<Monitor.Key>": {
+            Client.Status
+        }
+    }
+}
+```
+
+* **400:** Not found
+
+* **403:** No permission
+
+
 ## monitorDataBoundaries
 
 #### URL
