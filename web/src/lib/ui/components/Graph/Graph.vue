@@ -37,27 +37,20 @@ export default {
   },
   watch: {
     duration(newVal) {
-      if(this.drawn || this.boundaries != undefined) {
-        this._xScale = this._scale();
-        this._draw();
-      }
+      this._draw();
     },
     dataset(newVal) {
       this.update();
     },
     boundaries(newVal) {
-      if(this.duration == undefined) return;
-      this._xBoundary = this.$d3.extent(newVal);
-      this._xScale = this._scale();
-      this._draw(true);
+      this._draw();
     }
   },
   data() {
     return {
       duration: undefined,
       dataset: {},
-      boundaries: undefined,
-      drawn: false
+      boundaries: undefined
     };
   },
   computed: {
@@ -82,9 +75,15 @@ export default {
 
   methods: {
 
-    async _draw(reset = false) {
+    async _draw() {
 
-      this.drawn = true;
+      // Check vars
+      if(this.boundaries == undefined || this.duration == undefined)
+        return;
+
+      this._xBoundary   = this.$d3.extent(this.boundaries);
+      this._priorXScale = this._xScale;
+      this._xScale      = this._scale();
 
       // Shorthand access
       var $ = this;
@@ -106,7 +105,7 @@ export default {
       var xBoundary = this._xBoundary;
       var xDuration = xScale.totalDuration;
       // Duration too low
-      if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
+      if(chartDuration > xDuration) chartDuration = xDuration;
       var dataWidth  = chartRect.width * xDuration / chartDuration;
       var dataHeight = chartRect.height;
       var dw_cw      = dataWidth / chartRect.width;
@@ -121,8 +120,8 @@ export default {
       this._xDuration     = xDuration;
       this._yTicks        = yTicks;
       this._chartDuration = chartDuration;
+      // Prior: Reset at draw
       this._priorKeys     = null;
-      this._priorXScale   = null;
     
     // Element Var
       var scrollLeft = Math.max(0, dataWidth - chartRect.width);
@@ -131,18 +130,16 @@ export default {
     // PRIOR VALUES
       var prior = false;
       var priorHandXEnRectPercent;
-      var priorHandXPercent;
+      var priorHandT;
       {
         var segmentsWrap = chart.select(".segments-wrap");
-        if(segmentsWrap.size() > 0 && !reset) {
+        if(segmentsWrap.size() > 0) {
           prior = true;
     
-          var priorXScale   = this._priorXScale;
-          this._priorXScale = xScale;
-
-          var node       = segmentsWrap.node();
-          var hand       = segmentsWrap.select(".hand");
-          var priorHandX = Number(hand.attr("x1"));
+          var node        = segmentsWrap.node();
+          var hand        = segmentsWrap.select(".hand");
+          var priorHandX  = Number(hand.attr("x1"));
+          var priorXScale = this._priorXScale;
     
           // Relative to segments-wrap node
           priorHandXEnRectPercent = (priorHandX - node.scrollLeft) / node.offsetWidth;
@@ -250,9 +247,9 @@ export default {
       {
         for(var i = 0; i < segNo; i++) {
           // Pre
-          var segLeft = chartRect.width * i;
+          var segLeft  = chartRect.width * i;
           var segStart = xScale.invert(chartRect.width * i);
-          var segEnd = Math.min(xScale.invert(chartRect.width * (i + 1)), xBoundary[1]);
+          var segEnd   = Math.min(xScale.invert(chartRect.width * (i + 1)), xBoundary[1]);
           // Main
           var seg = segments.append("g")
             .attr("class", "segment")
@@ -499,7 +496,7 @@ export default {
 
       // |     total duration      |
       // | duration | gap duration |
-      let gapEachDuration = duration / (30 + gapNo);
+      let gapEachDuration = (this.duration * 60) / 6; // To seconds
       let totalDuration   = gapEachDuration * gapNo + duration;
       let steps           = [];
       let lefts           = [];
