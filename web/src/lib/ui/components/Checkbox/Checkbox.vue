@@ -5,6 +5,7 @@
     <input type="checkbox"
       :value="value">
     <div class="mark"
+      :class="markClass"
       :style="{'background-color': color}">
       <font-awesome v-if="checked" icon="check"/>
     </div>
@@ -30,6 +31,10 @@ export default {
     },
     "_model": {
       // v-model
+    },
+    markClass: {
+      type: Array,
+      default: []
     },
     color: {
       type: String,

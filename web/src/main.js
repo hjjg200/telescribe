@@ -21,7 +21,7 @@ Vue.prototype.$moment = moment;
 //
 
 Number.prototype.date = function(str) {
-  if(str === undefined) str = "DD HH:mm";
+  if(str === undefined) str = "MMM DD HH:mm";
   return moment.unix(this).format(str);
 };
 

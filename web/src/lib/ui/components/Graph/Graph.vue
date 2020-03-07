@@ -38,7 +38,7 @@ export default {
   watch: {
     duration(newVal) {
       if(this.drawn || this.boundaries != undefined) {
-      //this._xScale = this._scale();
+        this._xScale = this._scale();
         this._draw();
       }
     },
@@ -90,9 +90,9 @@ export default {
       var $ = this;
     
     // Vars
-      var chart = this.$d3.select(this.$el);
+      var chart         = this.$d3.select(this.$el);
       var chartDuration = this.duration * 60; // Into seconds
-      var chartMargin = {
+      var chartMargin   = {
         top: remToPx(0.5),
         left: remToPx(2.5),
         bottom: remToPx(2)
@@ -102,30 +102,31 @@ export default {
         width: chartNode.offsetWidth - chartMargin.left,
         height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
       };
-      var xScale = this._xScale;
+      var xScale    = this._xScale;
       var xBoundary = this._xBoundary;
       var xDuration = xScale.totalDuration;
       // Duration too low
       if(chartDuration == undefined || chartDuration > xDuration) chartDuration = xDuration;
-      var dataWidth = chartRect.width * xDuration / chartDuration;
+      var dataWidth  = chartRect.width * xDuration / chartDuration;
       var dataHeight = chartRect.height;
-      var dw_cw = dataWidth / chartRect.width;
-      var segNo = Math.ceil(dw_cw);
-      var xTicks = Math.round(dw_cw * 4);
-      var yTicks = 4;
-      this._priorKeys = null;
-      this._dataWidth = dataWidth;
-      this._dataHeight = dataHeight;
-      this._width = chartRect.width;
-      this._height = chartRect.height;
-      this._margin = chartMargin;
-      this._xDuration = xDuration;
-      this._yTicks = yTicks;
+      var dw_cw      = dataWidth / chartRect.width;
+      var segNo      = Math.ceil(dw_cw);
+      var xTicks     = Math.round(dw_cw * 4);
+      var yTicks     = 4;
+      this._dataWidth     = dataWidth;
+      this._dataHeight    = dataHeight;
+      this._width         = chartRect.width;
+      this._height        = chartRect.height;
+      this._margin        = chartMargin;
+      this._xDuration     = xDuration;
+      this._yTicks        = yTicks;
       this._chartDuration = chartDuration;
+      this._priorKeys     = null;
+      this._priorXScale   = null;
     
     // Element Var
       var scrollLeft = Math.max(0, dataWidth - chartRect.width);
-      var handX = scrollLeft + chartRect.width / 2;
+      var handX      = scrollLeft + chartRect.width / 2;
     
     // PRIOR VALUES
       var prior = false;
@@ -136,18 +137,24 @@ export default {
         if(segmentsWrap.size() > 0 && !reset) {
           prior = true;
     
-          var node = segmentsWrap.node();
-          var hand = segmentsWrap.select(".hand");
-          var x = Number(hand.attr("x1"));
+          var priorXScale   = this._priorXScale;
+          this._priorXScale = xScale;
+
+          var node       = segmentsWrap.node();
+          var hand       = segmentsWrap.select(".hand");
+          var priorHandX = Number(hand.attr("x1"));
     
-          priorHandXEnRectPercent = (x - node.scrollLeft) / node.offsetWidth;
-          priorHandXPercent = x / node.scrollWidth;
+          // Relative to segments-wrap node
+          priorHandXEnRectPercent = (priorHandX - node.scrollLeft) / node.offsetWidth;
+          // Absolute
+          priorHandT = priorXScale.invert(priorHandX);
     
           // Scroll Left and Hand X
-          handX = priorHandXPercent * dataWidth;
+          handX      = xScale(priorHandT);
           scrollLeft = Math.max(0, handX - chartRect.width * priorHandXEnRectPercent);
+
+          // When the hand is outside the chart
           if(!(scrollLeft <= handX && handX <= scrollLeft + chartRect.width)) {
-            // When the hand is outside the chart
             handX = scrollLeft + chartRect.width / 2;
           }
         }
@@ -332,33 +339,48 @@ export default {
           }, 100);
         };
       }
+
       { // Hand, Points and Tooltip and Touch Interface
+        var isMouseDown = false;
+        var isTouch     = false;
         var bisect = function(slice, timestamp, accessor) {
           var bs = $.$d3.bisector(accessor).left;
-          var i = bs(slice, timestamp);
-          var d0 = slice[i-1];
-          var d1 = slice[i];
+          var i   = bs(slice, timestamp);
+          var d0  = slice[i-1];
+          var d1  = slice[i];
           if(d0 === undefined && d1 === undefined) return undefined;
           else if(d0 === undefined) return d1;
           else if(d1 === undefined) return d0;
           else return timestamp - accessor(d0) > accessor(d1) - timestamp ? d1 : d0;
         };
+
+        // Moving hand
+        // - mousedown
+        // - mousemove when mouse is down
+        // - scroll
         var mouseHandler = function() {
-          var event = $.$d3.event;
-          var target = event.target;
-          var mouse = $.$d3.mouse(projection.node());
-          var [mX, mY] = mouse;
-          var timestamp = xScale.invert(mX);
-          var dataset = $.dataset;
+
+          var event      = $.$d3.event;
+          var target     = event.target;
+          var mouse      = $.$d3.mouse(projection.node());
+          var [mX, mY]   = mouse;
+          var timestamp  = xScale.invert(mX);
+          var dataset    = $.dataset;
           var seriesName = $._seriesName;
-          var yScale = $._yScale;
+          var yScale     = $._yScale;
           var scrollLeft = segmentsWrap.node().scrollLeft;
+
+          // Event Type Check
+          if(event.type === "mousemove" && !(isTouch || isMouseDown))
+            return;
+
           //
           segments.selectAll(".point").style("opacity", 1);
           background.select(".focus-date text").style("opacity", 1);
           if(event.target.hasClass("point")) {
             overlay.selectAll(".tooltip").style("opacity", 1);
           }
+
           //
           var handX;
     
@@ -367,11 +389,11 @@ export default {
             let data = dataset[key];
             var elem = bisect(data, timestamp, function(d) { return d.timestamp; });
             if(elem === undefined || isNaN(elem.value)) return;
-            var cX = xScale(elem.timestamp);
-            var cY = yScale(elem.value);
+            var cX     = xScale(elem.timestamp);
+            var cY     = yScale(elem.value);
             var series = seriesName(key);
             segments.select(`.point.${series}`)
-            .attr("data-timestamp", elem.timestamp)
+              .attr("data-timestamp", elem.timestamp)
               .attr("data-value", elem.value)
               .attr("cx", cX)
               .attr("cy", cY);
@@ -385,16 +407,16 @@ export default {
           if(handX === undefined) return;
           
           // Hand
-          hand.attr("x1", handX).attr("x2", handX);
           var handT = xScale.invert(handX);
+          hand.attr("x1", handX).attr("x2", handX);
 
           // Time
           background.select(".focus-date text").text(handT.date("MM/DD"));
     
           // Tooltip
           var [tw, th] = [tooltipSize.width, tooltipSize.height];
-          var tx = Math.min(Math.max(mX - scrollLeft - tw/2, 0), chartRect.width - tw);
-          var ty = mY < th ? mY + 5 : mY - tooltipSize.height - 5;
+          var tx      = Math.min(Math.max(mX - scrollLeft - tw/2, 0), chartRect.width - tw);
+          var ty      = mY < th ? mY + 5 : mY - tooltipSize.height - 5;
           tooltip.attr("transform", `translate(${tx},${ty})`);
           if(target.hasClass("point")) {
             //
@@ -408,9 +430,8 @@ export default {
     
         //
         { // Touch Interface
-          var touch = false;
           window.addEventListener("touchstart", function handler() {
-            touch = true;
+            isTouch = true;
             window.removeEventListener("touchstart", handler);
           });
           // Dispatch mouse event as you scroll
@@ -421,7 +442,7 @@ export default {
             // Pre
             node.removeEventListener("scroll", handler);
             // Main
-            if(touch) {
+            if(isTouch) {
               var left = node.scrollLeft;
               var rect = node.getBoundingClientRect();
               var handX = Number(hand.attr("x1"));
@@ -440,53 +461,60 @@ export default {
         }
     
         // Add Handlers
-        chart.on("mouseover", mouseHandler)
-        .on("mouseout", function() {
-          var event = $.$d3.event;
-          background.select(".focus-date text").style("opacity", 0);
-          if(event.target.hasClass("point")) {
-            overlay.selectAll(".tooltip").style("opacity", 0);
-          }
-        })
-        .on("mousemove", mouseHandler);
+        chart
+          .on("mouseout", function() {
+            var event = $.$d3.event;
+            background.select(".focus-date text").style("opacity", 0);
+            if(event.target.hasClass("point")) {
+              overlay.selectAll(".tooltip").style("opacity", 0);
+            }
+          })
+          .on("mousemove", mouseHandler)
+          .on("mousedown", mouseHandler)
+          .on("mousedown", () => {isMouseDown = true;})
+          .on("mouseup",   () => {isMouseDown = false;});
       }
 
     },
 
     _scale() {
 
-      let epsilon = 1e-5;
-      let boundaries = this.boundaries;
-      let firstT = boundaries[0];
-      let lastT = boundaries[boundaries.length - 1];
-      let duration = lastT - firstT;
-    //let chartDuration = this.duration;
-      let segNo = boundaries.length / 2;
-      let gapNo = segNo - 1;
+      // Custom scale is used to make the length of all gaps the same
+      // in order to reduce the whitespace made by long-term gaps
+      let epsilon       = 1e-5;
+      let boundaries    = this.boundaries;
+      let firstT        = boundaries[0];
+      let lastT         = boundaries[boundaries.length - 1];
+      let duration      = lastT - firstT;
+      let segNo         = boundaries.length / 2;
+      let gapNo         = segNo - 1;
       let gapBoundaries = boundaries.slice(1, -1);
+      
+      // Exclude Gap Duration from duration
       for(let i = 0; i < gapBoundaries.length; i+=2) {
         let start = gapBoundaries[i];
-        let end = gapBoundaries[i+1];
-        // Exclude Gap Duration from duration
+        let end   = gapBoundaries[i+1];
         duration -= end - start;
       }
 
-      // | duration | gap duration... |
+      // |     total duration      |
+      // | duration | gap duration |
       let gapEachDuration = duration / (30 + gapNo);
-      let totalDuration = gapEachDuration * gapNo + duration;
-      let steps = [];
-      let lefts = [];
-      let lastRight = 0;
-      let lastRightT = firstT;
+      let totalDuration   = gapEachDuration * gapNo + duration;
+      let steps           = [];
+      let lefts           = [];
+      let lastRight       = 0;
+      let lastRightT      = firstT;
       //
       for(let i = 0; i < gapNo; i++) {
         let gapStart = gapBoundaries[i*2];
-        let gapEnd = gapBoundaries[i*2+1] - epsilon; // In order to exclude the non-gap point at the gap end
+        let gapEnd   = gapBoundaries[i*2+1] - epsilon; // In order to exclude the non-gap point at the gap end
         //
-        let step = gapEachDuration / (gapEnd - gapStart);
-        let left = lastRight + (gapStart - lastRightT) / totalDuration;
+        let step  = gapEachDuration / (gapEnd - gapStart);
+        let left  = lastRight + (gapStart - lastRightT) / totalDuration;
         let right = left + gapEachDuration / totalDuration;
-        lastRight = right;
+        //
+        lastRight  = right;
         lastRightT = gapEnd;
         //
         steps.push(step, 1); // this step and 1
@@ -505,17 +533,17 @@ export default {
           return $._(timestamp) * ($._range[1] - $._range[0]) + $._range[0];
         };
         // Private
-        $._steps = steps;
-        $._lefts = lefts;
+        $._steps      = steps;
+        $._lefts      = lefts;
         $._boundaries = boundaries;
         $._tickValues = boundaries; // Default tick values
-        $._firstT = firstT;
-        $._lastT = lastT;
+        $._firstT     = firstT;
+        $._lastT      = lastT;
         $._ = function(timestamp) {
           for(let i = 0; i < $._boundaries.length - 1; i++) {
-            let step = $._steps[i];
-            let left = $._lefts[i];
-            let leftT = $._boundaries[i];
+            let step   = $._steps[i];
+            let left   = $._lefts[i];
+            let leftT  = $._boundaries[i];
             let rightT = $._boundaries[i+1];
             if(timestamp <= rightT) {
               return (timestamp - leftT) * step / $.totalDuration + left;
@@ -525,7 +553,7 @@ export default {
           return 1 + (timestamp - $._lastT) / $.totalDuration;
         };
         // Public
-        $.duration = duration;
+        $.duration      = duration;
         $.totalDuration = totalDuration;
         $.copy = function() {
           var copy = create();
@@ -547,8 +575,8 @@ export default {
           // Convert to 0 to 1
           let base = $.normalize(x);
           for(let i = 0; i < $._lefts.length - 1; i++) {
-            let step = $._steps[i];
-            let left = $._lefts[i];
+            let step  = $._steps[i];
+            let left  = $._lefts[i];
             let right = $._lefts[i + 1];
             let leftT = $._boundaries[i];
             if(base <= right) {
@@ -591,18 +619,18 @@ export default {
       // Chart
       var chart = this.$d3.select(this.$el);
 
-      var priorKeys = this._priorKeys;
-      var xDuration = this._xDuration;
-      var xBoundary = this._xBoundary;
-      var chartWidth = this._width;
-      var chartHeight = this._height;
-      var chartMargin = this._margin;
-      var dataWidth = this._dataWidth;
-      var dataHeight = this._dataHeight;
+      var priorKeys     = this._priorKeys;
+      var xDuration     = this._xDuration;
+      var xBoundary     = this._xBoundary;
+      var chartWidth    = this._width;
+      var chartHeight   = this._height;
+      var chartMargin   = this._margin;
+      var dataWidth     = this._dataWidth;
+      var dataHeight    = this._dataHeight;
       var chartDuration = this._chartDuration;
-      var yTicks = this._yTicks;
+      var yTicks        = this._yTicks;
       // ELements
-      var xScale = this._xScale;
+      var xScale     = this._xScale;
       var projection = this._projection;
 
       // Check Changes
