@@ -11,9 +11,9 @@ $dropdown-caret-width: 2.5rem;
     }
     .button {
         border-radius: 0.2rem;
-        padding: 0.35rem 
+        padding: 0 
             1.1rem + $dropdown-caret-width
-            0.35rem
+            0
             1.1rem;
         position: relative;
         display: flex;
@@ -51,7 +51,7 @@ $dropdown-caret-width: 2.5rem;
         z-index: 10000;
     }
     .item {
-        padding: 0.4rem 1.3rem;
+        padding: 0 1.3rem;
         &:hover {
             background: $cl-bg-accent;
             color: $cl-text-accent;

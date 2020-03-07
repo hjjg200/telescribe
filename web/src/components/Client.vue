@@ -12,12 +12,14 @@
       </li>
     </ul>
     <div class="options-wrap">
-      <Dropdown ref="durations" name="duration" @change="onDurationChange">
-        <DropdownLabel>Duration</DropdownLabel>
-        <DropdownItem v-for="(duration, i) in $root.webCfg.durations"
-          :key="i" :value="duration"
-          :selected="i == 0">{{ formatDuration(duration) }}</DropdownItem>
-      </Dropdown>
+      <div class="option">
+        <label>Duration</label>
+        <Dropdown ref="durations" name="duration" @change="onDurationChange">
+          <DropdownItem v-for="(duration, i) in $root.webCfg.durations"
+            :key="i" :value="duration"
+            :selected="i == 0">{{ formatDuration(duration) }}</DropdownItem>
+        </Dropdown>
+      </div>
     </div>
     <div class="graph-wrap">
       <Graph ref="graph"/>

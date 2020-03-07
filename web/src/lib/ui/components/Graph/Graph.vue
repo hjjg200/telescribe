@@ -93,7 +93,7 @@ export default {
       var chartDuration = this.duration * 60; // Into seconds
       var chartMargin   = {
         top: remToPx(0.5),
-        left: remToPx(2.5),
+        left: remToPx(3),
         bottom: remToPx(2)
       };
       var chartNode = chart.node();
@@ -126,6 +126,9 @@ export default {
     // Element Var
       var scrollLeft = Math.max(0, dataWidth - chartRect.width);
       var handX      = scrollLeft + chartRect.width / 2;
+
+    // Axis Range
+      xScale.range([0, dataWidth]);
     
     // PRIOR VALUES
       var prior = false;
@@ -214,14 +217,13 @@ export default {
       segmentsWrap.node().scrollLeft = scrollLeft;
     
     // Axis
-      xScale = xScale.range([0, dataWidth]);
       var xAxis = segments.append("g")
         .attr("class", "axis x-axis")
         .attr("transform", `translate(0, ${chartRect.height})`)
         .call(this.$d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
-          .tickFormat(function(timestamp) { return timestamp.date(); }))
+          .tickFormat(timestamp => timestamp.date($.$root.webCfg["format.date.short"])))
             .attr("font-family", "")
             .attr("font-size", "");
     
@@ -279,7 +281,12 @@ export default {
             .append("g")
               .attr("class", "overlay");
     // Tooltip // no pointer events
-      var tooltipSize = { width: 150, height: 37 };
+      var tooltipSize = {width: remToPx(13), height: remToPx(2.625)};
+      //       | 0.375 6/16
+      //       | 0.875 14/16
+      // 0.375 | 0.25  4/16
+      //       | 0.75  12/16
+      //       | 0.375 6/16
       var tooltip = overlay.append("g")
         .attr("class", "tooltip")
         .style("opacity", 0);
@@ -289,21 +296,21 @@ export default {
         .attr("width", tooltipSize.width)
         .attr("x", 0)
         .attr("y", 0);
-      var tooltipTimestamp = tooltip.append("text")
-        .attr("class", "timestamp")
-        .attr("x", 7)
-        .attr("y", 7)
-        .attr("dy", "0.71em");
       var tooltipIcon = tooltip.append("rect")
-        .attr("height", 10)
-        .attr("width", 10)
-        .attr("x", 7)
-        .attr("y", 20);
+        .attr("height", remToPx(14/16))
+        .attr("width", remToPx(14/16))
+        .attr("x", remToPx(6/16))
+        .attr("y", remToPx(6/16));
       var tooltipValue = tooltip.append("text")
         .attr("class", "value")
-        .attr("x", 22)
-        .attr("y", 21)
-        .attr("dy", "0.71em");
+        .attr("x", remToPx(26/16))
+        .attr("y", remToPx(6/16))
+        .attr("dy", remToPx(12/16));
+      var tooltipTimestamp = tooltip.append("text")
+        .attr("class", "timestamp")
+        .attr("x", remToPx(6/16))
+        .attr("y", remToPx(24/16))
+        .attr("dy", remToPx(11/16));
     
     // Update Segments
       await this.update();
@@ -407,8 +414,8 @@ export default {
           var handT = xScale.invert(handX);
           hand.attr("x1", handX).attr("x2", handX);
 
-          // Time
-          background.select(".focus-date text").text(handT.date("MM/DD"));
+          // Time (disabled for now)
+          //background.select(".focus-date text").text(handT.date("MM/DD"));
     
           // Tooltip
           var [tw, th] = [tooltipSize.width, tooltipSize.height];
@@ -419,7 +426,7 @@ export default {
             //
             tooltipValue.text(target.getAttribute("data-value"));
             tooltipTimestamp.text(
-              Number(target.getAttribute("data-timestamp")).date()
+              Number(target.getAttribute("data-timestamp")).date($.$root.webCfg["format.date.long"])
             );
             tooltipIcon.attr("class", target.getAttribute("data-series"));
           }
@@ -608,7 +615,7 @@ export default {
 
     async update() {
 
-      if(!this.drawn) return;
+      //if(!this.drawn) return;
 
       // Shorthand
       var $ = this;

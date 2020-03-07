@@ -40,7 +40,7 @@ $colors: (
     position: relative;
     height: 16rem;
     @media screen and (max-width: 55rem) {
-        height: 11rem;
+        height: 12rem;
     }
     width: 100%;
     & > div {
@@ -93,6 +93,9 @@ $colors: (
         &::-webkit-scrollbar {
             height: 0.4rem;
         }
+        .segment path {
+            stroke-width: 1px;
+        }
     }
     .grid {
         position: relative;
@@ -126,9 +129,6 @@ $colors: (
         .tick line {
             stroke: $cl-text-light;
         }
-        .domain {
-            display: none;
-        }
     }
     .y-axis-wrap {
         &, * {
@@ -137,10 +137,8 @@ $colors: (
         .tick line {
             opacity: 0;
         }
-    }
-    .paths {
-        path.active {
-            stroke-width: 2px;
+        .domain {
+            display: none;
         }
     }
     .overlay-wrap {
@@ -148,15 +146,18 @@ $colors: (
             pointer-events: none;
         }
         .tooltip {
-            font-size: 0.6rem;
+            line-height: 1;
             .background {
                 stroke: $cl-text-light;
                 fill: white;
             }
             .timestamp {
-                fill: $cl-text-light;
+                font-size: 12px;
+                fill: $cl-text;
             }
             .value {
+                font-weight: bold;
+                font-size: 14px;
                 fill: $cl-text;
             }
         }

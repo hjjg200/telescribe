@@ -83,7 +83,17 @@ main {
     }
 
     .options-wrap {
+        line-height: 1.8;
         margin: 1rem 0;
+        .option {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center;
+            & > * {
+                margin-right: 0.5rem;
+            }
+        }
         .dropdown {
             display: inline-block;
         }
