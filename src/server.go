@@ -738,7 +738,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
     whitelisted := false
     for _, clInfo := range clCfg.ClientMap {
         // Find the first with the address
-        if clInfo.Host == host {
+        if clInfo.HasAddr(host) {
             whitelisted = true
             break
         }
@@ -749,7 +749,6 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         return fmt.Errorf("%s [non-whitelisted] tried to establish a connection", host)
     }
 
-    Logger.Infoln(host, "connected")
     clRsp, err := s.NextResponse()
     Try(err)
 
@@ -758,12 +757,13 @@ func(srv *Server) HandleSession(s *Session) (err error) {
     var clInfo ClientInfo
     alias := clRsp.String("alias")
     for id, info := range clCfg.ClientMap {
-        if info.Host == host && info.Alias == alias {
+        if info.HasAddr(host) && info.Alias == alias {
             clId   = id
             clInfo = info
             break
         }
     }
+    Logger.Infoln(clInfo.Alias, "from", clInfo.Host, "connected")
     Assert(clId != "", "Client not found in the config")
     clRole := clCfg.RoleMap.Get(clInfo.Role)
 

@@ -15,9 +15,9 @@ import (
 const defaultHelloRetryInterval = time.Minute * 1
 
 type Client struct {
-    serverAddr string
-    s *Session
-    role ClientRole
+    serverAddr    string
+    s             *Session
+    role          ClientRole
     configVersion string
 }
 
@@ -194,6 +194,8 @@ func (cl *Client) Start() error {
                     Logger.Warnln(err)
                     break MonitorLoop
                 }
+                // Passer Interval
+                passer.SetInterval(mrif())
                 Logger.Infoln("Reconfigured!")
             case "version-mismatch":
                 Logger.Warnln("Version mismatch! Attempting to auto-update...")
@@ -217,6 +219,38 @@ type ClientInfo struct {
     Host  string `json:"host"`
     Alias string `json:"alias"`
     Role  string `json:"role"`
+    ips   []net.IP
+}
+
+// Returns whether the client's host resolves to the same ip addresses
+// as the ip addresses to which the given address resolves
+func(clInfo *ClientInfo) HasAddr(addr string) bool {
+
+    if clInfo.ips == nil {
+        var err error
+        clInfo.ips, err = net.LookupIP(clInfo.Host)
+        if err != nil {
+            Logger.Warnln("Failed to lookup ip for the client host:", clInfo.Host)
+            return false
+        }
+    }
+
+    addrIps, err := net.LookupIP(addr)
+    if err != nil {
+        Logger.Warnln("Failed to lookup ip for the address:", addr)
+        return false
+    }
+
+    for _, lhs := range clInfo.ips {
+        for _, rhs := range addrIps {
+            if lhs.Equal(rhs) {
+                return true
+            }
+        }
+    }
+    
+    return false
+
 }
 
 // ROLE ---

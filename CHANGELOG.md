@@ -18,6 +18,7 @@ Overall refinement and system signal handling
 
 #### Known Issues
 
+- [ ] MonitorInterval does not seem to be updated as client config changes
 - [ ] Auto uodate feature is faulty
 - [ ] No indicator for status and disabled status for clients not sending data
 - [ ] Machines may have disks of different names which require different roles to monitor separately.

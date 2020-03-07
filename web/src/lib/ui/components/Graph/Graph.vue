@@ -465,6 +465,13 @@ export default {
         }
     
         // Add Handlers
+
+        // https://github.com/d3/d3-selection/blob/v1.4.1/README.md#selection_on
+        // The type may be optionally followed by a period (.) and a name;
+        // the optional name allows multiple callbacks to be registered to
+        // receive events of the same type, such as click.foo and click.bar.
+        // To specify multiple typenames, separate typenames with spaces,
+        // such as input change or click.foo click.bar.
         chart
           .on("mouseout", function() {
             var event = $.$d3.event;
@@ -473,10 +480,10 @@ export default {
               overlay.selectAll(".tooltip").style("opacity", 0);
             }
           })
-          .on("mousemove", mouseHandler)
-          .on("mousedown", mouseHandler)
-          .on("mousedown", () => {isMouseDown = true;})
-          .on("mouseup",   () => {isMouseDown = false;});
+          .on("mousemove",   mouseHandler)
+          .on("mousedown.a", mouseHandler)
+          .on("mousedown.b", () => {isMouseDown = true;})
+          .on("mouseup",     () => {isMouseDown = false;});
       }
 
     },
@@ -503,7 +510,7 @@ export default {
 
       // |     total duration      |
       // | duration | gap duration |
-      let gapEachDuration = (this.duration * 60) / 6; // To seconds
+      let gapEachDuration = (this.duration * 60) / 9; // To seconds
       let totalDuration   = gapEachDuration * gapNo + duration;
       let steps           = [];
       let lefts           = [];
