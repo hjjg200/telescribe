@@ -23,6 +23,17 @@ A format is a string expression that is used to modify how monitored values look
 |`{.f}`|2|When the precision number is omitted, 0 is assumed|
 |`{f}%`|1.503%|Prefix and suffix can be defined outside the brackets|
 |`\{{f}\}`|{1.503}|Escape the brackets when you want to use them as string|
+|`{2.0x}`|3.006|An x can be used to have some value multiplied to the value|
+|`{3x.f}`|5|The order of coefficient and precision cannot be reverted|
+
+### Regular Expression
+
+```regexp
+\{(?:([0-9]*(?:\.[0-9]+)?)x)?(?:(?:\.([0-9]*))?f)?\}
+```
+
+1. Coefficient
+2. Precision
 
 
 ## Layout

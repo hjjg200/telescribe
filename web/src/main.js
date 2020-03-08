@@ -7,7 +7,6 @@ import App from './App.vue';
 
 // Personal Lib
 import UI from '@/lib/ui';
-
 Vue.use(UI);
 
 // API
@@ -18,14 +17,28 @@ Vue.prototype.$api = api;
 Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
 
-//
+// Utils
+import {formatNumber} from '@/lib/util/web.js';
 
 Number.prototype.date = function(str) {
   if(str === undefined) str = "MMM DD HH:mm";
   return moment.unix(this).format(str);
 };
 
-Number.prototype.format = function(str) {
+Number.prototype.format = function(fmt) {
+  return formatNumber(this, fmt);
+}
+let n = 1.503;
+console.log(n.format("{}"));
+console.log(n.format("{.4f}"));
+console.log(n.format("{.f}"));
+console.log(n.format("{f}%"));
+console.log(n.format("\\{{f}\\}"));
+console.log(n.format("{2.0x}"));
+console.log(n.format("{3x.f}"));
+
+
+function _temp1(str) {
   if(str === "" || str === undefined) str = "{}";
   var fmt = parseNumberFormat(str);
   var num = this;
