@@ -36,6 +36,7 @@ Plot (dataset)
 
 Draw
 * Draw grid and ticks
+* Draw y ticks
 * Plot visible
 
 Plot Visible
@@ -54,6 +55,7 @@ Set Formatter (key, formatter)
 */
 
 // Static functions
+function r2px(n) {return remToPx(n);}
 function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
@@ -70,36 +72,29 @@ function keysEqual(a, b) {
   return true;
 }
 
+function addThrottledAsyncEvent(elem, type, handler, interval) {
+  var wrap = function(event) {
+    elem.removeEventListener(type, wrap);
+    handler(event).then(function() {
+      setTimeout(function() {
+        elem.addEventListener(type, wrap);
+      }, interval);
+    });
+  };
+  elem.addEventListener(type, wrap);
+}
 
-/*
-graph
-- 
 
-dataset [key]
-- color
-- data
-*/
 
 export default {
   name: "Graph",
   props: {
   },
-  watch: {
-    duration(newVal) {
-      this._draw();
-    },
-    dataset(newVal) {
-      this.update();
-    },
-    boundaries(newVal) {
-      this._draw();
-    }
-  },
   data() {
     return {
-      duration: undefined,
-      dataset: {},
-      boundaries: undefined
+      _duration:   undefined,
+      _dataset:    {},
+      _boundaries: undefined
     };
   },
   computed: {
@@ -117,7 +112,8 @@ export default {
 
     // Global Event
     window.addEventListener("resize", function() {
-      $._resize_handler();
+      //$._resize_handler();
+      // TODO move resize somewhere else
     });
 
   },
@@ -127,64 +123,77 @@ export default {
     async _draw() {
 
       // Check vars
-      if(this.boundaries == undefined || this.duration == undefined)
+      if(this._boundaries == undefined || this._duration == undefined)
         return;
 
-      this._xBoundary   = this.$d3.extent(this.boundaries);
+      // xScale and Boundaries
+      this._xBoundary   = this.$d3.extent(this._boundaries);
       this._priorXScale = this._xScale;
       this._xScale      = this._scale();
 
-      // Shorthand access
+      // Accessing Purposes
       var $ = this;
     
     // Vars
-      var chart         = this.$d3.select(this.$el);
-      var chartDuration = this.duration * 60; // Into seconds
-      var chartMargin   = {
+      var graph         = this.$d3.select(this.$el);
+      var graphNode     = chart.node();
+      var graphDuration = this.duration * 60; // Into seconds
+      var graphMargin   = {
         top: remToPx(0.5),
         left: remToPx(3),
         bottom: remToPx(2)
       };
-      var chartNode = chart.node();
-      var chartRect = {
-        width: chartNode.offsetWidth - chartMargin.left,
-        height: chartNode.offsetHeight - chartMargin.top - chartMargin.bottom
+      var graphRect = {
+        width: graphNode.offsetWidth - graphMargin.left,
+        height: graphNode.offsetHeight - graphMargin.top - graphMargin.bottom
       };
       var xScale    = this._xScale;
       var xBoundary = this._xBoundary;
+      // Total x-axis duration
       var xDuration = xScale.totalDuration;
-      // Duration too low
-      if(chartDuration > xDuration) chartDuration = xDuration;
-      var dataWidth  = chartRect.width * xDuration / chartDuration;
-      var dataHeight = chartRect.height;
-      var dw_cw      = dataWidth / chartRect.width;
+      // Prevent duration being longer than actual data
+      graphDuration  = Math.min(graphDuration, xDuration);
+      // Total width needed for data plotting
+      var dataWidth  = graphRect.width * xDuration / graphDuration;
+      // Plotted data height
+      var dataHeight = graphRect.height;
+      var dw_cw      = dataWidth / graphRect.width;
+      // Total number of segments
       var segNo      = Math.ceil(dw_cw);
+      // Total count of x-axis ticks
       var xTicks     = Math.round(dw_cw * 4);
+      // Y-axis ticks count
       var yTicks     = 4;
       this._dataWidth     = dataWidth;
       this._dataHeight    = dataHeight;
-      this._width         = chartRect.width;
-      this._height        = chartRect.height;
-      this._margin        = chartMargin;
+      this._width         = graphRect.width;
+      this._height        = graphRect.height;
+      this._margin        = grpahMargin;
       this._xDuration     = xDuration;
+      this._xTicks        = xTicks;
       this._yTicks        = yTicks;
-      this._chartDuration = chartDuration;
+      this._graphDuration = graphDuration;
       // Prior: Reset at draw
       this._priorKeys     = null;
     
     // Element Var
-      var scrollLeft = Math.max(0, dataWidth - chartRect.width);
-      var handX      = scrollLeft + chartRect.width / 2;
+      // Scroll left is max(0, total width minus graph width)
+      var scrollLeft = Math.max(0, dataWidth - graphRect.width);
+      // X of hand is middle of the graph
+      var handX      = scrollLeft + graphRect.width / 2;
 
     // Axis Range
+      // Set the output range for x scale: 0 to total width
       xScale.range([0, dataWidth]);
     
     // PRIOR VALUES
       var prior = false;
-      var priorHandXEnRectPercent;
-      var priorHandT;
       {
         var segmentsWrap = chart.select(".segments-wrap");
+        var priorHandXEnRectPercent;
+        var priorHandT;
+
+        // If segmentsWrap already exists
         if(segmentsWrap.size() > 0) {
           prior = true;
     
@@ -193,18 +202,18 @@ export default {
           var priorHandX  = Number(hand.attr("x1"));
           var priorXScale = this._priorXScale;
     
-          // Relative to segments-wrap node
+          // Hand position relative to the visible rect
           priorHandXEnRectPercent = (priorHandX - node.scrollLeft) / node.offsetWidth;
-          // Absolute
+          // Find timestamp for the hand x position
           priorHandT = priorXScale.invert(priorHandX);
     
-          // Scroll Left and Hand X
+          // Restore Scroll Left and Hand X
           handX      = xScale(priorHandT);
-          scrollLeft = Math.max(0, handX - chartRect.width * priorHandXEnRectPercent);
+          scrollLeft = Math.max(0, handX - graphRect.width * priorHandXEnRectPercent);
 
-          // When the hand is outside the chart
-          if(!(scrollLeft <= handX && handX <= scrollLeft + chartRect.width)) {
-            handX = scrollLeft + chartRect.width / 2;
+          // When the hand is outside the graph, default to default position
+          if(!(scrollLeft <= handX && handX <= scrollLeft + graphRect.width)) {
+            handX = scrollLeft + graphRect.width / 2;
           }
         }
       }
@@ -221,60 +230,61 @@ export default {
     
     // Elements
       // Erase Elements first
-      chart.node().innerHTML = "";
+      graph.node().innerHTML = "";
     
     // Background
-      var background = chart.append("div")
+      var background = graph.append("div")
         .attr("class", "background-wrap")
-        .style("width", `${chartRect.width}px`)
-        .style("height", `${chartRect.height}px`)
-        .style("left", `${chartMargin.left}px`)
-        .style("top", `${chartMargin.top}px`)
+        .style("width",  `${graphRect.width}px`)
+        .style("height", `${graphRect.height}px`)
+        .style("left",   `${graphMargin.left}px`)
+        .style("top",    `${graphMargin.top}px`)
         .append("div")
           .attr("class", "background-container")
           .append("svg")
-            .attr("width", chartRect.width)
-            .attr("height", chartRect.height)
+            .attr("width",  graphRect.width)
+            .attr("height", graphRect.height)
             .append("g")
               .attr("class", "background");
+      // Disabled for now
       var focusDate = background.append("g")
         .attr("class", "focus-date")
         .append("text")
-          .attr("text-anchor", "middle") // Middle Align
-          .attr("x", (chartRect.width + chartMargin.left) / 2 - chartMargin.left)
-          .attr("y", chartRect.height / 2)
+          .attr("text-anchor", "middle")
+          .attr("x", (graphRect.width + graphMargin.left) / 2 - graphMargin.left)
+          .attr("y", graphRect.height / 2)
           .attr("dy", "25%")
-          .attr("font-size", chartRect.height / 1.5)
+          .attr("font-size", graphRect.height / 1.5)
           .style("opacity", 0);
     
     // Segments
       var segmentsWrap = chart.append("div")
         .attr("class", "segments-wrap")
-        .style("width", `${chartRect.width}px`)
-        .style("height", `${chartRect.height + chartMargin.top + chartMargin.bottom}px`)
-        .style("left", `${chartMargin.left}px`)
-        .style("top", `0px`);
+        .style("width",  `${graphRect.width}px`)
+        .style("height", `${graphRect.height + graphMargin.top + graphMargin.bottom}px`)
+        .style("left",   `${graphRect.left}px`)
+        .style("top",    `0px`);
       var segmentsContainer = segmentsWrap.append("div")
         .attr("class", "segments-container");
       var segments = segmentsContainer.append("svg")
-        .attr("width", dataWidth)
+        .attr("width",  dataWidth)
         .attr("height", dataHeight)
         .append("g")
-          .attr("class", "segments")
-          .attr("transform", `translate(0, ${chartMargin.top})`);
+          .attr("class",     "segments")
+          .attr("transform", `translate(0, ${graphMargin.top})`);
       // Set Scroll Left
       segmentsWrap.node().scrollLeft = scrollLeft;
     
     // Axis
       var xAxis = segments.append("g")
-        .attr("class", "axis x-axis")
-        .attr("transform", `translate(0, ${chartRect.height})`)
+        .attr("class",     "axis x-axis")
+        .attr("transform", `translate(0, ${graphRect.height})`)
         .call(this.$d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
-          .tickFormat(timestamp => timestamp.date($.$root.webCfg["format.date.short"])))
+          .tickFormat(timestamp => timestamp.date($._options.formatDateShort)))
             .attr("font-family", "")
-            .attr("font-size", "");
+            .attr("font-size",   "");
     
     // Projection (entire path domain)
       var projection = segments.append("g")
@@ -294,20 +304,22 @@ export default {
         .attr("y1", 0)
         .attr("y2", dataHeight);
     
-    // Each segment
+    // For each segment
       {
         for(var i = 0; i < segNo; i++) {
-          // Pre
-          var segLeft  = chartRect.width * i;
-          var segStart = xScale.invert(chartRect.width * i);
-          var segEnd   = Math.min(xScale.invert(chartRect.width * (i + 1)), xBoundary[1]);
-          // Main
+          // Pre ---
+          var segLeft  = graphRect.width * i;
+          // Start is the timestamp for the start of this segment
+          var segStart = xScale.invert(segLeft);
+          // End is the timestamp for the end
+          var segEnd   = Math.min(xScale.invert(segLeft + graphRect.width), xBoundary[1]);
+          // Main ---
           var seg = segments.append("g")
             .attr("class", "segment")
             .attr("data-start", segStart)
-            .attr("data-end", segEnd)
-            .attr("data-left", segLeft);
-          // Post
+            .attr("data-end",   segEnd)
+            .attr("data-left",  segLeft);
+          // Post ---
         }
       }
     
@@ -316,21 +328,22 @@ export default {
         .attr("class", "circles");
     
     // Overlay
-      var overlay = chart.append("div")
+      // Overlay is for everything that is above the plotted data
+      var overlay = graph.append("div")
         .attr("class", "overlay-wrap")
-        .style("width", `${chartRect.width}px`)
-        .style("height", `${chartRect.height}px`)
-        .style("left", `${chartMargin.left}px`)
-        .style("top", `${chartMargin.top}px`)
+        .style("width",  `${graphRect.width}px`)
+        .style("height", `${graphRect.height}px`)
+        .style("left",   `${graphMargin.left}px`)
+        .style("top",    `${graphMargin.top}px`)
         .append("div")
           .attr("class", "overlay-container")
           .append("svg")
-            .attr("width", chartRect.width)
-            .attr("height", chartRect.height)
+            .attr("width",  graphRect.width)
+            .attr("height", graphRect.height)
             .append("g")
               .attr("class", "overlay");
     // Tooltip // no pointer events
-      var tooltipSize = {width: remToPx(13), height: remToPx(2.625)};
+      var tooltipSize = {width: r2px(13), height: r2px(2.625)};
       //       | 0.375 6/16
       //       | 0.875 14/16
       // 0.375 | 0.25  4/16
@@ -342,60 +355,47 @@ export default {
       tooltip.append("rect")
         .attr("class", "background")
         .attr("height", tooltipSize.height)
-        .attr("width", tooltipSize.width)
+        .attr("width",  tooltipSize.width)
         .attr("x", 0)
         .attr("y", 0);
       var tooltipIcon = tooltip.append("rect")
-        .attr("height", remToPx(14/16))
-        .attr("width", remToPx(14/16))
-        .attr("x", remToPx(6/16))
-        .attr("y", remToPx(6/16));
+        .attr("height", r2px(14/16))
+        .attr("width",  r2px(14/16))
+        .attr("x",      r2px(6/16))
+        .attr("y",      r2px(6/16));
       var tooltipValue = tooltip.append("text")
         .attr("class", "value")
-        .attr("x", remToPx(26/16))
-        .attr("y", remToPx(6/16))
-        .attr("dy", remToPx(12/16));
+        .attr("text-anchor", "middle")
+        .attr("x",  r2px(26/16))
+        .attr("y",  r2px(6/16))
+        .attr("dy", r2px(12/16));
       var tooltipTimestamp = tooltip.append("text")
         .attr("class", "timestamp")
-        .attr("x", remToPx(6/16))
-        .attr("y", remToPx(24/16))
-        .attr("dy", remToPx(11/16));
+        .attr("text-anchor", "middle")
+        .attr("x",  r2px(6/16))
+        .attr("y",  r2px(24/16))
+        .attr("dy", r2px(11/16));
     
-    // Update Segments
-      await this.update();
+    // Draw Y Scale
+      // ...
+
+    // Plot Visible Parts
+      await this._plotVisible();
     
-    // EVENTS
-      { // Segments Wrap Scroll
-        var interval = 10;
-        var bind = function(type, elem) {
-          var handler;
-          handler = function() {
-            // Pre
-            elem.removeEventListener(type, handler);
-            // Main
-            $.update().then(function() {
-              // Post
-              setTimeout(function() {
-                elem.addEventListener(type, handler);
-              }, interval);
-            });
-          };
-          elem.addEventListener(type, handler);
-        }
-        bind("scroll", segmentsWrap.node());
-      }
-      { // Window Resize
-        $._resize_handler = function() {
-          clearTimeout($._resize_timer);
-          $._resize_timer = setTimeout(function() {
-            $._draw();
-          }, 100);
-        };
-      }
+    // EVENTS ---
+      // Segments Wrap Scroll
+      addThrottledAsyncEvent(
+        segmentsWrap.node(), "scroll", $._plotVisible, 10
+      );
+      // Window Resize
+      addThrottledAsyncEvent(
+        window, "resize", $._draw, 100
+      );
 
       { // Hand, Points and Tooltip and Touch Interface
         var isMouseDown = false;
         var isTouch     = false;
+        // Bisect is used to get the nearest point to a timestamp
         var bisect = function(slice, timestamp, accessor) {
           var bs = $.$d3.bisector(accessor).left;
           var i   = bs(slice, timestamp);
@@ -408,18 +408,15 @@ export default {
         };
 
         // Moving hand
-        // - mousedown
-        // - mousemove when mouse is down
-        // - scroll
         var mouseHandler = function() {
 
           var event      = $.$d3.event;
           var target     = event.target;
+          var onPoint    = target.hasClass("point");
           var mouse      = $.$d3.mouse(projection.node());
           var [mX, mY]   = mouse;
           var timestamp  = xScale.invert(mX);
-          var dataset    = $.dataset;
-          var seriesName = $._seriesName;
+          var dataset    = $._dataset;
           var yScale     = $._yScale;
           var scrollLeft = segmentsWrap.node().scrollLeft;
 
@@ -427,10 +424,12 @@ export default {
           if(event.type === "mousemove" && !(isTouch || isMouseDown))
             return;
 
-          //
+          // Make Points Visible
           segments.selectAll(".point").style("opacity", 1);
           background.select(".focus-date text").style("opacity", 1);
-          if(event.target.hasClass("point")) {
+
+          // If mouse is on a point, show the tooltip
+          if(onPoint) {
             overlay.selectAll(".tooltip").style("opacity", 1);
           }
 
@@ -439,45 +438,51 @@ export default {
     
           // Points
           for(let key in dataset) {
-            let data = dataset[key];
-            var elem = bisect(data, timestamp, function(d) { return d.timestamp; });
+            let {data} = dataset[key];
+            var elem   = bisect(data, timestamp, function(d) { return d.timestamp; });
+            // No nearest found, return
             if(elem === undefined || isNaN(elem.value)) return;
-            var cX     = xScale(elem.timestamp);
-            var cY     = yScale(elem.value);
-            var series = seriesName(key);
-            segments.select(`.point.${series}`)
+            var cX = xScale(elem.timestamp);
+            var cY = yScale(elem.value);
+            $._points[key]
               .attr("data-timestamp", elem.timestamp)
-              .attr("data-value", elem.value)
+              .attr("data-value",     elem.value)
               .attr("cx", cX)
               .attr("cy", cY);
 
-            // Hand X
+            // Hand X is nearest point to the mouse from all data
             if(handX === undefined) handX =  cX;
             else if(Math.abs(handX - mX) > Math.abs(cX - mX)) handX = cX;
           }
 
-          // No nearest X
+          // No nearest X found
           if(handX === undefined) return;
           
-          // Hand
+          // Hand timestamp
           var handT = xScale.invert(handX);
+          // Move hand
           hand.attr("x1", handX).attr("x2", handX);
 
           // Time (disabled for now)
-          //background.select(".focus-date text").text(handT.date("MM/DD"));
+          // background.select(".focus-date text").text(handT.date("MM/DD"));
     
           // Tooltip
           var [tw, th] = [tooltipSize.width, tooltipSize.height];
-          var tx      = Math.min(Math.max(mX - scrollLeft - tw/2, 0), chartRect.width - tw);
-          var ty      = mY < th ? mY + 5 : mY - tooltipSize.height - 5;
+          var tx       = Math.min(Math.max(mX - scrollLeft - tw/2, 0), graphRect.width - tw);
+          var ty       = mY < th ? mY + 5 : mY - th - 5;
           tooltip.attr("transform", `translate(${tx},${ty})`);
-          if(target.hasClass("point")) {
-            //
-            tooltipValue.text(target.getAttribute("data-value"));
+          if(onPoint) {
+            let ttKey = target.getAttribute("data-key");
+            let ttVal = Number(target.getAttribute("data-value"));
+            let ttTs  = Number(target.getAttribute("data-timestamp"));
+            let ttCl  = $._dataset[ttKey].color;
+            let ttFmt = $._dataset[ttKey].formatter;
+            tooltipValue.text(ttFmt(ttVal));
             tooltipTimestamp.text(
-              Number(target.getAttribute("data-timestamp")).date($.$root.webCfg["format.date.long"])
+              // TODO prototype functions are not part of library
+              ttTs.date($._options.formatDateLong)
             );
-            tooltipIcon.attr("class", target.getAttribute("data-series"));
+            tooltipIcon.style("fill", ttCl);
           }
         };
     
@@ -488,29 +493,21 @@ export default {
             window.removeEventListener("touchstart", handler);
           });
           // Dispatch mouse event as you scroll
-          var node = segmentsWrap.node();
+          var node     = segmentsWrap.node();
           var lastLeft = node.scrollLeft;
-          var interval = 1;
-          var handler = function handler(event) {
-            // Pre
-            node.removeEventListener("scroll", handler);
-            // Main
+          var handler  = async function(event) {
             if(isTouch) {
-              var left = node.scrollLeft;
-              var rect = node.getBoundingClientRect();
+              var left  = node.scrollLeft;
+              var rect  = node.getBoundingClientRect();
               var handX = Number(hand.attr("x1"));
               // Arbitrary Coords
               event.clientX = (handX - left) + (left - lastLeft) + rect.left;
               event.clientY = rect.top + rect.height / 2;
-              lastLeft = left;
+              lastLeft      = left;
               $.$d3.customEvent(event, mouseHandler);
             }
-            // Post
-            setTimeout(function() {
-              node.addEventListener("scroll", handler);
-            }, interval);
-          };
-          node.addEventListener("scroll", handler);
+          }
+          addThrottledAsyncEvent(node, "scroll", handler, 1);
         }
     
         // Add Handlers
@@ -521,7 +518,7 @@ export default {
         // receive events of the same type, such as click.foo and click.bar.
         // To specify multiple typenames, separate typenames with spaces,
         // such as input change or click.foo click.bar.
-        chart
+        segmentsWrap
           .on("mouseout", function() {
             var event = $.$d3.event;
             background.select(".focus-date text").style("opacity", 0);
@@ -542,7 +539,7 @@ export default {
       // Custom scale is used to make the length of all gaps the same
       // in order to reduce the whitespace made by long-term gaps
       let epsilon       = 1e-5;
-      let boundaries    = this.boundaries;
+      let boundaries    = this._boundaries;
       let firstT        = boundaries[0];
       let lastT         = boundaries[boundaries.length - 1];
       let duration      = lastT - firstT;
@@ -552,9 +549,9 @@ export default {
       
       // Exclude Gap Duration from duration
       for(let i = 0; i < gapBoundaries.length; i+=2) {
-        let start = gapBoundaries[i];
-        let end   = gapBoundaries[i+1];
-        duration -= end - start;
+        let start  = gapBoundaries[i];
+        let end    = gapBoundaries[i+1];
+        duration  -= end - start;
       }
 
       // |     total duration      |
@@ -669,15 +666,13 @@ export default {
 
     },
 
-    async update() {
-
-      //if(!this.drawn) return;
+    async _plotVisible() {
 
       // Shorthand
       var $ = this;
 
-      // Chart
-      var chart = this.$d3.select(this.$el);
+      // Graph
+      var graph = this.$d3.select(this.$el);
 
       var priorKeys     = this._priorKeys;
       var xDuration     = this._xDuration;
