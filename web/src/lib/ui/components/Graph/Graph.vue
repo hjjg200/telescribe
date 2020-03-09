@@ -92,9 +92,9 @@ export default {
   },
   data() {
     return {
-      _duration:   undefined,
-      _dataset:    {},
-      _boundaries: undefined
+      _dataset:   {},
+      duration:   undefined,
+      boundaries: undefined
     };
   },
   computed: {
@@ -103,22 +103,28 @@ export default {
     }
   },
 
-  created() {
-
-    //
-    var $ = this;
-
-    // Public
-
-    // Global Event
-    window.addEventListener("resize", function() {
-      //$._resize_handler();
-      // TODO move resize somewhere else
-    });
-
-  },
-
   methods: {
+
+    plot(dataset) {
+      this._dataset = dataset;
+      this._draw();
+    },
+
+    recolor(key, color) {
+      this._points[key].attr("fill", color);
+      this._lines[key].forEach(
+        line => ine.attr("stroke", color)
+      );
+    },
+
+    updateData(key, data) {
+      this._dataset[key].data = data;
+      this._draw();
+    },
+
+    setFormatter(key, fmt) {
+      this._dataset[key].formatter = fmt;
+    },
 
     async _draw() {
 
@@ -323,10 +329,6 @@ export default {
         }
       }
     
-    // Points
-      var circles = segments.append("g")
-        .attr("class", "circles");
-    
     // Overlay
       // Overlay is for everything that is above the plotted data
       var overlay = graph.append("div")
@@ -377,7 +379,74 @@ export default {
         .attr("dy", r2px(11/16));
     
     // Draw Y Scale
-      // ...
+      var yBoundary = this.$d3.extent(function() {
+        var arr = [];
+        for(let key in $.dataset) {
+          var {data} = $.dataset[key];
+          data.forEach(i => arr.push(i.value));
+        }
+        return arr;
+      }());
+      if(yBoundary[0] == undefined)         yBoundary = [0, 1];
+      else if(yBoundary[0] == yBoundary[1]) yBoundary[0] = 0;
+
+      // Y Scale
+      var yScale = this.$d3.scaleLinear()
+        .domain(yBoundary)
+        .range([dataHeight, 0]);
+      this._yScale = yScale;
+      var yAxis = graph.append("div")
+        .attr("class", "axis-wrap y-axis-wrap")
+        .append("div")
+          .attr("class", "axis-container y-axis-container")
+          .append("svg")
+            .attr("height", graphHeight + graphMargin.top + graphMargin.bottom)
+            .append("g")
+              .attr("class", "axis y-axis")
+              .attr("transform", `translate(${graphMargin.left}, ${graphMargin.top})`)
+              .call(this.$d3.axisLeft(yScale)
+                .ticks(yTicks)
+                .tickSize(5)
+                .tickSizeOuter(0)
+                .tickFormat(function(value) {
+                  if(value >= 1e+9 * 0.8) {
+                    return (Math.round(value / 1e+9 * 10) / 10) + "B";
+                  } else if(value >= 1e+6 * 0.8) {
+                    return (Math.round(value / 1e+6 * 10) / 10) + "M";
+                  } else if(value >= 1e+3 * 0.8) {
+                    return (Math.round(value / 1e+3 * 10) / 10) + "K";
+                  }
+                  return value;
+                }))
+                .attr("font-family", "")
+                .attr("font-size", "");
+
+      // Draw Grid
+      graph.select(".grid").remove();
+      var grid = projection.append("g")
+        .attr("class", "grid")
+        .call(this.$d3.axisLeft(yScale)
+          .ticks(yTicks)
+          .tickSize(-dataWidth)
+          .tickFormat(""));
+
+      // Paths
+      this._lines = {};
+
+      // Points
+      this._points = {};
+      var circles = segments.append("g")
+        .attr("class", "circles");
+      circles.selectAll("circles")
+          .data(this.keys)
+          .enter()
+          .append("circle")
+            .each(function(key) {$._points[key] = this;})
+            .attr("fill",     key => $._dataset[key].color)
+            .attr("stroke",   "none")
+            .attr("r",        4)
+            .attr("cx",       -100)
+            .style("opacity", 0);
 
     // Plot Visible Parts
       await this._plotVisible();
@@ -672,142 +741,67 @@ export default {
       var $ = this;
 
       // Graph
-      var graph = this.$d3.select(this.$el);
-
+      var graph         = this.$d3.select(this.$el);
       var priorKeys     = this._priorKeys;
       var xDuration     = this._xDuration;
       var xBoundary     = this._xBoundary;
-      var chartWidth    = this._width;
-      var chartHeight   = this._height;
-      var chartMargin   = this._margin;
+      var yBoundary     = this._yBoundary;
+      var graphWidth    = this._width;
+      var graphHeight   = this._height;
+      var graphMargin   = this._margin;
       var dataWidth     = this._dataWidth;
       var dataHeight    = this._dataHeight;
-      var chartDuration = this._chartDuration;
+      var graphDuration = this._graphDuration;
+      var xTicks        = this._xTicks;
       var yTicks        = this._yTicks;
       // ELements
-      var xScale     = this._xScale;
-      var projection = this._projection;
-
-      // Check Changes
-      var keysChanged = !keysEqual(this.keys, priorKeys);
+      var xScale        = this._xScale;
+      var yScale        = this._yScale;
+      var projection    = this._projection;
 
       // Info Set
       this._priorKeys = this.keys.slice(0);
 
       // Segments
-      var segmentsWrap = chart.select(".segments-wrap");
-      var scrollLeft = segmentsWrap.node().scrollLeft;
+      var segmentsWrap = graph.select(".segments-wrap");
+      var scrollLeft   = segmentsWrap.node().scrollLeft;
 
       // Dataset
-      var seriesName = this.$d3.scaleOrdinal()
-        .domain(this.keys)
-        .range("abcdefghijklmnopqrstuvwxyz".split("").map(function(a) {
-          return "series-" + a;
-        }));
-      this._seriesName = seriesName;
       //
       var scrollLeftTimestamp = xScale.invert(scrollLeft); // scrollLefTime
       // 
       var visibleBoundary = [
-        Math.max(xScale.invert(scrollLeft - chartWidth), xBoundary[0]),
-        Math.min(xScale.invert(scrollLeft + chartWidth * 2), xBoundary[1])
+        Math.max(xScale.invert(scrollLeft - graphWidth), xBoundary[0]),
+        Math.min(xScale.invert(scrollLeft + graphWidth * 2), xBoundary[1])
       ];
-
-      // DATASET
-      
-      var yBoundary = this.$d3.extent(function() {
-        var arr = [];
-        for(let key in $.dataset) {
-          var data = $.dataset[key];
-          data.forEach(i => {
-            arr.push(i.value);
-          });
-        }
-        return arr;
-      }());
-      if(yBoundary[0] == undefined) {
-        yBoundary = [0, 1];
-      } else if(yBoundary[0] == yBoundary[1]) {
-        yBoundary[0] = 0;
-      }
 
       // Visible Dataset
       var visibleDataset = {};
-      for(let key in this.dataset) {
-        visibleDataset[key] = this.dataset[key].filter(i => {
-          return visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1];
-        });
+      for(let key in this._dataset) {
+        visibleDataset[key] = this._dataset[key].data.filter(
+          i => visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1]
+        );
       }
-
-      // Update Y Axis
-      var yScale = this.$d3.scaleLinear()
-        .domain(yBoundary)
-        .range([dataHeight, 0]);
-      this._yScale = yScale;
-        // Remove Y Axis
-      chart.select(".y-axis-wrap").remove();
-        // New
-      var yAxis = chart.append("div")
-        .attr("class", "axis-wrap y-axis-wrap")
-        .append("div")
-          .attr("class", "axis-container y-axis-container")
-          .append("svg")
-            .attr("height", chartHeight + chartMargin.top + chartMargin.bottom)
-            .append("g")
-              .attr("class", "axis y-axis")
-              .attr("transform", `translate(${chartMargin.left}, ${chartMargin.top})`)
-              .call(this.$d3.axisLeft(yScale)
-                .ticks(yTicks)
-                .tickSize(5)
-                .tickSizeOuter(0)
-                .tickFormat(function(value) {
-                  if(value >= 1e+9 * 0.8) {
-                    return (Math.round(value / 1e+9 * 10) / 10) + "B";
-                  } else if(value >= 1e+6 * 0.8) {
-                    return (Math.round(value / 1e+6 * 10) / 10) + "M";
-                  } else if(value >= 1e+3 * 0.8) {
-                    return (Math.round(value / 1e+3 * 10) / 10) + "K";
-                  }
-                  return value;
-                }))
-                .attr("font-family", "")
-                .attr("font-size", "");
-
-      // Update grid
-      chart.select(".grid").remove();
-      var grid = projection.append("g")
-        .attr("class", "grid")
-        .call(this.$d3.axisLeft(yScale)
-          .ticks(yTicks)
-          .tickSize(-dataWidth)
-          .tickFormat(""));
 
       // Segments Each
       // Loop
-      var segments = segmentsWrap.select(".segments");
+      var segments     = segmentsWrap.select(".segments");
       var segmentNodes = segmentsWrap.selectAll(".segment").nodes().reverse(); // Reverse() to start from the most recent segment
       var visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
-        scrollLeft - chartWidth, scrollLeft + chartWidth
+        scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
       segmentNodes.forEach(function(node) {
-        var seg = $.$d3.select(node);
+        var seg   = $.$d3.select(node);
         var start = Number(node.getAttribute("data-start"));
-        var end = Number(node.getAttribute("data-end"));
-        var left = Number(node.getAttribute("data-left"));
+        var end   = Number(node.getAttribute("data-end"));
+        var left  = Number(node.getAttribute("data-left"));
 
-        // Check Already Updated
-        if(keysChanged === false && seg.selectAll("path").size() > 0) return;
-        
-        // Erase First
-        node.innerHTML = "";
+        // Check Already Drawn
+        if(seg.selectAll("path").size() > 0) return;
 
         // Check Visibility
-        if(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]) {
-          // to be drawn
-        } else {
-          // invisible
+        if(!(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]))
           return;
-        }
 
         // Segment Dataset
         var segDataGroups = [];
@@ -816,52 +810,31 @@ export default {
             return start <= i.timestamp && i.timestamp <= end;
           });
           if(data.length > 0) {
-            segDataGroups.push({
-              key: key,
-              data: data
-            });
+            segDataGroups.push({key, data});
           }
         }
 
         // If No Data
-        if(segDataGroups.length === 0) {
+        if(segDataGroups.length === 0)
           return;
-        }
 
         // Add Path
         seg.selectAll("paths")
           .data(segDataGroups)
           .enter()
           .append("path")
-            .attr("fill", "none")
+            .each(function(d) {$._lines[d.key].push(this);})
             .attr("stroke-width", 1)
-            .attr("class", function(d) { return seriesName(d.key); })
-            .attr("d", function(d) {
-              return $.$d3.line()
-                .defined(function(e) { return !isNaN(e.value); })
-                .x(function(e) { return xScale(e.timestamp) })
-                .y(function(e) { return yScale(e.value) })
-                (d.data);
-            });
+            .attr("stroke", d => $._dataset[d.key].color)
+            .attr("fill",   "none")
+            .attr("d", d => $.$d3.line()
+                .defined(e => !isNaN(e.value))
+                .x(e => xScale(e.timestamp))
+                .y(e => yScale(e.value))
+                (d.data)
+            );
 
       });
-
-      // Points
-      // Regenerate points when keys were changed
-      if(keysChanged === true) {
-        segments.selectAll(".circles circle").remove();
-        var circles = segments.select(".circles");
-        circles.selectAll("circles")
-            .data(this.keys)
-            .enter()
-            .append("circle")
-              .attr("class", function(key) { return `${seriesName(key)} point`; })
-              .attr("data-series", function(key) { return seriesName(key); })
-              .attr("stroke", "none")
-              .attr("r", 4)
-              .attr("cx", -100)
-              .style("opacity", 0);
-      }
 
     }
 
