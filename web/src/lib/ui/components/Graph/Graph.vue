@@ -4,6 +4,55 @@
 
 <script>
 
+/*
+
+Things Required for Plotting Graph
+* Boundaries for gap analyzing
+* Duration for adjusting visible amount of data
+* Data for putting paths
+* Color for choosing what color to use for paths
+* Formatter for formatting values shown on tooltip
+* Options for adjusting details of plotting
+
+Structure
+* Boundaries
+  * Timestamps
+* Duration
+  * Seconds
+* Dataset
+  * Data
+    * Timestamps
+    * Values
+  * Color
+    * CSS-Style color
+  * Formatter
+    * num => formattedString
+* Options
+  * Long date and short date
+  * xTick and yTick count
+
+Plot (dataset)
+* Draw
+
+Draw
+* Draw grid and ticks
+* Plot visible
+
+Plot Visible
+* Draw paths and circles in the visible part
+
+Recolor (key, newColor)
+* Change the color of paths and circles that are already drawn
+
+Update Data (key, data)
+* Replace data
+* Draw
+
+Set Formatter (key, formatter)
+
+
+*/
+
 // Static functions
 function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);

@@ -100,10 +100,12 @@ main {
 
     .card {
         background: white;
-        border: 1px solid $cl-line-secondary;
+        border: 1px solid white;
         margin: 1.5rem 0;
     }
     .card__section {
+        border: 1px dashed $cl-line-secondary;
+        margin: -1px;
         padding: 1rem;
     }
 
@@ -132,7 +134,6 @@ main {
             }
         }
         .right {
-            background: $cl-area-secondary;
             color: $cl-text-secondary;
             flex: 1 0 19rem;
             padding-bottom: 6rem;
@@ -144,10 +145,6 @@ main {
         opacity: 0;
         height: 0;
         overflow: hidden;
-    }
-
-    .card__graph-options {
-        background: $cl-area-secondary;
     }
 
     .checkboxes {
