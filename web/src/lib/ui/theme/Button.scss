@@ -1,14 +1,14 @@
 .button {
     @include control;
-    background: $cl-bg;
-    color: $cl-text;
+    background: $cl-area-secondary-dark;
+    color: $cl-text-secondary;
     border: none;
     border-radius: 0.2rem;
     font-size: 1rem;
     outline: none;
     padding: 0.55rem 1.6rem;
-    &.accent {
-        background: $cl-bg-accent;
+    &.buton--accent {
+        background: $cl-area-accent;
         color: $cl-text-accent;
     }
 }

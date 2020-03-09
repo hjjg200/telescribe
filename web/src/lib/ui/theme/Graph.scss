@@ -84,10 +84,10 @@ $colors: (
             fill: rgba(0,0,0,0);
         }
         &::-webkit-scrollbar-track {
-            background: $cl-bg-light;
+            background: $cl-area-secondary;
         }
         &::-webkit-scrollbar-thumb {
-            background: $cl-text-light;
+            background: $cl-area-secondary-dark;
             border-radius: 0.2rem;
         }
         &::-webkit-scrollbar {
@@ -100,7 +100,7 @@ $colors: (
     .grid {
         position: relative;
         &, line {
-            stroke: $cl-text-light;
+            stroke: $cl-line-secondary;
             stroke-width: 1px;
             stroke-dasharray: 3px;
         }
@@ -109,7 +109,7 @@ $colors: (
         }
     }
     .hand {
-        stroke: darken($cl-text-light, 16%);
+        stroke: $cl-line-secondary-dark;
         stroke-width: 1px;
         stroke-dasharray: 3px;
     }
@@ -117,17 +117,17 @@ $colors: (
         font-family: inherit;
         font-size: 0.8rem;
         &, path, g, line {
-            fill: $cl-text-light;
-            stroke: $cl-text-light;
+            fill: $cl-line-secondary;
+            stroke: $cl-line-secondary;
             stroke-width: 1px;
         }
         text {
-            fill: $cl-text-light;
+            fill: $cl-text-secondary;
         }
     }
     .x-axis {
         .tick line {
-            stroke: $cl-text-light;
+            stroke: $cl-line-secondary;
         }
     }
     .y-axis-wrap {
@@ -148,17 +148,16 @@ $colors: (
         .tooltip {
             line-height: 1;
             .background {
-                stroke: $cl-text-light;
+                stroke: $cl-line-secondary;
                 fill: white;
             }
             .timestamp {
                 font-size: 12px;
-                fill: $cl-text;
+                fill: $cl-text-secondary;
             }
             .value {
-                font-weight: bold;
                 font-size: 14px;
-                fill: $cl-text;
+                fill: $cl-text-secondary-dark;
             }
         }
     }

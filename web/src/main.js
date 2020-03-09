@@ -18,7 +18,7 @@ Vue.prototype.$d3 = d3;
 Vue.prototype.$moment = moment;
 
 // Utils
-import {formatNumber} from '@/lib/util/web.js';
+import {NumberFormatter} from '@/lib/util/web.js';
 
 Number.prototype.date = function(str) {
   if(str === undefined) str = "MMM DD HH:mm";
@@ -26,7 +26,7 @@ Number.prototype.date = function(str) {
 };
 
 Number.prototype.format = function(fmt) {
-  return formatNumber(this, fmt);
+  return (new NumberFormatter(fmt)).format(this);
 }
 
 Number.prototype.toSeries = function() {

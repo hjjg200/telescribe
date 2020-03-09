@@ -17,6 +17,7 @@ $main-padding: 1.3rem;
 }
 
 html, body {
+    color: $cl-text-secondary;
     font-family: 'Open Sans', sans-serif;
     font-size: 16px;
     line-height: 1.5;
@@ -25,13 +26,16 @@ html, body {
     width: 100%;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    color: $cl-text-secondary-dark;
+}
+
 main {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     height: 100vh;
     & > section {
-        padding: $main-padding;
         width: 100%;
         overflow: auto;
     }
@@ -44,16 +48,108 @@ main {
     }
 }
 
+.color-test {
+    & > * {
+        margin: 0 0 1rem 0;
+    }
+
+    .button.secondary {
+        background: $cl-area-secondary;
+        color: $cl-text-secondary;
+    }
+    .button.accent {
+        background: $cl-area-accent;
+        color: $cl-text-accent;
+    }
+    .button.secondary-dark {
+        background: $cl-area-secondary-dark;
+        color: $cl-text-secondary-dark;
+    }
+    .button.accent-bland {
+        background: $cl-area-accent-bland;
+        color: $cl-text-accent-bland;
+    }
+    
+    hr {
+        border: none; outline: none; border-top: 1px solid white;
+    }
+    hr.secondary { border-color: $cl-line-secondary; }
+    hr.accent { border-color: $cl-line-accent; }
+    hr.secondary-dark { border-color: $cl-line-secondary-dark; }
+    hr.accent-bland { border-color: $cl-line-accent-bland; }
+
+    p.secondary { color: $cl-text-secondary; }
+    p.accent { color: $cl-text-accent; }
+    p.secondary-dark { color: $cl-text-secondary-dark; }
+    p.accent-bland { color: $cl-text-accent-bland; }
+
+    nav {
+        padding: 1rem 0;
+    }
+    nav.secondary { background: $cl-area-secondary; }
+    nav.accent { background: $cl-area-accent; }
+    nav.secondary-dark { background: $cl-area-secondary-dark; }
+    nav.accent-bland { background: $cl-area-accent-bland; }
+
+}
+
 .client {
 
     max-width: 68rem;
     margin: 0 auto;
+
+    .card {
+        background: white;
+        border: 1px solid $cl-line-secondary;
+        margin: 1.5rem 0;
+    }
+    .card__section {
+        padding: 1rem;
+    }
+
+    .client-header {
+        background: white;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: stretch;
+
+        ul {
+            list-style: none;
+        }
+
+        .left {
+            flex: 100 0 auto;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: nowrap;
+            align-items: stretch;
+            .left__top {
+                flex: 1 0 auto;
+            }
+            .left__bottom {
+                flex: 0 0 auto;
+            }
+        }
+        .right {
+            background: $cl-area-secondary;
+            color: $cl-text-secondary;
+            flex: 1 0 19rem;
+            padding-bottom: 6rem;
+        }
+    }
+
 
     &:not(.visible) {
         opacity: 0;
         height: 0;
         overflow: hidden;
     }
+
+    .card__graph-options {
+        background: $cl-area-secondary;
+    }
+
     .checkboxes {
         list-style: none;
         display: flex;
@@ -77,14 +173,15 @@ main {
             font-size: 1rem;
         }
         .key {
-            color: darken($cl-text-light, 20%);
             margin-right: 0.3rem;
+        }
+        .value {
+            color: $cl-text-secondary-dark;
         }
     }
 
     .options-wrap {
         line-height: 1.8;
-        margin: 1rem 0;
         .option {
             display: flex;
             flex-direction: row;

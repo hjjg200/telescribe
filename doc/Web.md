@@ -92,3 +92,22 @@ An `h4` element must be present and it will become the title of the item. And if
   <span>Description</span>
 </SidebarItem>
 ```
+
+
+## Gtaph
+
+A graph component is used to plot a line chart for provided dataset.
+
+|Prop|Description|
+|-|-|
+|Duration|Defines how much time of data the graph shows in the visible space|
+|Boundaries|The timestamps of the start, the end, and the start and end of gaps|
+|Dataset|The compound of options and data used for plotting|
+
+### Dataset
+
+Dataset is a **Monitor.Key** to data compound object map, and the the content of that map is as follows:
+
+* `data`: an array of timestamp and value objects
+* `color`: css-style color used for lines and points
+* `formatter`: a function used to format numbers shown on tooltip

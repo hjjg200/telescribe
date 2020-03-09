@@ -2,9 +2,15 @@
 $h-accent: 5;
 $h-secondary: 220;
 
-$cl-bg: hsl($h-secondary, 15%, 95.6%);
-$cl-bg-accent: hsl($h-accent, 100%, 95%);
-$cl-bg-light: hsl($h-secondary, 15%, 97%);
-$cl-text: hsl($h-secondary, 7%, 12%);
+$cl-area-secondary: hsl($h-secondary, 15%, 99%);
+$cl-area-secondary-dark: hsl($h-secondary, 15%, 97%);
+$cl-area-accent: hsl($h-accent, 100%, 95%);
+$cl-line-secondary: hsl($h-secondary, 16%, 90%);
+$cl-text-accent-bland: hsl($h-accent, 25%, 77.5%);
+$cl-line-accent: hsl($h-accent, 90%, 75%);
+$cl-line-accent-bland: hsl($h-accent, 25%, 70%);
+$cl-line-secondary-dark: hsl($h-secondary, 16%, 65%);
+$cl-text-secondary: hsl($h-secondary, 7%, 56%);
 $cl-text-accent: hsl($h-accent, 90%, 54%);
-$cl-text-light: hsl($h-secondary, 16%, 85%);
+$cl-area-accent-bland: hsl($h-accent, 25%, 25%);
+$cl-text-secondary-dark: hsl($h-secondary, 7%, 12%);

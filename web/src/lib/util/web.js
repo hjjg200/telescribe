@@ -4,37 +4,71 @@
 // If separator is a regular expression that contains capturing parentheses (),
 // matched results are included in the array.
 const formatRegex = /\{(?:([0-9]*(?:\.[0-9]+)?)x)?(?:(\.[0-9]*)?f)?\}/g;
-export function formatNumber(num, fmt) {
-  if(fmt === "" || fmt == undefined) {
-    return String(num);
+export class NumberFormatter {
+  constructor(fmt) {
+    fmt = fmt || "";
+    this.info = parseFormat(fmt);
   }
 
-  let splits   = fmt.split(formatRegex);
-  let matches  = [];
-  splits.filter((d, i) => i % 3 != 0).map(
-    (d, i, arr) => i % 2 == 0 ? matches.push([d, arr[i+1]]) : false
-  );
-  let literals = splits.filter((d, i) => i % 3 == 0).map(d => d.replace(/\\([{}])/, "$1"));
-  let result   = "";
+  clone() {
+    let n = new NumberFormatter();
+    n.info = {...this.info};
+    return n;
+  }
 
-  for(let i = 0; i < matches.length; i++) {
-    let [coef, prcs] = matches[i];
-    coef = coef ? Number(coef) : 1;
-    
-    // Precision
-    let modified = num * coef;
-    if(prcs) {
-      prcs = prcs.substring(1);
-      prcs = prcs === "" ? 0 : Number(prcs);
-      modified = modified.toFixed(prcs);
+  prefix(str) {
+    if(str) {
+      this.info.prefix = str;
+      return this;
     }
-
-    result += literals[i];
-    result += formatComma(modified);
+    return this.info.prefix;
   }
-  result += literals[literals.length - 1];
+  coefficient(coef) {
+    if(coef) {
+      this.info.coefficient = coef;
+      return this;
+    }
+    return this.info.coefficient;
+  }
+  precision(prcs) {
+    if(prcs) {
+      this.info.precision = prcs;
+      return this;
+    }
+    return this.info.precision;
+  }
+  suffix(str) {
+    if(str) {
+      this.info.suffix = str;
+      return this;
+    }
+    return this.info.suffix;
+  }
 
-  return result;
+  format(num) {
+    let modified = num * this.info.coefficient;
+    if(!isNaN(this.info.precision))
+      modified = modified.toFixed(this.info.precision);
+    modified = formatComma(modified);
+  
+    return `${this.info.prefix}${modified}${this.info.suffix}`;
+  }
+}
+
+function parseFormat(fmt) {
+  let splits = fmt.split(formatRegex);
+  let [prefix, coefficient, precision, suffix] = splits;
+
+  coefficient = coefficient ? Number(coefficient) : 1;
+  if(precision) {
+    precision = precision.substring(1);
+    precision = precision === "" ? 0 : Number(precision);
+  } else {
+    precision = NaN;
+  }
+
+  [prefix, suffix] = [prefix, suffix].map(d => d ? d.replace(/\\([{}])/, "$1") : "");
+  return {prefix, coefficient, precision, suffix};
 }
 
 function formatComma(x) {

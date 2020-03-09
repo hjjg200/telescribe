@@ -12,7 +12,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     .sidebar-label {
         font-size: 0;
         line-height: 0;
-        border-top: 1px solid $cl-text-light;
+        border-top: 1px solid $cl-line-accent-bland;
         margin: 0.6rem
             0.35rem 
             calc(0.6rem - 1px + 0.25rem)
@@ -38,15 +38,16 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
 
 // general
 .sidebar {
+    color: white;
     height: 100vh;
-    background: $cl-bg; // placeholder
+    background: $cl-area-accent-bland; // placeholder
     padding: $sidebar-padding;
     position: relative;
 
     .wide-toggle {
         background: none;
         border: none;
-        color: black;
+        color: inherit;
         display: inline-block;
         font-size: 1rem;
         outline: none;
@@ -56,7 +57,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
         width: $sidebar-icon-size;
 
         &:hover {
-            background: rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         &, * {
@@ -65,7 +66,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     }
 
     .sidebar-label {
-        color: $cl-text-light;
+        color: $cl-text-accent-bland;
         font-weight: bold;
         text-transform: uppercase;
     }
@@ -87,7 +88,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
     }
 
     .icon {
-        background: $cl-text-accent;
+        background: $cl-area-secondary;
         border-radius: 50%;
         color: white;
         display: inline-block;
