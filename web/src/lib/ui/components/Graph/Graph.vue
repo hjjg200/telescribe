@@ -84,19 +84,35 @@ function addThrottledAsyncEvent(elem, type, handler, interval) {
   elem.addEventListener(type, wrap);
 }
 
+// select axisBottom extent
+// scaleLinear bisector axisLeft
+// line mouse customEvent
 
+import {event, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent} from 'd3';
+const d3 = {get event() {return event;}, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent};
 
 export default {
   name: "Graph",
   props: {
   },
   data() {
+    this._options = {
+      // TODO $root webcfg is not part of this library
+      formatDateShort: this.$root.webCfg["format.date.short"],
+      formatDateLong: this.$root.webCfg["format.date.long"]
+    };
     return {
-      _dataset:   {},
+      dataset:    {},
       duration:   undefined,
       boundaries: undefined
     };
   },
+
+  watch: {
+    duration() {this._draw();},
+    boundaries() {this._draw();}
+  },
+
   computed: {
     keys() {
       return Object.keys(this.dataset);
@@ -106,43 +122,43 @@ export default {
   methods: {
 
     plot(dataset) {
-      this._dataset = dataset;
+      this.dataset = dataset;
       this._draw();
     },
 
     recolor(key, color) {
-      this._points[key].attr("fill", color);
+      d3.select(this._points[key]).attr("fill", color);
       this._lines[key].forEach(
-        line => ine.attr("stroke", color)
+        line => d3.select(line).attr("stroke", color)
       );
     },
 
     updateData(key, data) {
-      this._dataset[key].data = data;
+      this.dataset[key].data = data;
       this._draw();
     },
 
     setFormatter(key, fmt) {
-      this._dataset[key].formatter = fmt;
+      this.dataset[key].formatter = fmt;
     },
 
     async _draw() {
 
       // Check vars
-      if(this._boundaries == undefined || this._duration == undefined)
+      if(this.boundaries == undefined || this.duration == undefined)
         return;
 
       // xScale and Boundaries
-      this._xBoundary   = this.$d3.extent(this._boundaries);
+      this._xBoundary   = d3.extent(this.boundaries);
       this._priorXScale = this._xScale;
       this._xScale      = this._scale();
 
       // Accessing Purposes
       var $ = this;
-    
+      
     // Vars
-      var graph         = this.$d3.select(this.$el);
-      var graphNode     = chart.node();
+      var graph         = d3.select(this.$el);
+      var graphNode     = graph.node();
       var graphDuration = this.duration * 60; // Into seconds
       var graphMargin   = {
         top: remToPx(0.5),
@@ -174,7 +190,7 @@ export default {
       this._dataHeight    = dataHeight;
       this._width         = graphRect.width;
       this._height        = graphRect.height;
-      this._margin        = grpahMargin;
+      this._margin        = graphMargin;
       this._xDuration     = xDuration;
       this._xTicks        = xTicks;
       this._yTicks        = yTicks;
@@ -195,7 +211,7 @@ export default {
     // PRIOR VALUES
       var prior = false;
       {
-        var segmentsWrap = chart.select(".segments-wrap");
+        var segmentsWrap = graph.select(".segments-wrap");
         var priorHandXEnRectPercent;
         var priorHandT;
 
@@ -264,11 +280,11 @@ export default {
           .style("opacity", 0);
     
     // Segments
-      var segmentsWrap = chart.append("div")
+      var segmentsWrap = graph.append("div")
         .attr("class", "segments-wrap")
         .style("width",  `${graphRect.width}px`)
         .style("height", `${graphRect.height + graphMargin.top + graphMargin.bottom}px`)
-        .style("left",   `${graphRect.left}px`)
+        .style("left",   `${graphMargin.left}px`)
         .style("top",    `0px`);
       var segmentsContainer = segmentsWrap.append("div")
         .attr("class", "segments-container");
@@ -285,7 +301,7 @@ export default {
       var xAxis = segments.append("g")
         .attr("class",     "axis x-axis")
         .attr("transform", `translate(0, ${graphRect.height})`)
-        .call(this.$d3.axisBottom(xScale)
+        .call(d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
           .tickFormat(timestamp => timestamp.date($._options.formatDateShort)))
@@ -379,7 +395,7 @@ export default {
         .attr("dy", r2px(11/16));
     
     // Draw Y Scale
-      var yBoundary = this.$d3.extent(function() {
+      var yBoundary = d3.extent(function() {
         var arr = [];
         for(let key in $.dataset) {
           var {data} = $.dataset[key];
@@ -391,7 +407,7 @@ export default {
       else if(yBoundary[0] == yBoundary[1]) yBoundary[0] = 0;
 
       // Y Scale
-      var yScale = this.$d3.scaleLinear()
+      var yScale = d3.scaleLinear()
         .domain(yBoundary)
         .range([dataHeight, 0]);
       this._yScale = yScale;
@@ -400,11 +416,11 @@ export default {
         .append("div")
           .attr("class", "axis-container y-axis-container")
           .append("svg")
-            .attr("height", graphHeight + graphMargin.top + graphMargin.bottom)
+            .attr("height", graphRect.height + graphMargin.top + graphMargin.bottom)
             .append("g")
               .attr("class", "axis y-axis")
               .attr("transform", `translate(${graphMargin.left}, ${graphMargin.top})`)
-              .call(this.$d3.axisLeft(yScale)
+              .call(d3.axisLeft(yScale)
                 .ticks(yTicks)
                 .tickSize(5)
                 .tickSizeOuter(0)
@@ -425,28 +441,29 @@ export default {
       graph.select(".grid").remove();
       var grid = projection.append("g")
         .attr("class", "grid")
-        .call(this.$d3.axisLeft(yScale)
+        .call(d3.axisLeft(yScale)
           .ticks(yTicks)
           .tickSize(-dataWidth)
           .tickFormat(""));
 
       // Paths
       this._lines = {};
+      this.keys.forEach(key => $._lines[key] = []);
 
       // Points
       this._points = {};
       var circles = segments.append("g")
         .attr("class", "circles");
       circles.selectAll("circles")
-          .data(this.keys)
-          .enter()
-          .append("circle")
-            .each(function(key) {$._points[key] = this;})
-            .attr("fill",     key => $._dataset[key].color)
-            .attr("stroke",   "none")
-            .attr("r",        4)
-            .attr("cx",       -100)
-            .style("opacity", 0);
+        .data(this.keys)
+        .enter()
+        .append("circle")
+          .each(function(key) {$._points[key] = this;})
+          .attr("fill",     key => $.dataset[key].color)
+          .attr("stroke",   "none")
+          .attr("r",        4)
+          .attr("cx",       -100)
+          .style("opacity", 0);
 
     // Plot Visible Parts
       await this._plotVisible();
@@ -466,7 +483,7 @@ export default {
         var isTouch     = false;
         // Bisect is used to get the nearest point to a timestamp
         var bisect = function(slice, timestamp, accessor) {
-          var bs = $.$d3.bisector(accessor).left;
+          var bs = d3.bisector(accessor).left;
           var i   = bs(slice, timestamp);
           var d0  = slice[i-1];
           var d1  = slice[i];
@@ -479,13 +496,13 @@ export default {
         // Moving hand
         var mouseHandler = function() {
 
-          var event      = $.$d3.event;
+          var event      = d3.event;
           var target     = event.target;
           var onPoint    = target.hasClass("point");
-          var mouse      = $.$d3.mouse(projection.node());
+          var mouse      = d3.mouse(projection.node());
           var [mX, mY]   = mouse;
           var timestamp  = xScale.invert(mX);
-          var dataset    = $._dataset;
+          var dataset    = $.dataset;
           var yScale     = $._yScale;
           var scrollLeft = segmentsWrap.node().scrollLeft;
 
@@ -513,7 +530,7 @@ export default {
             if(elem === undefined || isNaN(elem.value)) return;
             var cX = xScale(elem.timestamp);
             var cY = yScale(elem.value);
-            $._points[key]
+            d3.select($._points[key])
               .attr("data-timestamp", elem.timestamp)
               .attr("data-value",     elem.value)
               .attr("cx", cX)
@@ -544,8 +561,8 @@ export default {
             let ttKey = target.getAttribute("data-key");
             let ttVal = Number(target.getAttribute("data-value"));
             let ttTs  = Number(target.getAttribute("data-timestamp"));
-            let ttCl  = $._dataset[ttKey].color;
-            let ttFmt = $._dataset[ttKey].formatter;
+            let ttCl  = $.dataset[ttKey].color;
+            let ttFmt = $.dataset[ttKey].formatter;
             tooltipValue.text(ttFmt(ttVal));
             tooltipTimestamp.text(
               // TODO prototype functions are not part of library
@@ -573,7 +590,7 @@ export default {
               event.clientX = (handX - left) + (left - lastLeft) + rect.left;
               event.clientY = rect.top + rect.height / 2;
               lastLeft      = left;
-              $.$d3.customEvent(event, mouseHandler);
+              d3.customEvent(event, mouseHandler);
             }
           }
           addThrottledAsyncEvent(node, "scroll", handler, 1);
@@ -587,9 +604,9 @@ export default {
         // receive events of the same type, such as click.foo and click.bar.
         // To specify multiple typenames, separate typenames with spaces,
         // such as input change or click.foo click.bar.
-        segmentsWrap
+        graph
           .on("mouseout", function() {
-            var event = $.$d3.event;
+            var event = d3.event;
             background.select(".focus-date text").style("opacity", 0);
             if(event.target.hasClass("point")) {
               overlay.selectAll(".tooltip").style("opacity", 0);
@@ -608,7 +625,7 @@ export default {
       // Custom scale is used to make the length of all gaps the same
       // in order to reduce the whitespace made by long-term gaps
       let epsilon       = 1e-5;
-      let boundaries    = this._boundaries;
+      let boundaries    = this.boundaries;
       let firstT        = boundaries[0];
       let lastT         = boundaries[boundaries.length - 1];
       let duration      = lastT - firstT;
@@ -741,7 +758,7 @@ export default {
       var $ = this;
 
       // Graph
-      var graph         = this.$d3.select(this.$el);
+      var graph         = d3.select(this.$el);
       var priorKeys     = this._priorKeys;
       var xDuration     = this._xDuration;
       var xBoundary     = this._xBoundary;
@@ -777,8 +794,8 @@ export default {
 
       // Visible Dataset
       var visibleDataset = {};
-      for(let key in this._dataset) {
-        visibleDataset[key] = this._dataset[key].data.filter(
+      for(let key in this.dataset) {
+        visibleDataset[key] = this.dataset[key].data.filter(
           i => visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1]
         );
       }
@@ -791,7 +808,7 @@ export default {
         scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
       segmentNodes.forEach(function(node) {
-        var seg   = $.$d3.select(node);
+        var seg   = d3.select(node);
         var start = Number(node.getAttribute("data-start"));
         var end   = Number(node.getAttribute("data-end"));
         var left  = Number(node.getAttribute("data-left"));
@@ -825,9 +842,9 @@ export default {
           .append("path")
             .each(function(d) {$._lines[d.key].push(this);})
             .attr("stroke-width", 1)
-            .attr("stroke", d => $._dataset[d.key].color)
+            .attr("stroke", d => $.dataset[d.key].color)
             .attr("fill",   "none")
-            .attr("d", d => $.$d3.line()
+            .attr("d", d => d3.line()
                 .defined(e => !isNaN(e.value))
                 .x(e => xScale(e.timestamp))
                 .y(e => yScale(e.value))

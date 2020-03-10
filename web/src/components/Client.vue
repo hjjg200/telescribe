@@ -106,6 +106,10 @@
 
 <script>
 
+import {csvParse} from 'd3';
+const d3 = {csvParse};
+import {NumberFormatter} from '@/lib/util/web.js';
+import {colorify} from '@/lib/ui/util/util.js';
 import Queue from '@/lib/util/queue.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
@@ -132,7 +136,7 @@ export default {
     this.queue.queue(new Promise(resolve => {
       $.$api.v1.getMonitorDataBoundaries($.id)
         .then(function(csv) {
-          $.$d3.csvParse(csv, row => {
+          d3.csvParse(csv, row => {
             boundaries.push(+row.timestamp);
           });
           $.boundaries = boundaries;
@@ -167,6 +171,7 @@ export default {
       if(newVal === true) {
         this.$refs.graph.boundaries = this.boundaries;
         this.$refs.durations.selectIndex(0);
+        this.$refs.graph.plot({});
       }
     },
     activeKeys(newVal, oldVal) {
@@ -174,37 +179,38 @@ export default {
       var activeDataset = {};
       var ensure = (i = 0) => {
         if(i >= newVal.length) {
-          $.$refs.graph.dataset = activeDataset;
+          $.$refs.graph.plot(activeDataset);
           return;
         }
 
         var mKey = newVal[i];
-        if($.dataset[mKey] == undefined) {
-          (async function() {
+        (async function() {
+          if($.dataset[mKey] == undefined) {
             var p = new Promise(resolve => {
               // Make buf so as not to invoke watchers
               let buf = [];
 
               $.$api.v1.getMonitorDataTable($.id, mKey)
                 .then(function(csv) {
-                  $.$d3.csvParse(csv, row => {
+                  d3.csvParse(csv, row => {
                     buf.push({
                       timestamp: +row.timestamp,
                       value: +row.value
                     });
                   });
-                  $.$set($.dataset, mKey, buf);
+                  $.$set($.dataset, mKey, {
+                    data: buf,
+                    color: colorify(mKey),
+                    formatter: new NumberFormatter("{.2f}")
+                  });
                   resolve();
                 });
             });
             await p;
-            activeDataset[mKey] = $.dataset[mKey];
-            ensure(++i);
-          })();
-        } else {
+          }
           activeDataset[mKey] = $.dataset[mKey];
           ensure(++i);
-        }
+        })();
       };
 
       ensure();

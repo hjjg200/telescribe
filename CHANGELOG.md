@@ -18,6 +18,8 @@ Overall refinement and system signal handling
 
 #### Known Issues
 
+- [ ] Add IPv6 support
+- [ ] Sometimes sig term did not work
 - [ ] MonitorInterval does not seem to be updated as client config changes
 - [ ] Auto uodate feature is faulty
 - [ ] No indicator for status and disabled status for clients not sending data

@@ -1,6 +1,5 @@
 
-import * as d3 from '@/lib/d3.v4.js';
-import * as moment from '@/lib/moment.js';
+import moment from 'moment/src/moment';
 
 import Vue from 'vue';
 import App from './App.vue';
@@ -14,8 +13,6 @@ import * as api from '@/lib/api';
 
 // Prototype
 Vue.prototype.$api = api;
-Vue.prototype.$d3 = d3;
-Vue.prototype.$moment = moment;
 
 // Utils
 import {NumberFormatter} from '@/lib/util/web.js';
