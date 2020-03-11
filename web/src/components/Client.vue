@@ -1,5 +1,47 @@
 <template>
   <article class="client">
+    <div class="temp1">
+      <h2 class="name">{{ info.alias }}</h2>
+      <div class="status-flex">
+        <div class="light"></div>
+        <div class="info">{{ id }} &middot; {{ info.host }}</div>
+        <div class="tags">
+          <span class="role-tag">foo</span>
+          <span class="role-tag">bar</span>
+        </div>
+      </div>
+      <hr class="dark"/>
+    </div>
+
+    <div class="temp2">
+      <div class="left">
+        <h3>System</h3>
+      </div>
+
+      <div class="right">
+        <table>
+          <tbody>
+            <tr>
+              <td><font-awesome icon="microchip"/></td>
+              <td>CPU</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><font-awesome icon="memory"/></td>
+              <td>Swap</td>
+              <td>3 GB</td>
+            </tr>
+            <tr>
+              <td><font-awesome icon="server"/></td>
+              <td>OS</td>
+              <td>Ubuntu 18.04</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
     <div class="card client-header">
       <div class="card__section left">
         <div class="left__top">
@@ -106,7 +148,7 @@
 
 <script>
 
-import {csvParse} from 'd3';
+import {csvParse} from 'd3-dsv';
 const d3 = {csvParse};
 import {NumberFormatter} from '@/lib/util/web.js';
 import {colorify} from '@/lib/ui/util/util.js';

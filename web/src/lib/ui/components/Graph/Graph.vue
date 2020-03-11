@@ -84,11 +84,13 @@ function addThrottledAsyncEvent(elem, type, handler, interval) {
   elem.addEventListener(type, wrap);
 }
 
-// select axisBottom extent
-// scaleLinear bisector axisLeft
-// line mouse customEvent
+// D3
+import {event, select, mouse, customEvent} from "d3-selection";
+import {axisBottom, axisLeft} from "d3-axis";
+import {line} from "d3-shape";
+import {scaleLinear} from "d3-scale";
+import {extent, bisector} from "d3-array";
 
-import {event, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent} from 'd3';
 const d3 = {get event() {return event;}, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent};
 
 export default {

@@ -48,6 +48,44 @@ main {
     }
 }
 
+.client .temp1 {
+
+    h2.name {
+        color: $cl-text-accent;
+        font-weight: normal;
+    }
+    .status-flex {
+        line-height: 1.25rem;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        & > * {
+            margin-right: 0.5rem;
+        }
+        .light {
+            background: hsl(155, 85%, 45%);
+            border-radius: 50%;
+            height: 1.25rem;
+            width: 1.25rem;
+        }
+        .role-tag {
+            background: $cl-area-secondary-dark;
+            border-radius: .2rem;
+            display: inline-block;
+            font-size: .8rem;
+        }
+    }
+    hr {
+        border: none;
+        border-top: 1px solid white;
+        outline: none;
+    }
+    hr.dark {
+        border-color: $cl-line-secondary-dark;
+    }
+}
+
 .color-test {
     & > * {
         margin: 0 0 1rem 0;
