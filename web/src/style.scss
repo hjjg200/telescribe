@@ -146,6 +146,11 @@ main {
         margin: -1px;
         padding: 1rem;
     }
+    .card__ui-test {
+        .frame {
+            margin-bottom: .5rem;
+        }
+    }
 
     .client-header {
         background: white;

@@ -3,10 +3,3 @@
     user-select: none;
     cursor: pointer;
 }
-
-@mixin color-burn-text {
-    color: rgba(0, 0, 0, 0.8);
-    mix-blend-mode: color-burn;
-    font-size: inherit;
-    line-height: inherit;
-}

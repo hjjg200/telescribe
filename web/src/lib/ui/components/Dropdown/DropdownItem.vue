@@ -1,6 +1,11 @@
 <template>
-  <div class="item" @click="onClick">
-    <slot/>
+  <div class="ui-dropdown-item" @click="onClick">
+    <div class="checkbox">
+      <Checkbox readonly="true" :checked="selected" />
+    </div>
+    <div class="item">
+      <slot/>
+    </div>
   </div>
 </template>
 
@@ -8,24 +13,17 @@
 export default {
   name: "DropdownItem",
   props: {
-    value: {},
-    selected: {
-      type: Boolean,
-      default: false
-    }
+    value: {}
   },
-  created() {
-    this.$parent.items.push(this);
-  },
-  mounted() {
-    this.text = this.$el.textContent;
-    if(this.selected) {
-      this.$parent.selectItem(this);
+  computed: {
+    selected() {
+      return this.$parent.hasValue(this.value);
     }
   },
   methods: {
     onClick() {
-      this.$parent.selectItem(this);
+      this.$parent.selectValue(this.value);
+      this.$emit("click");
     }
   }
 }

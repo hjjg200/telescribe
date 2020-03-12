@@ -5,11 +5,11 @@ $sidebar-padding: 0.6rem;
 $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
 
 // wide or narrow
-.sidebar {
+.ui-sidebar {
     flex-grow: 0;
     flex-shrink: 0;
     width: $sidebar-width;
-    .sidebar-label {
+    .ui-sidebar-label {
         font-size: 0;
         line-height: 0;
         border-top: 1px solid $cl-line-accent-bland;
@@ -24,7 +24,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
         .wide-toggle {
             margin-left: $sidebar-width-wide - $sidebar-width;
         }
-        .sidebar-label {
+        .ui-sidebar-label {
             font-size: 1rem;
             line-height: 1.2rem;
             border: none;
@@ -37,7 +37,7 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
 }
 
 // general
-.sidebar {
+.ui-sidebar {
     color: white;
     height: 100vh;
     background: $cl-area-accent-bland; // placeholder
@@ -65,13 +65,13 @@ $sidebar-icon-size: $sidebar-width - $sidebar-padding * 2;
         }
     }
 
-    .sidebar-label {
+    .ui-sidebar-label {
         color: $cl-text-accent-bland;
         font-weight: bold;
         text-transform: uppercase;
     }
 
-    .sidebar-item {
+    .ui-sidebar-item {
         background: none;
         background-repeat: no-repeat;
         background-size: cover;

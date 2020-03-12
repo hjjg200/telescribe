@@ -1,5 +1,5 @@
 <template>
-  <article class="graph"></article>
+  <article class="ui-graph"></article>
 </template>
 
 <script>

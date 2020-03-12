@@ -1,13 +1,10 @@
 <template>
-  <label class="checkbox"
+  <label class="ui-checkbox"
     :class="{checked: checked}"
     @change.stop="onChange">
-    <input type="checkbox"
-      :value="value">
-    <div class="mark"
-      :class="markClass"
-      :style="{'background-color': color}">
-      <font-awesome v-if="checked" icon="check"/>
+    <input type="checkbox" :value="value" :readonly="readonly" :checked="checked">
+    <div class="mark">
+      <font-awesome v-show="checked" icon="check"/>
     </div>
     <div class="label">
       <slot/>
@@ -23,36 +20,26 @@ export default {
   name: "Checkbox",
   props: {
     name: {
-      type: String,
-      default: ""
+      type: String, default: ""
     },
-    value: {
-      type: String
-    },
-    "_model": {
-      // v-model
-    },
-    markClass: {
-      type: Array,
-      default: []
-    },
-    color: {
-      type: String,
-      default: ""
+    value: {},
+    model: {},
+    readonly: {
+      type: Boolean, default: false
     }
   },
   model: {
-    prop: "_model",
+    prop: "model",
     event: "change"
   },
   computed: {
     checked() {
       return this.isGroup
-        ? this._model.indexOf(this.value) !== -1
-        : this._model;
+        ? this.model.indexOf(this.value) !== -1
+        : this.model;
     },
     isGroup() {
-      return Array.isArray(this._model);
+      return Array.isArray(this.model);
     }
   },
   methods: {
@@ -60,7 +47,7 @@ export default {
       let tf = ev.target.checked;
       let copy;
       if(this.isGroup) {
-        copy = [].concat(this._model);
+        copy = [].concat(this.model);
         tf
           ? copy.push(this.value)
           : copy.splice(copy.indexOf(this.value), 1);

@@ -111,34 +111,27 @@
     </div>
 
     <div class="card">
-      <div class="card__section color-test">
-        <p class="secondary">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean auctor velit diam, eu tempor est commodo sit amet. Vestibulum porttitor volutpat ullamcorper. Etiam euismod ultrices.</p>
-        <Button class="secondary">Read More</Button>
-        <nav class="secondary">
-          <hr class="secondary">
-        </nav>
-        <hr class="secondary"/>
-
-        <p class="accent">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean auctor velit diam, eu tempor est commodo sit amet. Vestibulum porttitor volutpat ullamcorper. Etiam euismod ultrices.</p>
-        <Button class="accent">Read More</Button>
-        <nav class="accent">
-          <hr class="accent">
-        </nav>
-        <hr class="accent"/>
-
-        <p class="secondary-dark">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean auctor velit diam, eu tempor est commodo sit amet. Vestibulum porttitor volutpat ullamcorper. Etiam euismod ultrices.</p>
-        <Button class="secondary-dark">Read More</Button>
-        <nav class="secondary-dark">
-          <hr class="secondary-dark">
-        </nav>
-        <hr class="secondary-dark"/>
-
-        <p class="accent-bland">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean auctor velit diam, eu tempor est commodo sit amet. Vestibulum porttitor volutpat ullamcorper. Etiam euismod ultrices.</p>
-        <Button class="accent-bland">Read More</Button>
-        <nav class="accent-bland">
-          <hr class="accent-bland">
-        </nav>
-        <hr class="accent-bland"/>
+      <div class="card__section card__ui-test">
+        <div class="frame">
+          <Checkbox value="a" v-model="fruit">Apple</Checkbox>
+          <Checkbox value="b" v-model="fruit">Banana</Checkbox>
+        </div>
+        <div class="frame">
+          <Button>Button 1</Button>
+          <Button class="ui-button--accent">Button 2</Button>
+        </div>
+        <div class="frame">
+          <Dropdown>
+            <DropdownItem value="a">Apple</DropdownItem>
+            <DropdownItem value="b">Banana</DropdownItem>
+            <DropdownItem value="c">Coconut</DropdownItem>
+          </Dropdown>
+          <Dropdown multiple>
+            <DropdownItem value="a">Apple</DropdownItem>
+            <DropdownItem value="b">Banana</DropdownItem>
+            <DropdownItem value="c">Coconut</DropdownItem>
+          </Dropdown>
+        </div>
       </div>
     </div>
 

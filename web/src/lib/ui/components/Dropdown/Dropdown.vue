@@ -1,16 +1,18 @@
 <template>
-  <div class="dropdown"
+  <div class="ui-dropdown"
     :class="{open: open}"
-    @click="open = !open"
     v-click-outside="function() {open = false;}">
-    <div class="button">
-      <span v-if="title !== ''" class="title">{{ title }}</span>
-      <span class="value">{{ selected ? selected.text : "..." }}</span>
+    <div class="button"
+      v-show="hasButton"
+      @click="open = !open">
+      <span class="value">{{ selected ? selected : " " }}</span>
+      <div class="caret">
+        <font-awesome icon="caret-down"/>
+      </div>
     </div>
-    <div class="caret">
-      <font-awesome icon="caret-down"/>
-    </div>
-    <div class="items" v-show="open">
+    <div class="items"
+      v-show="open"
+      @click="open = multiple ? true : false">
       <slot/>
     </div>
   </div>
@@ -25,21 +27,45 @@ library.add(faCaretDown);
 export default {
   name: "Dropdown",
   directives: { clickOutside: vClickOutside.directive },
+  props: {
+    name: {
+      type: String, default: ""
+    },
+    hasButton: {
+      type: Boolean, default: true
+    },
+    multiple: Boolean,
+    selected: {} // v-model
+  },
+  model: {
+    prop: "selected",
+    event: "change"
+  },
   data() {
     return {
-      open: false,
-      selected: undefined,
-      items: [],
-      title: ""
+      open: false
     };
   },
   methods: {
-    selectItem(item) {
-      this.selected = item;
-      this.$emit("change", item.value);
-    },
-    selectIndex(i) {
-      this.selectItem(this.items[i]);
+    selectItem(value) {
+
+      let newVal;
+      if(this.multiple) {
+        if(this.selected) {
+          let copy = this.selected.slice(0);
+          const i  = copy.indexOf(value);
+          if(i > -1) copy.splice(i, 1);
+          else       copy.push(value);
+          newVal = copy;
+        } else {
+          newVal = [value];
+        }
+      } else {
+        if(this.selected !== value)
+          newVal = value;
+      }
+      this.$emit("change", newVal);
+
     }
   }
 }

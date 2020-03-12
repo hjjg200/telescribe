@@ -1,5 +1,5 @@
 <template>
-  <button class="button">
+  <button class="ui-button">
     <slot/>
   </button>
 </template>
