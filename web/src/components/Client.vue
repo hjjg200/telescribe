@@ -45,8 +45,8 @@
     <div class="card">
       <div class="card__section card__ui-test">
         <div class="frame">
-          <Checkbox value="a" v-model="fruit">Apple</Checkbox>
-          <Checkbox value="b" v-model="fruit">Banana</Checkbox>
+          <Checkbox value="a" v-model="fruit"><Icon type="error"/>Apple</Checkbox>
+          <Checkbox value="b" v-model="fruit"><Icon type="warning"/>Banana</Checkbox>
         </div>
         <div class="frame">
           <Button>Button 1</Button>
