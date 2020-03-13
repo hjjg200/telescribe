@@ -1,5 +1,5 @@
 <template>
-  <nav class="sidebar"
+  <nav class="ui-sidebar"
     :class="{wide: wide}">
     <button class="wide-toggle"
       @click="wide = !wide">

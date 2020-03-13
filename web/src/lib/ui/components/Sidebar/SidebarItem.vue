@@ -1,5 +1,5 @@
 <template>
-  <div class="sidebar-item"
+  <div class="ui-sidebar-item"
     @click="$emit('click')">
     <div class="icon">
       <span v-if="icon === ''">{{ iconFallback }}</span>

@@ -1,7 +1,7 @@
 
 $dropdown-caret-width: 2.5rem;
 
-.ui-dropdown {
+.ui-select {
     position: relative;
 
     .button, .items {
@@ -46,7 +46,7 @@ $dropdown-caret-width: 2.5rem;
         width: calc(100% - 2px);
         z-index: 10000;
     }
-    .ui-dropdown-item {
+    .ui-select-item {
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;

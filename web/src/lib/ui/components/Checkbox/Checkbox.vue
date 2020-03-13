@@ -2,7 +2,7 @@
   <label class="ui-checkbox"
     :class="{checked: checked}"
     @change.stop="onChange">
-    <input type="checkbox" :value="value" :readonly="readonly" :checked="checked">
+    <input type="checkbox" :value="value" :readonly="readonly">
     <div class="mark">
       <font-awesome v-show="checked" icon="check"/>
     </div>
@@ -23,7 +23,9 @@ export default {
       type: String, default: ""
     },
     value: {},
-    model: {},
+    model: {
+      default: []
+    },
     readonly: {
       type: Boolean, default: false
     }
@@ -54,7 +56,6 @@ export default {
       } else {
         copy = tf;
       }
-      this.isChecked = tf;
       this.$emit("change", copy);
     }
   }

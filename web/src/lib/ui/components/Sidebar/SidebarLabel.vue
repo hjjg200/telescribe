@@ -1,5 +1,5 @@
 <template>
-  <div class="sidebar-label">
+  <div class="ui-sidebar-label">
     <slot/>
   </div>
 </template>

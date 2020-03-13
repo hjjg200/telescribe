@@ -121,15 +121,10 @@
           <Button class="ui-button--accent">Button 2</Button>
         </div>
         <div class="frame">
-          <Dropdown>
-            <DropdownItem value="a">Apple</DropdownItem>
-            <DropdownItem value="b">Banana</DropdownItem>
-            <DropdownItem value="c">Coconut</DropdownItem>
-          </Dropdown>
-          <Dropdown multiple>
-            <DropdownItem value="a">Apple</DropdownItem>
-            <DropdownItem value="b">Banana</DropdownItem>
-            <DropdownItem value="c">Coconut</DropdownItem>
+          <Dropdown v-model="fruit2">
+            <DropdownItem>Apple</DropdownItem>
+            <DropdownItem>Banana</DropdownItem>
+            <DropdownItem>Coconut</DropdownItem>
           </Dropdown>
         </div>
       </div>
@@ -194,7 +189,11 @@ export default {
       dataset:    {},
       queue:      new Queue(),
       statusMap:  {},
-      mounted:    false
+      mounted:    false,
+
+      fruit: [],
+      fruit2: [],
+      fruit3: []
     };
   },
   computed: {
@@ -205,8 +204,8 @@ export default {
     graphReady(newVal) {
       if(newVal === true) {
         this.$refs.graph.boundaries = this.boundaries;
-        this.$refs.durations.selectIndex(0);
-        this.$refs.graph.plot({});
+        //this.$refs.durations.selectIndex(0);
+        //this.$refs.graph.plot({});
       }
     },
     activeKeys(newVal, oldVal) {
