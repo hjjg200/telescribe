@@ -2,13 +2,19 @@
   <div class="ui-select"
     :class="{open: open}"
     v-click-outside="function() {open = false;}">
+    <select v-model="selectedValue" :name="name" :multiple="multiple"
+      style="display: none;">
+      <option v-for="item in items" :key="item.value" :value="item.value">{{ item.text }}</option>
+    </select>
     <div class="button"
-      v-show="hasButton"
       @click="open = !open">
-      <div class="display">{{ selected ? selected : "..." }}</div>
+
+      <div class="title"
+        :style="{opacity: selected.length > 0 ? 1 : 0.5}">{{ text }}</div>
       <div class="caret">
         <font-awesome icon="caret-down"/>
       </div>
+      
     </div>
     <div class="items"
       v-show="open"
@@ -31,47 +37,66 @@ export default {
     name: {
       type: String, default: ""
     },
-    hasButton: {
-      type: Boolean, default: true
+    title: {
+      type: String, default: "Select"
     },
     multiple: Boolean,
-    selected: {} // v-model
+    selected: {},
+    selectedValue: {} // v-model
   },
   model: {
-    prop: "selected",
+    prop: "selectedValue",
     event: "change"
   },
   data() {
     return {
-      open: false
+      open: false,
+      items: []
     };
   },
+  computed: {
+    text() {
+      let items  = this.selected;
+      let length = items.length;
+      if(length === 0) return this.title;
+
+      let text = items[0].text;
+      if(this.multiple && length > 1) {
+        return `${text} + ${length - 1}`;
+      }
+      return text;
+    },
+    selected() {
+      return this.items.filter(
+        d => this.hasSelected(d)
+      );
+    }
+  },
   methods: {
-    hasValue(value) {
-      if(this.selected)
+    hasSelected(item) {
+      let value = item.value;
+      if(this.selectedValue)
         return this.multiple
-          ? this.selected.indexOf(value) !== -1
-          : this.selected === value;
+          ? this.selectedValue.indexOf(value) !== -1
+          : this.selectedValue === value;
       return false;
     },
-    selectValue(ddit) {
+    selectItem(item) {
 
       let newVal;
-      let value = ddit.value;
-      let html  = ddit.$el.htmlContent;
       if(this.multiple) {
         if(this.selected) {
           let copy = this.selected.slice(0);
-          const i  = copy.indexOf(value);
+          const i  = copy.indexOf(item);
           if(i > -1) copy.splice(i, 1);
-          else       copy.push(value);
-          newVal = copy;
+          else       copy.push(item);
+          newVal = copy.map(d => d.value);
         } else {
-          newVal = [value];
+          newVal = [item.value];
         }
       } else {
-        if(this.selected !== value) {
-          newVal = value;
+        if(this.selected !== item) {
+          newVal = item.value;
         }
       }
       this.$emit("change", newVal);

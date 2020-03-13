@@ -96,6 +96,8 @@ const d3 = {get event() {return event;}, select, axisBottom, axisLeft, extent, s
 export default {
   name: "Graph",
   props: {
+    duration: Number,
+    boundaries: Array
   },
   data() {
     this._options = {
@@ -104,9 +106,7 @@ export default {
       formatDateLong: this.$root.webCfg["format.date.long"]
     };
     return {
-      dataset:    {},
-      duration:   undefined,
-      boundaries: undefined
+      dataset: {}
     };
   },
 
@@ -148,6 +148,9 @@ export default {
 
       // Check vars
       if(this.boundaries == undefined || this.duration == undefined)
+        return;
+
+      if(this.boundaries.length < 2)
         return;
 
       // xScale and Boundaries

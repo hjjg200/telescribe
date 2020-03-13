@@ -3,9 +3,7 @@
     <div v-show="$parent.multiple" class="checkbox">
       <Checkbox readonly="true" v-model="selected"/>
     </div>
-    <div class="item">
-      <slot/>
-    </div>
+    <div class="text"><slot/></div>
   </div>
 </template>
 
@@ -15,14 +13,31 @@ export default {
   props: {
     value: {}
   },
+  created() {
+    this.parentSelect.items.push(this);
+  },
   computed: {
     selected() {
-      return this.$parent.hasValue(this.value);
+      return this.parentSelect.hasSelected(this);
+    },
+    text() {
+      return this.$slots.default[0].text;
+    },
+    parentSelect() {
+      let p;
+      for(let x = 0; x <= 5; x++) {
+        p = this.$parent;
+        let name = p.$options.name;
+        let i    = ["Select", "SelectGroup"].indexOf(name);
+        if(i === -1)     break;
+        else if(i === 0) return p;
+      }
+      return undefined;
     }
   },
   methods: {
     onClick() {
-      this.$parent.selectValue(this);
+      this.parentSelect.selectItem(this);
       this.$emit("click");
     }
   }

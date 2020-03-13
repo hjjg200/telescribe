@@ -41,6 +41,34 @@
       </div>
     </div>
 
+    
+    <div class="card">
+      <div class="card__section card__ui-test">
+        <div class="frame">
+          <Checkbox value="a" v-model="fruit">Apple</Checkbox>
+          <Checkbox value="b" v-model="fruit">Banana</Checkbox>
+        </div>
+        <div class="frame">
+          <Button>Button 1</Button>
+          <Button class="ui-button--accent">Button 2</Button>
+        </div>
+        <div class="frame">
+          <Select v-model="fruit2" multiple>
+            <SelectItem value="a">Apple</SelectItem>
+            <SelectItem value="b">Banana</SelectItem>
+            <SelectItem value="c">Coconut</SelectItem>
+          </Select>
+        </div>
+        <div class="frame">
+          <Dropdown v-model="fruit2">
+            <DropdownItem>Apple</DropdownItem>
+            <DropdownItem>Banana</DropdownItem>
+            <DropdownItem>Coconut</DropdownItem>
+          </Dropdown>
+        </div>
+      </div>
+    </div>
+
 
     <div class="card client-header">
       <div class="card__section left">
@@ -93,41 +121,21 @@
         <div class="options-wrap">
           <div class="option">
             <label>Duration</label>
-            <Dropdown ref="durations" name="duration" @change="onDurationChange">
-              <DropdownItem v-for="(duration, i) in $root.webCfg.durations"
-                :key="i" :value="duration"
-                :selected="i == 0">{{ formatDuration(duration) }}</DropdownItem>
-            </Dropdown>
+            <Select ref="durations" name="duration" v-model="duration">
+              <SelectItem v-for="(duration, i) in $root.webCfg.durations"
+                :key="i"
+                :value="duration">{{ formatDuration(duration) }}</SelectItem>
+            </Select>
           </div>
         </div>
       </div>
 
       <div class="card__section card__graph">
         <div class="graph-wrap">
-          <Graph ref="graph"/>
+          <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
         </div>
       </div>
 
-    </div>
-
-    <div class="card">
-      <div class="card__section card__ui-test">
-        <div class="frame">
-          <Checkbox value="a" v-model="fruit">Apple</Checkbox>
-          <Checkbox value="b" v-model="fruit">Banana</Checkbox>
-        </div>
-        <div class="frame">
-          <Button>Button 1</Button>
-          <Button class="ui-button--accent">Button 2</Button>
-        </div>
-        <div class="frame">
-          <Dropdown v-model="fruit2">
-            <DropdownItem>Apple</DropdownItem>
-            <DropdownItem>Banana</DropdownItem>
-            <DropdownItem>Coconut</DropdownItem>
-          </Dropdown>
-        </div>
-      </div>
     </div>
 
 
@@ -186,6 +194,7 @@ export default {
     return {
       activeKeys: [],
       boundaries: [],
+      duration:   this.$root.webCfg.durations[0],
       dataset:    {},
       queue:      new Queue(),
       statusMap:  {},
@@ -193,7 +202,8 @@ export default {
 
       fruit: [],
       fruit2: [],
-      fruit3: []
+      fruit3: [],
+      temp1: null
     };
   },
   computed: {
@@ -203,9 +213,7 @@ export default {
   watch: {
     graphReady(newVal) {
       if(newVal === true) {
-        this.$refs.graph.boundaries = this.boundaries;
-        //this.$refs.durations.selectIndex(0);
-        //this.$refs.graph.plot({});
+        this.$refs.graph.plot({});
       }
     },
     activeKeys(newVal, oldVal) {
