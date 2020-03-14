@@ -11,3 +11,11 @@ export function colorify(str) {
     sat = sat + (sat > 5 ? 70 : 25);
     return `hsl(${hue}, ${sat}%, 50%)`;
 }
+
+export function getChildrenTextContent(children) {
+    return children.map(function (node) {
+        return node.children
+        ? getChildrenTextContent(node.children)
+        : node.text
+    }).join('');
+}

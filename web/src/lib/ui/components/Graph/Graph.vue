@@ -84,6 +84,15 @@ function addThrottledAsyncEvent(elem, type, handler, interval) {
   elem.addEventListener(type, wrap);
 }
 
+function addDebouncedAsyncEvent(elem, type, handler, interval) {
+  var timer;
+  var wrap = function(event) {
+    clearTimeout(timer);
+    timer = setTimeout(() => handler(event), interval);
+  }
+  elem.addEventListener(type, wrap);
+}
+
 // D3
 import {event, select, mouse, customEvent} from "d3-selection";
 import {axisBottom, axisLeft} from "d3-axis";
@@ -106,7 +115,10 @@ export default {
       formatDateLong: this.$root.webCfg["format.date.long"]
     };
     return {
-      dataset: {}
+      dataset: {},
+      visibleBoundary: undefined,
+      focusedTime: undefined,
+      focusedValues: {}
     };
   },
 
@@ -119,6 +131,14 @@ export default {
     keys() {
       return Object.keys(this.dataset);
     }
+  },
+
+  mounted() {
+    // Window Resize
+    // Add at mounted to prevent multiple event listeners
+    addDebouncedAsyncEvent(
+      window, "resize", this._draw, 100
+    );
   },
 
   methods: {
@@ -416,6 +436,7 @@ export default {
         .domain(yBoundary)
         .range([dataHeight, 0]);
       this._yScale = yScale;
+      let yTickValues = yScale.ticks(5).slice(1, -1);
       var yAxis = graph.append("div")
         .attr("class", "axis-wrap y-axis-wrap")
         .append("div")
@@ -426,7 +447,7 @@ export default {
               .attr("class", "axis y-axis")
               .attr("transform", `translate(${graphMargin.left}, ${graphMargin.top})`)
               .call(d3.axisLeft(yScale)
-                .ticks(yTicks)
+                .tickValues(yTickValues)
                 .tickSize(5)
                 .tickSizeOuter(0)
                 .tickFormat(function(value) {
@@ -447,7 +468,7 @@ export default {
       var grid = projection.append("g")
         .attr("class", "grid")
         .call(d3.axisLeft(yScale)
-          .ticks(yTicks)
+          .tickValues(yTickValues)
           .tickSize(-dataWidth)
           .tickFormat(""));
 
@@ -477,10 +498,6 @@ export default {
       // Segments Wrap Scroll
       addThrottledAsyncEvent(
         segmentsWrap.node(), "scroll", $._plotVisible, 10
-      );
-      // Window Resize
-      addThrottledAsyncEvent(
-        window, "resize", $._draw, 100
       );
 
       { // Hand, Points and Tooltip and Touch Interface
@@ -516,7 +533,9 @@ export default {
             return;
 
           // Make Points Visible
-          segments.selectAll(".point").style("opacity", 1);
+          Object.values($._points).forEach(
+            point => d3.select(point).style("opacity", 1)
+          );
           background.select(".focus-date text").style("opacity", 1);
 
           // If mouse is on a point, show the tooltip
@@ -540,6 +559,9 @@ export default {
               .attr("data-value",     elem.value)
               .attr("cx", cX)
               .attr("cy", cY);
+            
+            // Set focused value
+            $.focusedValues[key] = elem.value;
 
             // Hand X is nearest point to the mouse from all data
             if(handX === undefined) handX =  cX;
@@ -551,6 +573,7 @@ export default {
           
           // Hand timestamp
           var handT = xScale.invert(handX);
+          $.focusedTime = handT;
           // Move hand
           hand.attr("x1", handX).attr("x2", handX);
 
@@ -796,6 +819,7 @@ export default {
         Math.max(xScale.invert(scrollLeft - graphWidth), xBoundary[0]),
         Math.min(xScale.invert(scrollLeft + graphWidth * 2), xBoundary[1])
       ];
+      this.visibleBoundary = visibleBoundary;
 
       // Visible Dataset
       var visibleDataset = {};

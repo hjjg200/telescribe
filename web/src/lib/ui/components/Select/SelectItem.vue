@@ -8,6 +8,8 @@
 </template>
 
 <script>
+
+import {getChildrenTextContent} from '../../util/util.js';
 export default {
   name: "SelectItem",
   props: {
@@ -21,7 +23,7 @@ export default {
       return this.parentSelect.hasSelected(this);
     },
     text() {
-      return this.$slots.default[0].text;
+      return getChildrenTextContent(this.$slots.default);
     },
     parentSelect() {
       let p;

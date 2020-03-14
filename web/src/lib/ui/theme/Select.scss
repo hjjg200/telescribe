@@ -26,7 +26,7 @@ $dropdown-caret-width: 2.5rem;
         }
     }
     .caret {
-        color: $cl-text-secondary;
+        color: inherit;
         display: inline-block;
         font-size: 1rem;
         line-height: 1;
@@ -39,35 +39,41 @@ $dropdown-caret-width: 2.5rem;
         transform: translateY(50%);
     }
     .items {
-        border-top-color: $cl-text-accent;
         position: absolute;
         transform: translateY(-1px)
             translateX(1px);
-        width: calc(100% - 2px);
         z-index: 10000;
+        width: max-content;
+        min-width: calc(100% - 2px);
     }
     .ui-select-item {
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: center;
-        padding: 0 1.3rem;
+        padding: 0 .7em;
         &:hover {
             background: $cl-area-accent;
             color: $cl-text-accent;
         }
-        &:first-child {
-            box-shadow: inset 0 0.1rem 0.15rem rgba(0, 0, 0, 0.1);
+    }
+
+    &.has-selected {
+        .button {
+            border-color: $cl-area-accent;
+            background-color: $cl-area-accent;
+            color: $cl-text-accent;
         }
-        .checkbox {
-            display: inline-block;
-            padding-right: .25rem;
+    }
+    &:not(.has-selected) {
+        .button {
+            color: $cl-line-secondary;
         }
     }
 
     &.open {
         .button {
-            border-color: $cl-text-accent;
+            border-color: $cl-line-accent;
         }
     }
 

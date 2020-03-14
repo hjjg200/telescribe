@@ -1,6 +1,9 @@
 <template>
   <div class="ui-select"
-    :class="{open: open}"
+    :class="{
+      open: open,
+      'has-selected': selected.length > 0
+    }"
     v-click-outside="function() {open = false;}">
     <select v-model="selectedValue" :name="name" :multiple="multiple"
       style="display: none;">
@@ -9,8 +12,7 @@
     <div class="button"
       @click="open = !open">
 
-      <div class="title"
-        :style="{opacity: selected.length > 0 ? 1 : 0.5}">{{ text }}</div>
+      <div class="title">{{ text }}</div>
       <div class="caret">
         <font-awesome icon="caret-down"/>
       </div>

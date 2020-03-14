@@ -4,11 +4,29 @@
     color: $cl-text-secondary;
     border: none;
     border-radius: 0.2rem;
-    font-size: 1rem;
+    font-size: inherit;
+    line-height: inherit;
     outline: none;
-    padding: 0.55rem 1.6rem;
-    &.ui-button--accent {
+    padding: 0 1.6em;
+    &.type-accent {
         background: $cl-area-accent;
         color: $cl-text-accent;
+    }
+}
+
+.ui-button-group {
+    .ui-button {
+        padding: 0 1em;
+    }
+    & > .ui-button:first-child {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+    & > .ui-button:last-child {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+    & > .ui-button:not(:first-child):not(:last-child) {
+        border-radius: 0;
     }
 }

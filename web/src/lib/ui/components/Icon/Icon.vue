@@ -25,6 +25,16 @@ export default {
   name: "Icon",
   props: {
     type: String
+  },
+  mounted() {
+    let rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    let svg = this.$refs.svg;
+    if(svg) {
+      let w = svg.width.baseVal.value / rem;
+      let h = svg.height.baseVal.value / rem;
+      svg.style.width  = `${w}em`;
+      svg.style.height = `${h}em`;
+    }
   }
 }
 </script>

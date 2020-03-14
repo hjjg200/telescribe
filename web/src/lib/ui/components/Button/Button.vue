@@ -1,11 +1,18 @@
 <template>
-  <button class="ui-button">
+  <button class="ui-button"
+    :class="{
+      'type-accent': type === 'accent'
+    }"
+    @click="$emit('click')">
     <slot/>
   </button>
 </template>
 
 <script>
 export default {
-  name: "Button"
+  name: "Button",
+  props: {
+    type: String
+  }
 }
 </script>

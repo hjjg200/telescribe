@@ -45,14 +45,15 @@
     <div class="card">
       <div class="card__section card__ui-test">
         <div class="frame">
-          <Checkbox value="a" v-model="fruit"><Icon type="error"/>Apple</Checkbox>
-          <Checkbox value="b" v-model="fruit"><Icon type="warning"/>Banana</Checkbox>
+          <Checkbox value="a" v-model="fruit"><Icon type="error"/> Apple</Checkbox>
+          <Checkbox value="b" v-model="fruit"><Icon type="warning"/> Banana</Checkbox>
+          <Checkbox value="c" v-model="fruit"><Icon type="green-light"/> Coconut</Checkbox>
         </div>
         <div class="frame">
           <Button>Button 1</Button>
-          <Button class="ui-button--accent">Button 2</Button>
+          <Button type="accent">Button 2</Button>
         </div>
-        <div class="frame">
+        <div class="frame" style="line-height: 1.5;">
           <Select v-model="fruit2" multiple>
             <SelectItem value="a">Apple</SelectItem>
             <SelectItem value="b">Banana</SelectItem>
@@ -69,74 +70,40 @@
       </div>
     </div>
 
-
-    <div class="card client-header">
-      <div class="card__section left">
-        <div class="left__top">
-          <h2>{{ info.alias }}</h2>
-          <p>{{ id }} &middot; {{ info.host }}</p>
-        </div>
-        <div class="left__bottom">
-          <ul>
-            <li>Role: foo bar</li>
-            <li>Last Access: Feb 29</li>
-          </ul>
-        </div>
+    <div class="graph-options">
+      <div class="option option--keys">
+        <Select v-model="activeKeys" multiple>
+          <SelectItem v-for="(status, mKey) in statusMap"
+            :key="mKey" :value="mKey">
+            <Icon :type="iconTypeOf(status.status)"/> {{ mKey }}
+          </SelectItem>
+        </Select>
       </div>
-      <div class="card__section right">
-        <h4>System</h4>
-        <ul class="system">
-          <li>
-            <span class="type"><font-awesome icon="microchip"/> CPU</span>
-            <span class="value">1</span>
-          </li>
-          <li>
-            <span class="type"><font-awesome icon="memory"/> Swap</span>
-            <span class="value">2 GB</span>
-          </li>
-          <li>
-            <span class="type"><font-awesome icon="server"/> OS</span>
-            <span class="value">Ubuntu 18.04</span>
-          </li>
-        </ul>
+      <div class="option option--duration">
+        <ButtonGroup>
+          <Button v-for="d in $root.webCfg.durations"
+            :type="d === duration ? 'accent' : ''"
+            :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
+        </ButtonGroup>
       </div>
     </div>
 
-    <div class="card client-graph">
-
-      <div class="card__section card__legend">
-        <ul class="checkboxes">
-          <li v-for="(status, mKey) in statusMap"
-            :key="mKey" :data-status="status.status">
-            <Checkbox :value="mKey" v-model="activeKeys"
-              :markClass="[classLegend(mKey), 'legend']">
-              <span class="key">{{ mKey }}</span>
-              <span class="value">{{ status.value.format("{.2f}") }}</span>
-            </Checkbox>
-          </li>
-        </ul>
-      </div>
-
-      <div class="card__section card__graph-options">
-        <div class="options-wrap">
-          <div class="option">
-            <label>Duration</label>
-            <Select ref="durations" name="duration" v-model="duration">
-              <SelectItem v-for="(duration, i) in $root.webCfg.durations"
-                :key="i"
-                :value="duration">{{ formatDuration(duration) }}</SelectItem>
-            </Select>
-          </div>
+    <div class="graph-focus-info">
+      <div class="focused-time">{{ focusedTime }}</div>
+      <div class="focused-values">
+        <div class="value"
+          v-for="mKey in activeKeys" 
+          :key="mKey"
+          :style="{color: colorify(mKey)}">
+          {{ mKey }}: {{ focusedValue(mKey) }}
         </div>
       </div>
-
-      <div class="card__section card__graph">
-        <div class="graph-wrap">
-          <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
-        </div>
-      </div>
-
     </div>
+
+    <div class="graph-wrap">
+      <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
+    </div>
+
 
 
   </article>
@@ -183,7 +150,6 @@ export default {
     }));
   },
   mounted() {
-    let $ = this;
     this.mounted = true;
   },
 
@@ -208,7 +174,16 @@ export default {
   },
   computed: {
     id() {return this.$vnode.key;},
-    graphReady() {return this.boundaries.length > 0 && this.mounted;}
+    graphReady() {return this.boundaries.length > 0 && this.mounted;},
+    focusedTime() {
+      let fmt = this.$root.webCfg["format.date.long"];
+      if(this.graphReady) {
+        let graph = this.$refs.graph;
+        if(graph.focusedTime)     return graph.focusedTime.date(fmt);
+        if(graph.visibleBoundary) return graph.visibleBoundary.map(d => d.date(fmt)).join(" – ");
+      }
+      return "-";
+    }
   },
   watch: {
     graphReady(newVal) {
@@ -259,29 +234,25 @@ export default {
     }
   },
   methods: {
-    classLegend(mKey) {
-      var i = this.activeKeys.indexOf(mKey);
-      return i.toSeries();
-    },
-    status(mKey) {
-      let map = this.info.latestMap;
-      if(mKey === undefined) {
-        let max = -1;
-        for(let mKey in map) {
-          let st = map[mKey].status;
-          max = st > max ? st : max;
-        }
-        return max;
-      }
-      return map[mKey].status;
+    iconTypeOf(status) {
+      if(status === 8) return 'warning';
+      else if(status === 16) return 'error';
     },
     formatDuration(t) {
       if(t <= 60) return `${t}m`;
       else if(t <= 24 * 60) return Math.round(t / 60) + "h";
       else return Math.round(t / 1440) + "d";
     },
-    onDurationChange(val) {
-      this.$refs.graph.duration = val;
+    focusedValue(mKey) {
+      if(this.graphReady) {
+        let graph = this.$refs.graph;
+        let value = graph.focusedValues[mKey];
+        if(value) return value;
+      }
+      return "-";
+    },
+    colorify(str) {
+      return colorify(str);
     }
   }
 }

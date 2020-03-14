@@ -61,6 +61,7 @@ $colors: (
 }
 
 .ui-graph {
+    user-select: none;
     .background-wrap {
         &, * {
             pointer-events: none;
