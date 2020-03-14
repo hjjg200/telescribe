@@ -50,10 +50,17 @@ function getSeriesIdx(i) {
   let webCfg  = (await api.v1.getWebConfig()).webConfig;
   let version = (await api.v1.getVersion()).version;
 
-  console.log(webCfg);
+  let clStatMap = {};
+  for(let id in clMap) {
+    try {
+      clStatMap[id] = (await api.v1.getClientStatus(id)).clientStatus;
+    } catch(ex) {
+      continue;
+    }
+  }
 
   new Vue({
-    data: {clMap, webCfg, version},
+    data: {clMap, clStatMap, webCfg, version},
     created() {
       document.title = "Telescribe";
     },

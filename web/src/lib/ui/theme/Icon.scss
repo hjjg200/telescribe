@@ -2,3 +2,23 @@
     display: inline-block;
     transform: translateY(10%);
 }
+
+.ui-text-icon {
+    border-radius: 50%;
+    color: white;
+    display: inline-block;
+    font-weight: bold;
+    align-items: center;
+    line-height: 1em;
+    height: 1em;
+    width: 1em;
+    overflow: hidden;
+    user-select: none;
+    text-align: center;
+    text-transform: lowercase;
+    .text {
+        display: block;
+        font-size: .6em;
+        width: 100%;
+    }
+}

@@ -3,3 +3,16 @@
     user-select: none;
     cursor: pointer;
 }
+
+@mixin themed-scrollbar {
+    &::-webkit-scrollbar-track {
+        background: $cl-area-secondary;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: $cl-line-secondary;
+        border-radius: 0.2rem;
+    }
+    &::-webkit-scrollbar {
+        height: 0.4rem;
+    }
+}

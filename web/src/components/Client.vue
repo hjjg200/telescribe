@@ -1,73 +1,17 @@
 <template>
   <article class="client">
-    <div class="temp1">
+
+    <div class="client-header">
       <h2 class="name">{{ info.alias }}</h2>
-      <div class="status-flex">
-        <div class="light"></div>
-        <div class="info">{{ id }} &middot; {{ info.host }}</div>
-        <div class="tags">
-          <span class="role-tag">foo</span>
-          <span class="role-tag">bar</span>
+      <div class="summary-flex">
+        <div class="status">
+          <Icon :type="statusIconOf(statusMap)" />
         </div>
+        <div class="info">{{ id }} &middot; {{ info.host }}</div>
+        <span class="role-tag">foo</span>
+        <span class="role-tag">bar</span>
       </div>
       <hr class="dark"/>
-    </div>
-
-    <div class="temp2">
-      <div class="left">
-        <h3>System</h3>
-      </div>
-
-      <div class="right">
-        <table>
-          <tbody>
-            <tr>
-              <td><font-awesome icon="microchip"/></td>
-              <td>CPU</td>
-              <td>2</td>
-            </tr>
-            <tr>
-              <td><font-awesome icon="memory"/></td>
-              <td>Swap</td>
-              <td>3 GB</td>
-            </tr>
-            <tr>
-              <td><font-awesome icon="server"/></td>
-              <td>OS</td>
-              <td>Ubuntu 18.04</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    
-    <div class="card">
-      <div class="card__section card__ui-test">
-        <div class="frame">
-          <Checkbox value="a" v-model="fruit"><Icon type="error"/> Apple</Checkbox>
-          <Checkbox value="b" v-model="fruit"><Icon type="warning"/> Banana</Checkbox>
-          <Checkbox value="c" v-model="fruit"><Icon type="green-light"/> Coconut</Checkbox>
-        </div>
-        <div class="frame">
-          <Button>Button 1</Button>
-          <Button type="accent">Button 2</Button>
-        </div>
-        <div class="frame" style="line-height: 1.5;">
-          <Select v-model="fruit2" multiple>
-            <SelectItem value="a">Apple</SelectItem>
-            <SelectItem value="b">Banana</SelectItem>
-            <SelectItem value="c">Coconut</SelectItem>
-          </Select>
-        </div>
-        <div class="frame">
-          <Dropdown v-model="fruit2">
-            <DropdownItem>Apple</DropdownItem>
-            <DropdownItem>Banana</DropdownItem>
-            <DropdownItem>Coconut</DropdownItem>
-          </Dropdown>
-        </div>
-      </div>
     </div>
 
     <div class="graph-options">
@@ -75,7 +19,7 @@
         <Select v-model="activeKeys" multiple>
           <SelectItem v-for="(status, mKey) in statusMap"
             :key="mKey" :value="mKey">
-            <Icon :type="iconTypeOf(status.status)"/> {{ mKey }}
+            <Icon :type="statusIconOf(status.status, true)"/> {{ mKey }}
           </SelectItem>
         </Select>
       </div>
@@ -104,7 +48,41 @@
       <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
     </div>
 
+    <!-- <div class="card">
+      <div class="card__section card__ui-test">
+        <div class="frame">
+          <Checkbox value="a" v-model="fruit"><Icon type="error"/> Apple</Checkbox>
+          <Checkbox value="b" v-model="fruit"><Icon type="warning"/> Banana</Checkbox>
+          <Checkbox value="c" v-model="fruit"><Icon type="green-light"/> Coconut</Checkbox>
+        </div>
+        <div class="frame">
+          <Button>Button 1</Button>
+          <Button type="accent">Button 2</Button>
+        </div>
+        <div class="frame" style="line-height: 1.5;">
+          <Select v-model="fruit2" multiple>
+            <SelectItem value="a">Apple</SelectItem>
+            <SelectItem value="b">Banana</SelectItem>
+            <SelectItem value="c">Coconut</SelectItem>
+          </Select>
+        </div>
+        <div class="frame">
+          <Dropdown v-model="fruit2">
+            <DropdownItem>Apple</DropdownItem>
+            <DropdownItem>Banana</DropdownItem>
+            <DropdownItem>Coconut</DropdownItem>
+          </Dropdown>
+        </div>
+      </div>
+    </div> -->
 
+    <hr class="dark" />
+    <div class="client-footer">
+      <div class="version">{{ $root.version }}</div>
+      <div class="github">
+        <a href="https://github.com/hjjg200/telescribe">https://github.com/hjjg200/telescribe</a>
+      </div>
+    </div>
 
   </article>
 </template>
@@ -113,7 +91,7 @@
 
 import {csvParse} from 'd3-dsv';
 const d3 = {csvParse};
-import {NumberFormatter} from '@/lib/util/web.js';
+import {NumberFormatter, statusIconOf} from '@/lib/util/web.js';
 import {colorify} from '@/lib/ui/util/util.js';
 import Queue from '@/lib/util/queue.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
@@ -132,13 +110,6 @@ export default {
     let boundaries = [];
 
     this.queue.queue(new Promise(resolve => {
-      $.$api.v1.getClientStatus($.id)
-        .then(function(rsp) {
-          $.statusMap = rsp.clientStatus;
-          resolve();
-        });
-    }));
-    this.queue.queue(new Promise(resolve => {
       $.$api.v1.getMonitorDataBoundaries($.id)
         .then(function(csv) {
           d3.csvParse(csv, row => {
@@ -154,7 +125,8 @@ export default {
   },
 
   props: {
-    info: {type: Object}
+    info: Object,
+    statusMap: Object
   },
   data() {
     return {
@@ -163,7 +135,6 @@ export default {
       duration:   this.$root.webCfg.durations[0],
       dataset:    {},
       queue:      new Queue(),
-      statusMap:  {},
       mounted:    false,
 
       fruit: [],
@@ -234,10 +205,7 @@ export default {
     }
   },
   methods: {
-    iconTypeOf(status) {
-      if(status === 8) return 'warning';
-      else if(status === 16) return 'error';
-    },
+    statusIconOf,
     formatDuration(t) {
       if(t <= 60) return `${t}m`;
       else if(t <= 24 * 60) return Math.round(t / 60) + "h";

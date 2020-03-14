@@ -1,0 +1,32 @@
+
+.ui-menu {
+    border: 1px solid $cl-line-secondary;
+    border-radius: .3rem;
+    padding: .25rem 0 .875rem 0;
+    .ui-menu-item, .ui-menu-label {
+        padding-left: .625rem;
+        padding-right: 1.25rem;
+    }
+
+    .ui-menu-item {
+        &:hover {
+            background: $cl-area-accent;
+            color: $cl-text-accent;
+        }
+    }
+    .ui-menu-item + .ui-menu-item {
+        border-top: 1px solid rgba($cl-line-secondary, 0.33);
+    }
+
+    .ui-menu-label {
+        color: $cl-text-secondary;
+        font-size: .75rem;
+        line-height: 1.5rem;
+        text-transform: uppercase;
+
+        &:not(:first-child) {
+            border-top: 1px solid rgba($cl-line-secondary, 0.33);
+            margin-top: .875rem;
+        }
+    }
+}

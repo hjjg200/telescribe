@@ -1,21 +1,32 @@
 <template>
   <div id="app">
     <main>
-      <Sidebar>
-        <SidebarLabel>Hosts</SidebarLabel>
-        <SidebarItem v-for="(clInfo, clId) in clMap"
-          :key="clId"
-          @click="visibleClient = clId">
-          <strong>{{ clInfo.alias }}</strong>
-          {{ clInfo.host }}
-        </SidebarItem>
-        <SidebarLabel class="version">{{ version }}</SidebarLabel>
-      </Sidebar>
       <section>
         
+        <Menu>
+          <MenuLabel>Favorites</MenuLabel>
+          <MenuLabel>Clients</MenuLabel>
+          <MenuItem
+            v-for="(info, clId) in clMap"
+            :key="clId"
+            @click="visibleClient = clId">
+            <div class="client-menu-item">
+              <div class="thumbnail">
+                <TextIcon :text="clId"/>
+              </div>
+              <Icon :type="statusIconOf(clStatMap[clId])" />
+              <div class="text">
+                <div class="alias">{{ info.alias }}</div>
+                <div class="host">{{ info.host }}</div>
+              </div>
+            </div>
+          </MenuItem>
+        </Menu>
+
         <Client v-for="(clInfo, clId) in clMap"
           :key="clId"
           :info="clInfo"
+          :statusMap="clStatMap[clId]"
           :class="{visible: (visibleClient === clId)}"></Client>
       </section>
     </main>
@@ -23,16 +34,20 @@
 </template>
 
 <script>
+import {statusIconOf} from '@/lib/util/web.js';
 import Client from '@/components/Client.vue';
 export default {
   name: "App",
   components: {Client},
   data() {
-    let {clMap, webCfg, version} = this.$root;
+    let {clMap, clStatMap, webCfg, version} = this.$root;
     return {
-      clMap, webCfg, version,
+      clMap, clStatMap, webCfg, version,
       visibleClient: undefined
     };
+  },
+  methods: {
+    statusIconOf
   }
 }
 </script>

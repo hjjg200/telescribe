@@ -75,6 +75,7 @@ $colors: (
         overflow-x: scroll;
         overflow-y: visible;
         white-space: nowrap;
+        @include themed-scrollbar;
         * {
             pointer-events: none;
         }
@@ -83,16 +84,6 @@ $colors: (
         }
         .projection-domain {
             fill: rgba(0,0,0,0);
-        }
-        &::-webkit-scrollbar-track {
-            background: $cl-area-secondary;
-        }
-        &::-webkit-scrollbar-thumb {
-            background: $cl-line-secondary;
-            border-radius: 0.2rem;
-        }
-        &::-webkit-scrollbar {
-            height: 0.4rem;
         }
         .segment path {
             stroke-width: 1px;

@@ -76,3 +76,21 @@ function formatComma(x) {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return parts.join(".");
 }
+
+// STATUS ---
+
+export function statusIconOf(val, ignoreGreen = false) {
+  let st = val;
+  if(typeof val === "object") {
+    st = Math.max(
+      ...Object.values(val).map(d => d.status)
+    );
+  }
+
+  if(isNaN(st)) return '';
+  
+  if(st === 0 && !ignoreGreen) return 'green-light';
+  else if(st === 8)            return 'warning';
+  else if(st === 16)           return 'error';
+
+}

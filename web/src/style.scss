@@ -1,5 +1,6 @@
 
 @import '@/lib/ui/theme/colors.scss';
+@import '@/lib/ui/theme/mixins.scss';
 
 $main-padding: 1.3rem;
 
@@ -30,52 +31,98 @@ h1, h2, h3, h4, h5, h6 {
     color: $cl-text-secondary-dark;
 }
 
+a {
+    color: $cl-text-accent;
+    text-decoration: none;
+}
+
 main {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    height: 100vh;
     & > section {
         width: 100%;
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 }
 
-.sidebar {
-    .sidebar-label.version {
-        text-transform: none;
-        font-weight: lighter;
-    }
-}
-
-.client .temp1 {
-
+.client .client-header {
+    padding-bottom: 1rem;
     h2.name {
         color: $cl-text-accent;
         font-weight: normal;
+        font-size: 2rem;
     }
-    .status-flex {
+    .summary-flex {
         line-height: 1.25rem;
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
-        & > * {
-            margin-right: 0.5rem;
-        }
-        .light {
-            background: hsl(155, 85%, 45%);
-            border-radius: 50%;
-            height: 1.25rem;
-            width: 1.25rem;
+        padding-bottom: .5rem;
+        & > *:not(:last-child) {
+            margin-right: .5rem;
         }
         .role-tag {
             background: $cl-area-secondary-dark;
             border-radius: .2rem;
             display: inline-block;
             font-size: .8rem;
+            padding: .1rem .35rem;
         }
     }
+}
+
+.client .client-footer {
+    padding: 1rem 0;
+    font-size: .875rem;
+    line-height: 1.15;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    & > .version {
+        flex: 100 0 auto;
+        padding-right: 2rem;
+    }
+    & > .github {
+        flex: 0 0 auto;
+    }
+}
+
+.client-menu-item {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    padding: .5rem 0;
+    & > .thumbnail {
+        font-size: 2rem;
+        margin-right: .5rem;
+        & > * {
+            display: block;
+        }
+    }
+    & > .ui-icon {
+        display: block;
+        margin-right: .5rem;
+    }
+    & > .text {
+        line-height: 1.15;
+        .alias {
+            font-size: .875rem;
+        }
+        .host {
+            font-size: .75rem;
+            opacity: 0.66;
+        }
+    }
+}
+
+.client {
+
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: 0 .4rem;
+
     hr {
         border: none;
         border-top: 1px solid white;
@@ -84,12 +131,6 @@ main {
     hr.dark {
         border-color: $cl-line-secondary-dark;
     }
-}
-
-.client {
-
-    max-width: 68rem;
-    margin: 0 auto;
 
     .card {
         background: white;
@@ -106,38 +147,6 @@ main {
             margin-bottom: .5rem;
         }
     }
-
-    .client-header {
-        background: white;
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: stretch;
-
-        ul {
-            list-style: none;
-        }
-
-        .left {
-            flex: 100 0 auto;
-            display: flex;
-            flex-direction: column;
-            flex-wrap: nowrap;
-            align-items: stretch;
-            .left__top {
-                flex: 1 0 auto;
-            }
-            .left__bottom {
-                flex: 0 0 auto;
-            }
-        }
-        .right {
-            color: $cl-text-secondary;
-            flex: 1 0 19rem;
-            padding-bottom: 6rem;
-        }
-    }
-
 
     &:not(.visible) {
         opacity: 0;
@@ -163,6 +172,7 @@ main {
             text-align: right;
             white-space: nowrap;
             overflow-x: auto;
+            @include themed-scrollbar;
         }
     }
     .graph-focus-info {

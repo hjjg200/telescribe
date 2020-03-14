@@ -34,6 +34,8 @@ export default {
       let h = svg.height.baseVal.value / rem;
       svg.style.width  = `${w}em`;
       svg.style.height = `${h}em`;
+    } else {
+      this.$el.style.display = "none";
     }
   }
 }
