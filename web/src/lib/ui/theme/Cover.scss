@@ -1,0 +1,15 @@
+
+.ui-cover {
+    color: $cl-line-secondary;
+    font-size: 3rem;
+    height: 75vh;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    & > div {
+        height: fit-content;
+        flex: 0 0 100%;
+        text-align: center;
+    }
+    user-select: none;
+}

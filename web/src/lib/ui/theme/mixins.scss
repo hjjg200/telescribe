@@ -4,6 +4,10 @@
     cursor: pointer;
 }
 
+@mixin border-radius {
+    border-radius: .2rem;
+}
+
 @mixin themed-scrollbar {
     &::-webkit-scrollbar-track {
         background: $cl-area-secondary;

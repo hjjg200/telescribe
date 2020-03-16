@@ -2,11 +2,11 @@
 .ui-menu {
     background: white;
     border: 1px solid $cl-line-secondary;
-    border-radius: .3rem;
     padding: .25rem 0 .875rem 0;
     position: absolute;
     z-index: 2000;
     @include control;
+    @include border-radius;
     @include themed-scrollbar;
     .ui-menu-item, .ui-menu-label {
         padding-left: .625rem;

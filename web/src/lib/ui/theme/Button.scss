@@ -1,9 +1,9 @@
 .ui-button {
     @include control;
+    @include border-radius;
     background: $cl-area-secondary-dark;
     color: $cl-text-secondary;
     border: none;
-    border-radius: 0.2rem;
     font-size: inherit;
     line-height: inherit;
     outline: none;

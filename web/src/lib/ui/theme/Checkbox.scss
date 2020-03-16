@@ -14,9 +14,9 @@
     }
 
     .mark {
+        @include border-radius;
         background: $cl-area-accent;
         border: none;
-        border-radius: 0.2rem;
         color: $cl-text-accent;
         display: inline-block;
         flex: 0 0 1rem;

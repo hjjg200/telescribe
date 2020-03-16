@@ -1,5 +1,7 @@
+export * from './Badge';
 export * from './Button';
 export * from './Checkbox';
+export * from './Cover';
 export * from './Graph';
 export * from './Icon';
 export * from './Menu';

@@ -1,0 +1,16 @@
+
+.ui-badge {
+    @include border-radius;
+    background: $cl-area-secondary;
+    color: $cl-text-secondary;
+    display: inline-block;
+    font-size: .8em;
+    padding: .1em .35em;
+
+    &.sz-small {
+        font-size: .7em;
+    }
+    &.sz-large {
+        font-size: 1em;
+    }
+}

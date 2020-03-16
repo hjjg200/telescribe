@@ -8,12 +8,17 @@
           <Icon :type="statusIconOf(statusMap)" />
         </div>
         <div class="info">{{ id }} &middot; {{ info.host }}</div>
-        <span class="role-tag">foo</span>
-        <span class="role-tag">bar</span>
+        <Badge>foo</Badge>
+        <Badge>bar</Badge>
       </div>
       <Rule type="hr" variant="dark"/>
     </div>
 
+    <Cover v-show="!graphReady">
+      No Available Data
+    </Cover>
+
+    <div class="client-graph">
     <div class="graph-options">
       <div class="option option--keys">
         <Select v-model="activeKeys" multiple>
@@ -99,12 +104,7 @@ export default {
       duration:   this.$root.webCfg.durations[0],
       dataset:    {},
       queue:      new Queue(),
-      mounted:    false,
-
-      fruit: [],
-      fruit2: [],
-      fruit3: [],
-      temp1: null
+      mounted:    false
     };
   },
   computed: {

@@ -21,7 +21,7 @@
               <div class="thumbnail">
                 <TextIcon :text="clId"/>
               </div>
-              <Icon :type="statusIconOf(clStatMap[clId])" />
+              <Icon :type="statusIconOf(clStatMap[clId], true)" />
               <div class="text">
                 <div class="alias">{{ info.alias }}</div>
                 <div class="host">{{ info.host }}</div>
@@ -35,6 +35,9 @@
     <Rule type="hr"/>
     <main>
       <section>
+        <Cover v-show="visibleClient === null">
+          Select a Client
+        </Cover>
         <Client v-for="(clInfo, clId) in clMap"
           :key="clId"
           :info="clInfo"
@@ -68,7 +71,7 @@ export default {
     let {clMap, clStatMap, webCfg, version} = this.$root;
     return {
       clMap, clStatMap, webCfg, version,
-      visibleClient: undefined
+      visibleClient: null
     };
   },
   methods: {

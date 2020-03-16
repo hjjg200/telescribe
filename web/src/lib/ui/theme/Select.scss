@@ -2,6 +2,7 @@
 $dropdown-caret-width: 2.5rem;
 
 .ui-select {
+    @include control;
     position: relative;
 
     .button, .items {
@@ -10,7 +11,7 @@ $dropdown-caret-width: 2.5rem;
         color: $cl-text-secondary;
     }
     .button {
-        border-radius: 0.2rem;
+        @include border-radius;
         padding: 0 
             1.1rem + $dropdown-caret-width
             0
@@ -76,9 +77,5 @@ $dropdown-caret-width: 2.5rem;
         .button {
             border-color: $cl-line-accent;
         }
-    }
-
-    &, * {
-        @include control;
     }
 }
