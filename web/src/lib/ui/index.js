@@ -1,5 +1,6 @@
 
 import * as components from './components';
+import * as directives from './directives';
 import './theme/index.scss';
 
 // Font Awesome
@@ -11,6 +12,10 @@ const UI = {
     for(let key in components) {
       let component = components[key];
       Vue.component(component.name, component);
+    }
+    for(let key in directives) {
+      let directive = directives[key];
+      Vue.directive(directive.name, directive);
     }
   }
 }

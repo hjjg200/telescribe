@@ -42,9 +42,10 @@ $dropdown-caret-width: 2.5rem;
         position: absolute;
         transform: translateY(-1px)
             translateX(1px);
-        z-index: 10000;
+        z-index: 1000;
         width: max-content;
         min-width: calc(100% - 2px);
+        @include themed-scrollbar;
     }
     .ui-select-item {
         display: flex;

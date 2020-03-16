@@ -72,26 +72,8 @@ function keysEqual(a, b) {
   return true;
 }
 
-function addThrottledAsyncEvent(elem, type, handler, interval) {
-  var wrap = function(event) {
-    elem.removeEventListener(type, wrap);
-    handler(event).then(function() {
-      setTimeout(function() {
-        elem.addEventListener(type, wrap);
-      }, interval);
-    });
-  };
-  elem.addEventListener(type, wrap);
-}
-
-function addDebouncedAsyncEvent(elem, type, handler, interval) {
-  var timer;
-  var wrap = function(event) {
-    clearTimeout(timer);
-    timer = setTimeout(() => handler(event), interval);
-  }
-  elem.addEventListener(type, wrap);
-}
+// Util
+import {addThrottledAsyncEvent, addDebouncedAsyncEvent} from '../../util/util.js';
 
 // D3
 import {event, select, mouse, customEvent} from "d3-selection";
