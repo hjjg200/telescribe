@@ -17,40 +17,42 @@
     <Cover v-show="!graphReady">
       No Available Data
     </Cover>
-
-    <div class="client-graph">
-    <div class="graph-options">
-      <div class="option option--keys">
-        <Select v-model="activeKeys" multiple>
-          <SelectItem v-for="(status, mKey) in statusMap"
-            :key="mKey" :value="mKey">
-            <Icon :type="statusIconOf(status.status, true)"/> {{ mKey }}
-          </SelectItem>
-        </Select>
-      </div>
-      <div class="option option--duration">
-        <ButtonGroup>
-          <Button v-for="d in $root.webCfg.durations"
-            :type="d === duration ? 'accent' : ''"
-            :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
-        </ButtonGroup>
-      </div>
-    </div>
-
-    <div class="graph-focus-info">
-      <div class="focused-time">{{ focusedTime }}</div>
-      <div class="focused-values">
-        <div class="value"
-          v-for="mKey in activeKeys" 
-          :key="mKey"
-          :style="{color: colorify(mKey)}">
-          {{ mKey }}: {{ focusedValue(mKey) }}
+    <div v-show="graphReady" class="client-graph">
+        
+      <div class="graph-options">
+        <div class="option option--keys">
+          <Select v-model="activeKeys" multiple>
+            <SelectItem v-for="(status, mKey) in statusMap"
+              :key="mKey" :value="mKey">
+              <Icon :type="statusIconOf(status.status, true)"/> {{ mKey }}
+            </SelectItem>
+          </Select>
+        </div>
+        <div class="option option--duration">
+          <ButtonGroup>
+            <Button v-for="d in $root.webCfg.durations"
+              :type="d === duration ? 'accent' : ''"
+              :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
+          </ButtonGroup>
         </div>
       </div>
-    </div>
 
-    <div class="graph-wrap">
-      <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
+      <div class="graph-focus-info">
+        <div class="focused-time">{{ focusedTime }}</div>
+        <div class="focused-values">
+          <div class="value"
+            v-for="mKey in activeKeys" 
+            :key="mKey"
+            :style="{color: colorify(mKey)}">
+            {{ mKey }}: {{ focusedValue(mKey) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="graph-wrap">
+        <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
+      </div>
+
     </div>
 
   </article>

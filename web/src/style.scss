@@ -1,6 +1,5 @@
 
 @import '@/lib/ui/theme/colors.scss';
-@import '@/lib/ui/theme/mixins.scss';
 
 $main-padding: 1.3rem;
 
@@ -39,7 +38,7 @@ a {
 header, main, footer {
     max-width: 68rem;
     margin: 0 auto;
-    padding: 0 .4rem;
+    padding: 0 .75rem;
 }
 
 header {
@@ -94,7 +93,7 @@ footer {
 }
 
 .client .client-header {
-    padding-bottom: 1rem;
+    padding: 1rem 0;
     h2.name {
         color: $cl-text-accent;
         font-weight: normal;
@@ -151,23 +150,6 @@ footer {
 
 .client {
 
-
-    .card {
-        background: white;
-        border: 1px solid white;
-        margin: 1.5rem 0;
-    }
-    .card__section {
-        border: 1px dashed $cl-line-secondary;
-        margin: -1px;
-        padding: 1rem;
-    }
-    .card__ui-test {
-        .frame {
-            margin-bottom: .5rem;
-        }
-    }
-
     &:not(.visible) {
         opacity: 0;
         height: 0;
@@ -192,7 +174,6 @@ footer {
             text-align: right;
             white-space: nowrap;
             overflow-x: auto;
-            @include themed-scrollbar;
         }
     }
     .graph-focus-info {

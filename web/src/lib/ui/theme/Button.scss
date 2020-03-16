@@ -15,6 +15,7 @@
 }
 
 .ui-button-group {
+    @include themed-scrollbar;
     .ui-button {
         padding: 0 1em;
     }
