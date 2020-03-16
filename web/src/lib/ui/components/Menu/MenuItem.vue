@@ -1,5 +1,5 @@
 <template>
-  <div class="ui-menu-item" @click="$emit('click')">
+  <div class="ui-menu-item" @click="$emit('click', $event)">
     <slot/>
   </div>
 </template>

@@ -36,11 +36,48 @@ a {
     text-decoration: none;
 }
 
-main {
-    & > section {
-        width: 100%;
-        overflow-x: hidden;
-        overflow-y: auto;
+hr {
+    border: none;
+    border-top: 1px solid white;
+    outline: none;
+}
+hr.dark {
+    border-color: $cl-line-secondary-dark;
+}
+
+header, main, footer {
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: 0 .4rem;
+}
+
+header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    padding: 1rem;
+
+    .header-logo {
+        flex: 100 0 auto;
+    }
+    .menu-container {
+        flex: 0 0 2rem;
+        width: 2rem;
+        height: 2rem;
+        position: relative;
+        .menu-button {
+            line-height: 2rem;
+            font-size: 1rem;
+            display: block;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        .menu-content {
+            top: calc(100% + .4rem);
+            right: 0;
+        }
     }
 }
 
@@ -119,18 +156,6 @@ main {
 
 .client {
 
-    max-width: 68rem;
-    margin: 0 auto;
-    padding: 0 .4rem;
-
-    hr {
-        border: none;
-        border-top: 1px solid white;
-        outline: none;
-    }
-    hr.dark {
-        border-color: $cl-line-secondary-dark;
-    }
 
     .card {
         background: white;

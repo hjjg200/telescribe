@@ -3,7 +3,7 @@
     :class="{
       'type-accent': type === 'accent'
     }"
-    @click="$emit('click')">
+    @click="$emit('click', $event)">
     <slot/>
   </button>
 </template>

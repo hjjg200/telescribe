@@ -1,9 +1,16 @@
 <template>
   <div id="app">
-    <main>
-      <section>
-        
-        <Menu>
+    <header>
+
+      <div class="header-logo">
+        Telescribe
+      </div>
+      <div class="menu-container">
+
+        <Button class="menu-button" @click="$refs.menu.toggle($event)">
+          <font-awesome icon="bars"/>
+        </Button>
+        <Menu ref="menu" class="menu-content">
           <MenuLabel>Favorites</MenuLabel>
           <MenuLabel>Clients</MenuLabel>
           <MenuItem
@@ -23,6 +30,13 @@
           </MenuItem>
         </Menu>
 
+      </div>
+    </header>
+    <hr class="dark"/>
+    <main>
+      <section>
+
+
         <Client v-for="(clInfo, clId) in clMap"
           :key="clId"
           :info="clInfo"
@@ -35,6 +49,9 @@
 
 <script>
 import {statusIconOf} from '@/lib/util/web.js';
+import {library} from '@fortawesome/fontawesome-svg-core';
+import {faBars} from '@fortawesome/free-solid-svg-icons';
+library.add(faBars);
 import Client from '@/components/Client.vue';
 export default {
   name: "App",

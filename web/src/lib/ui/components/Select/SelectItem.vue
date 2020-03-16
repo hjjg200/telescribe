@@ -38,9 +38,9 @@ export default {
     }
   },
   methods: {
-    onClick() {
+    onClick(event) {
       this.parentSelect.selectItem(this);
-      this.$emit("click");
+      this.$emit("click", event);
     }
   }
 }
