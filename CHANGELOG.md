@@ -3,33 +3,31 @@
 Overall refinement and system signal handling
 
 - [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
-- [ ] **Added:** `web` debug mode for time measuring
-- [ ] **Added:** `web` feature to delete data
 - [x] **Added:** `server` better handling of API
 - [x] **Added:** `go` system signal handling
+- [x] **Added:** `web` added javascript implementaion of queue
+- [x] **Added:** `web` menus and select item list are now always moved to viewport when it is outside the viewport
+- [x] **Added:** `web` custom status icons made with Figma
+- [x] **Added:** `web` added ButtonGroup, Icon, Select, Menu, Badge, and Avatar
+- [x] **Added:** `server` added permission check for HTTP requests
+- [x] **Added:** `server` support for multiple HTTP users with different permissions
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
+- [x] **Fixed:** `client` monitor interval now properly changes when a new config is given
 - [ ] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
+- [x] **Changed:** `server` clients can now have several roles rather than just one
+- [x] **Changed:** `web` graph tooltip is now replaced with plain text
 - [ ] **Changed:** `overall` changes as per specification documentations
-
-#### Experiments
-
-- [ ] See if having paths in the only visible parts is better.
 
 #### Known Issues
 
 - [ ] Add IPv6 support
 - [ ] Sometimes sig term did not work
-- [ ] MonitorInterval does not seem to be updated as client config changes
 - [ ] Auto uodate feature is faulty
 - [ ] No indicator for status and disabled status for clients not sending data
 - [ ] Machines may have disks of different names which require different roles to monitor separately.
-- [ ] Graph tooltip UI needs modification
 - [ ] Graph y-axis figures sometimes get partly invisible.
-- [ ] Numbers on graph are not so legible due to their color.
 - [ ] `web` Tiny gaps are present in the graph
-- [ ] `web` Checkbox label can be two-lined
-- [ ] `web` Data fetching must be queued
 - [ ] `web` Quick selection changing may break functionality of web
 - [ ] When crashed web graph drawing happens to not work properly
 
