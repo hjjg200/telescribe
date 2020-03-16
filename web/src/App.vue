@@ -3,7 +3,7 @@
     <header>
 
       <div class="header-logo">
-        Telescribe
+        <Logo/>
       </div>
       <div class="menu-container">
 
@@ -32,11 +32,9 @@
 
       </div>
     </header>
-    <hr class="dark"/>
+    <Rule type="hr"/>
     <main>
       <section>
-
-
         <Client v-for="(clInfo, clId) in clMap"
           :key="clId"
           :info="clInfo"
@@ -44,6 +42,15 @@
           :class="{visible: (visibleClient === clId)}"></Client>
       </section>
     </main>
+    <footer>
+      <Rule type="hr"/>
+      <section>
+        <div class="version">{{ $root.version }}</div>
+        <div class="github">
+          <a href="https://github.com/hjjg200/telescribe">https://github.com/hjjg200/telescribe</a>
+        </div>
+      </section>
+    </footer>
   </div>
 </template>
 
@@ -52,10 +59,11 @@ import {statusIconOf} from '@/lib/util/web.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {faBars} from '@fortawesome/free-solid-svg-icons';
 library.add(faBars);
+import Logo from '@/components/Logo.vue';
 import Client from '@/components/Client.vue';
 export default {
   name: "App",
-  components: {Client},
+  components: {Client, Logo},
   data() {
     let {clMap, clStatMap, webCfg, version} = this.$root;
     return {

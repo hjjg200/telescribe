@@ -36,15 +36,6 @@ a {
     text-decoration: none;
 }
 
-hr {
-    border: none;
-    border-top: 1px solid white;
-    outline: none;
-}
-hr.dark {
-    border-color: $cl-line-secondary-dark;
-}
-
 header, main, footer {
     max-width: 68rem;
     margin: 0 auto;
@@ -59,6 +50,8 @@ header {
     padding: 1rem;
 
     .header-logo {
+        color: $cl-text-secondary;
+        font-size: 2rem;
         flex: 100 0 auto;
     }
     .menu-container {
@@ -77,6 +70,25 @@ header {
         .menu-content {
             top: calc(100% + .4rem);
             right: 0;
+        }
+    }
+}
+
+footer {
+    font-size: .875rem;
+    line-height: 1.15;
+    section {
+        padding: .5rem 0 4rem 0;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        & > .version {
+            flex: 100 0 auto;
+            padding-right: 2rem;
+        }
+        & > .github {
+            flex: 0 0 auto;
         }
     }
 }
@@ -105,23 +117,6 @@ header {
             font-size: .8rem;
             padding: .1rem .35rem;
         }
-    }
-}
-
-.client .client-footer {
-    padding: 1rem 0;
-    font-size: .875rem;
-    line-height: 1.15;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    & > .version {
-        flex: 100 0 auto;
-        padding-right: 2rem;
-    }
-    & > .github {
-        flex: 0 0 auto;
     }
 }
 

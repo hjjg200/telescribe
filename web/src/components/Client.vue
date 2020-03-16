@@ -11,7 +11,7 @@
         <span class="role-tag">foo</span>
         <span class="role-tag">bar</span>
       </div>
-      <hr class="dark"/>
+      <Rule type="hr" variant="dark"/>
     </div>
 
     <div class="graph-options">
@@ -46,42 +46,6 @@
 
     <div class="graph-wrap">
       <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
-    </div>
-
-    <!-- <div class="card">
-      <div class="card__section card__ui-test">
-        <div class="frame">
-          <Checkbox value="a" v-model="fruit"><Icon type="error"/> Apple</Checkbox>
-          <Checkbox value="b" v-model="fruit"><Icon type="warning"/> Banana</Checkbox>
-          <Checkbox value="c" v-model="fruit"><Icon type="green-light"/> Coconut</Checkbox>
-        </div>
-        <div class="frame">
-          <Button>Button 1</Button>
-          <Button type="accent">Button 2</Button>
-        </div>
-        <div class="frame" style="line-height: 1.5;">
-          <Select v-model="fruit2" multiple>
-            <SelectItem value="a">Apple</SelectItem>
-            <SelectItem value="b">Banana</SelectItem>
-            <SelectItem value="c">Coconut</SelectItem>
-          </Select>
-        </div>
-        <div class="frame">
-          <Dropdown v-model="fruit2">
-            <DropdownItem>Apple</DropdownItem>
-            <DropdownItem>Banana</DropdownItem>
-            <DropdownItem>Coconut</DropdownItem>
-          </Dropdown>
-        </div>
-      </div>
-    </div> -->
-
-    <hr class="dark" />
-    <div class="client-footer">
-      <div class="version">{{ $root.version }}</div>
-      <div class="github">
-        <a href="https://github.com/hjjg200/telescribe">https://github.com/hjjg200/telescribe</a>
-      </div>
     </div>
 
   </article>
