@@ -1,17 +1,12 @@
 .ui-button {
     @include control;
     @include border-radius;
-    background: $cl-area-secondary-dark;
-    color: $cl-text-secondary;
+    @include box-style;
     border: none;
     font-size: inherit;
     line-height: inherit;
     outline: none;
     padding: 0 1.6em;
-    &.type-accent {
-        background: $cl-area-accent;
-        color: $cl-text-accent;
-    }
 }
 
 .ui-button-group {

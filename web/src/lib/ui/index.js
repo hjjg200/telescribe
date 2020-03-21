@@ -1,4 +1,6 @@
 
+import vClickOutside from 'v-click-outside';
+
 import * as components from './components';
 import * as directives from './directives';
 import './theme/index.scss';
@@ -8,15 +10,16 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 const UI = {
   install(Vue) {
+    Vue.use(vClickOutside);
     Vue.component('FontAwesome', FontAwesomeIcon);
-    for(let key in components) {
-      let component = components[key];
-      Vue.component(component.name, component);
-    }
-    for(let key in directives) {
-      let directive = directives[key];
-      Vue.directive(directive.name, directive);
-    }
+    
+    [[components, 'component'], [directives, 'directive']].forEach(arr => {
+      let [map, type] = arr;
+      for(let key in map) {
+        let item = map[key];
+        Vue[type](item.name, item);
+      }
+    });
   }
 }
 

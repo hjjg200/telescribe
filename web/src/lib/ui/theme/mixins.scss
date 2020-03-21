@@ -1,9 +1,4 @@
 
-@mixin control {
-    user-select: none;
-    cursor: pointer;
-}
-
 @mixin border-radius {
     border-radius: .2rem;
 }
@@ -19,5 +14,85 @@
     &::-webkit-scrollbar {
         height: 0.4rem;
         width: 0.4rem;
+    }
+}
+
+@mixin focusable($selector: '') {
+    &:focus, &.is-focused {
+        &#{$selector} {
+            box-shadow: 0 0 0 .2rem rgba($cl-3-accent, 0.33);
+            &.v-bold {
+                box-shadow: 0 0 0 .2rem rgba($cl-3-secondary-bold, 0.33);
+            }
+            &.v-accent {
+                /* same as normal */
+            }
+            &.v-success {
+                box-shadow: 0 0 0 .2rem rgba($cl-3-success, 0.33);
+            }
+            &.v-warning {
+                box-shadow: 0 0 0 .2rem rgba($cl-3-warning, 0.33);
+            }
+            &.v-danger {
+                box-shadow: 0 0 0 .2rem rgba($cl-3-danger, 0.33);
+            }
+            &.v-special {
+                box-shadow: 0 0 0 .2rem rgba($cl-3-special, 0.33);
+            }
+            &.v-outline {
+                /* same as normal */
+            }
+        }
+    }
+}
+
+@mixin box-style {
+    /* normal */
+    background: $cl-5-secondary;
+    color: $cl-3-secondary;
+
+    &.v-bold {
+        background: $cl-5-secondary-bold;
+        color: $cl-3-secondary-bold;
+    }
+    &.v-accent {
+        background: $cl-5-accent;
+        color: $cl-3-accent;
+    }
+    &.v-success {
+        background: $cl-3-success;
+        color: $cl-7;
+    }
+    &.v-warning {
+        background: $cl-3-warning;
+        color: $cl-1-secondary;
+    }
+    &.v-danger {
+        background: $cl-3-danger;
+        color: $cl-7;
+    }
+    &.v-special {
+        background: $cl-3-special;
+        color: $cl-7;
+    }
+    &.v-outline {
+        background: none;
+        border: 1px dashed currentColor;
+        color: $cl-1-secondary;
+    }
+
+    /* disabled */
+    &.is-disabled {
+        opacity: 0.33;
+    }
+}
+
+@mixin control {
+    @include focusable;
+    user-select: none;
+    cursor: pointer;
+
+    &.is-disabled {
+        cursor: not-allowed;
     }
 }

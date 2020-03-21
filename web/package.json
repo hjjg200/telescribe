@@ -8,21 +8,21 @@
   "keywords": [],
   "author": "",
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.25",
-    "@fortawesome/free-brands-svg-icons": "^5.11.2",
-    "@fortawesome/free-solid-svg-icons": "^5.11.2",
-    "@fortawesome/vue-fontawesome": "^0.1.7",
-    "@vue/cli-service": "^4.0.5",
+    "@fortawesome/fontawesome-svg-core": "^1.2.27",
+    "@fortawesome/free-brands-svg-icons": "^5.12.1",
+    "@fortawesome/free-solid-svg-icons": "^5.12.1",
+    "@fortawesome/vue-fontawesome": "^0.1.9",
+    "@vue/cli-service": "^4.2.3",
     "d3": "^5.15.0",
     "moment": "^2.24.0",
     "node-sass": "^4.13.1",
-    "sass-loader": "^8.0.0",
-    "serialize-javascript": "^2.1.1",
-    "v-click-outside": "^2.1.4",
-    "vue": "^2.6.10",
-    "vue-template-compiler": "^2.6.10"
+    "sass-loader": "^8.0.2",
+    "serialize-javascript": "^2.1.2",
+    "v-click-outside": "^2.1.5",
+    "vue": "^2.6.11",
+    "vue-template-compiler": "^2.6.11"
   },
   "devDependencies": {
-    "webpack-bundle-analyzer": "^3.6.0"
+    "webpack-bundle-analyzer": "^3.6.1"
   }
 }

@@ -1,7 +1,7 @@
 
 .ui-menu {
     background: white;
-    border: 1px solid $cl-line-secondary;
+    border: 1px solid $cl-4-secondary;
     padding: .25rem 0 .875rem 0;
     position: absolute;
     z-index: 2000;
@@ -20,7 +20,7 @@
         }
     }
     .ui-menu-item + .ui-menu-item {
-        border-top: 1px solid rgba($cl-line-secondary, 0.33);
+        border-top: 1px solid rgba($cl-4-secondary, 0.33);
     }
 
     .ui-menu-label {
@@ -30,7 +30,7 @@
         text-transform: uppercase;
 
         &:not(:first-child) {
-            border-top: 1px solid rgba($cl-line-secondary, 0.33);
+            border-top: 1px solid rgba($cl-4-secondary, 0.33);
             margin-top: .875rem;
         }
     }

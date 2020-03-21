@@ -1,11 +1,10 @@
 
 .ui-badge {
     @include border-radius;
-    background: $cl-area-secondary;
-    color: $cl-text-secondary;
+    @include box-style;
     display: inline-block;
     font-size: .8em;
-    padding: .1em .35em;
+    padding: .05em .6em;
 
     &.sz-small {
         font-size: .7em;

@@ -1,19 +1,20 @@
 
-$dropdown-caret-width: 2.5rem;
+$select-caret-width: 2.5rem;
 
 .ui-select {
     @include control;
+    @include focusable('.button');
     position: relative;
 
     .button, .items {
-        background: white;
-        border: 1px solid $cl-line-secondary;
-        color: $cl-text-secondary;
+        background: $cl-7;
+        border: 1px solid $cl-4-secondary;
+        color: $cl-3-secondary;
     }
     .button {
         @include border-radius;
         padding: 0 
-            1.1rem + $dropdown-caret-width
+            1.1rem + $select-caret-width
             0
             1.1rem;
         position: relative;
@@ -21,9 +22,15 @@ $dropdown-caret-width: 2.5rem;
         flex-wrap: nowrap;
         flex-direction: row;
         align-items: center;
-        span {
-            display: inline-block;
-            flex: 0 0 auto;
+        
+        select {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
         }
     }
     .caret {
@@ -34,7 +41,7 @@ $dropdown-caret-width: 2.5rem;
         position: absolute;
         text-align: center;
         height: 100%;
-        width: $dropdown-caret-width;
+        width: $select-caret-width;
         top: -0.5rem;
         right: 0;
         transform: translateY(50%);
@@ -54,28 +61,28 @@ $dropdown-caret-width: 2.5rem;
         flex-wrap: nowrap;
         align-items: center;
         padding: 0 .7em;
-        &:hover {
-            background: $cl-area-accent;
-            color: $cl-text-accent;
+        &.is-selected, &:hover {
+            background: $cl-5-accent;
+            color: $cl-3-accent;
         }
     }
 
     &.has-selected {
         .button {
-            border-color: $cl-area-accent;
-            background-color: $cl-area-accent;
-            color: $cl-text-accent;
+            border-color: $cl-5-accent;
+            background-color: $cl-5-accent;
+            color: $cl-3-accent;
         }
     }
     &:not(.has-selected) {
         .button {
-            color: $cl-line-secondary;
+            color: $cl-4-secondary;
         }
     }
 
-    &.open {
+    &.is-open {
         .button {
-            border-color: $cl-line-accent;
+            border-color: $cl-4-accent;
         }
     }
 }

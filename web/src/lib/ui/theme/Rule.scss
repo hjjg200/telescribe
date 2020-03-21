@@ -6,17 +6,22 @@
     &.horizontal {
         border-top-width: 1px;
         border-top-style: solid;
+        width: 100%;
+        height: 0;
     }
     &.vertical {
         border-left-width: 1px;
         border-left-style: solid;
+        width: 0;
+        height: 100%;
     }
 
-    border-color: $cl-line-secondary;
+    /* variants */
+    border-color: $cl-4-secondary;
     &.v-dark {
-        border-color: $cl-line-secondary-dark;
+        border-color: $cl-2-secondary;
     }
     &.v-accent {
-        border-color: $cl-line-accent;
+        border-color: $cl-4-accent;
     }
 }

@@ -10,10 +10,8 @@
 </template>
 
 <script>
-import vClickOutside from 'v-click-outside';
 export default {
   name: "Menu",
-  directives: { clickOutside: vClickOutside.directive },
   data() {
     return {
       open: false,

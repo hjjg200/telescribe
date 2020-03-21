@@ -14,3 +14,36 @@ $cl-text-secondary: hsl($h-secondary, 7%, 56%);
 $cl-text-accent: hsl($h-accent, 90%, 54%);
 $cl-area-accent-bland: hsl($h-accent, 25%, 25%);
 $cl-text-secondary-dark: hsl($h-secondary, 7%, 12%);
+
+
+/* lightness-category */
+$cl-0: black;
+
+$cl-1-secondary: hsl(220, 7%, 12%);
+$cl-2-secondary: hsl(220, 22%, 20%);
+
+$cl-3-secondary: hsl(220, 7%, 56%);
+$cl-3-secondary-bold: hsl(220, 90%, 52%);
+$cl-3-accent: hsl(5, 90%, 54%);
+$cl-3-success: hsl(155, 100%, 38%);
+$cl-3-warning: hsl(47, 100%, 50%);
+$cl-3-danger: hsl(356, 100%, 59%);
+$cl-3-special: hsl(256, 100%, 60%);
+
+$cl-4-secondary: hsl(220, 16%, 90%);
+$cl-4-secondary-bold: hsl(220, 100%, 86%);
+$cl-4-accent: hsl(5, 100%, 88%);
+
+$cl-5-secondary: hsl(220, 22%, 96%);
+$cl-5-secondary-bold: hsl(220, 100%, 94%);
+$cl-5-accent: hsl(5, 100%, 95%);
+$cl-5-success: hsl(141, 100%, 96%);
+$cl-5-warning: hsl(42, 100%, 95%);
+$cl-5-danger: hsl(357, 100%, 96%);
+$cl-5-special: hsl(256, 100%, 97%);
+
+$cl-6-secondary: hsl(220, 37%, 99%);
+$cl-6-secondary-bold: hsl(220, 100%, 98%);
+$cl-6-accent: hsl(5, 100%, 98%);
+
+$cl-7: white;

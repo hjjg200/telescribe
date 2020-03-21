@@ -1,5 +1,7 @@
 <template>
-  <div class="ui-select-item" @click="onClick">
+  <div class="ui-select-item"
+    :class="{'is-selected': selected}"
+    @click="onClick">
     <div v-show="$parent.multiple" class="checkbox">
       <Checkbox readonly="true" v-model="selected"/>
     </div>

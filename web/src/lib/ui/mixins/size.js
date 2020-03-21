@@ -15,11 +15,30 @@ export default {
     // l, lg, large
   },
   mounted() {
-    for(let size in sizes) {
-      if(sizes[size].indexOf(this.size) !== -1) {
-        this.$el.classList.add(`sz-${size}`);
-        return;
+    this.updateSize();
+  },
+  watch: {
+    size() {
+      this.updateSize();
+    }
+  },
+  methods: {
+    updateSize() {
+      if(this.sizeClassName) {
+        this.$el.classList.remove(this.sizeClassName);
       }
+
+      if(this.size !== "") {
+        for(let size in sizes) {
+          if(sizes[size].indexOf(this.size) !== -1) {
+            this.sizeClassName = `sz-${size}`;
+            this.$el.classList.add(this.sizeClassName);
+            return;
+          }
+        }
+      }
+
+      this.sizeClassName = undefined;
     }
   }
 }

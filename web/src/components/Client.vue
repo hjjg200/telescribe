@@ -31,7 +31,7 @@
         <div class="option option--duration">
           <ButtonGroup>
             <Button v-for="d in $root.webCfg.durations"
-              :type="d === duration ? 'accent' : ''"
+              :variant="d === duration ? 'accent' : ''"
               :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
           </ButtonGroup>
         </div>
@@ -106,7 +106,9 @@ export default {
       duration:   this.$root.webCfg.durations[0],
       dataset:    {},
       queue:      new Queue(),
-      mounted:    false
+      mounted:    false,
+
+      temp1: false
     };
   },
   computed: {

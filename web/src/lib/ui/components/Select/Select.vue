@@ -1,16 +1,18 @@
 <template>
   <div class="ui-select"
     :class="{
-      open: open,
       'has-selected': selected.length > 0
     }"
     v-click-outside="function() {open = false;}">
-    <select v-model="selectedValue" :name="name" :multiple="multiple"
-      style="display: none;">
-      <option v-for="item in items" :key="item.value" :value="item.value">{{ item.text }}</option>
-    </select>
+
     <div class="button"
       @click="open = !open">
+
+      <!-- form support -->
+      <select v-model="selectedValue" :name="name" :multiple="multiple"
+        size="1" ref="select" @focus="focused = true">
+        <option v-for="item in items" :key="item.value" :value="item.value">{{ item.text }}</option>
+      </select>
 
       <div class="title">{{ text }}</div>
       <div class="caret">
@@ -28,14 +30,18 @@
 </template>
 
 <script>
-import vClickOutside from 'v-click-outside';
+import mixinFocusable from '../../mixins/focusable.js';
+import mixinToggledClass from '../../mixins/toggledClass.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {faCaretDown} from '@fortawesome/free-solid-svg-icons';
 library.add(faCaretDown);
 
 export default {
   name: "Select",
-  directives: { clickOutside: vClickOutside.directive },
+  mixins: [
+    mixinFocusable,
+    mixinToggledClass('open')
+  ],
   props: {
     name: {
       type: String, default: ""
@@ -53,7 +59,6 @@ export default {
   },
   data() {
     return {
-      open: false,
       items: []
     };
   },

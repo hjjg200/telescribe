@@ -4,10 +4,7 @@
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-
-    &, * {
-        @include control;
-    }
+    @include control;
 
     input {
         display: none;
@@ -15,9 +12,9 @@
 
     .mark {
         @include border-radius;
-        background: $cl-area-accent;
+        background: $cl-5-accent;
         border: none;
-        color: $cl-text-accent;
+        color: $cl-3-accent;
         display: inline-block;
         flex: 0 0 1rem;
         font-size: 0.65rem;
@@ -33,7 +30,7 @@
 
     &:not(.checked) {
         .mark {
-            border: 1px solid $cl-line-secondary !important;
+            border: 1px solid $cl-4-secondary !important;
             background: white !important;
         }
     }
