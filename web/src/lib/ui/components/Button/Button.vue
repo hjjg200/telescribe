@@ -9,7 +9,7 @@
 import mixinVariant from '../../mixins/variant.js';
 import mixinToggledClass from '../../mixins/toggledClass.js';
 export default {
-  name: "Button",
+  name: "Button", /* ui:button */
   mixins: [
     mixinVariant,
     mixinToggledClass('disabled')

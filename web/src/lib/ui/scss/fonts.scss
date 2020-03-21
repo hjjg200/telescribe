@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400&display=swap');
+@import url('https://fonts.googleapis.com/css?family=EB+Garamond:400i&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:900&display=swap');
+
+@mixin font-light {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 300;
+}
+
+@mixin font-regular {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 400;
+}
+
+@mixin font-italic {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-weight: 400;
+}
+
+@mixin font-bold {
+    font-family: 'Source Sans Pro', sans-serif;
+    font-weight: 900;
+}

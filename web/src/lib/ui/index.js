@@ -3,7 +3,7 @@ import vClickOutside from 'v-click-outside';
 
 import * as components from './components';
 import * as directives from './directives';
-import './theme/index.scss';
+import './scss/index.scss';
 
 // Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
