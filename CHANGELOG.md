@@ -17,7 +17,6 @@ Overall refinement and system signal handling
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 - [x] **Changed:** `server` clients can now have several roles rather than just one
 - [x] **Changed:** `web` graph tooltip is now replaced with plain text
-- [ ] **Changed:** `overall` changes as per specification documentations
 
 #### Known Issues
 
@@ -25,11 +24,10 @@ Overall refinement and system signal handling
 - [ ] Sometimes sig term did not work
 - [ ] Auto uodate feature is faulty
 - [ ] No indicator for status and disabled status for clients not sending data
-- [ ] Machines may have disks of different names which require different roles to monitor separately.
+- [ ] Machines may have disks of different names which require different roles to monitor separately. This can be solved with mixins
 - [ ] Graph y-axis figures sometimes get partly invisible.
 - [ ] `web` Tiny gaps are present in the graph
 - [ ] `web` Quick selection changing may break functionality of web
-- [ ] When crashed web graph drawing happens to not work properly
 
 ### Alpha 0.12
 

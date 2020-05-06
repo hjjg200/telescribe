@@ -3,7 +3,7 @@
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split
 // If separator is a regular expression that contains capturing parentheses (),
 // matched results are included in the array.
-const formatRegex = /\{(?:([0-9]*(?:\.[0-9]+)?)x)?(?:(\.[0-9]*)?f)?\}/g;
+const formatRegex = /\{(?:(\.[0-9]*)?f)?\}/g;
 export class NumberFormatter {
   constructor(fmt) {
     fmt = fmt || "";
@@ -23,13 +23,6 @@ export class NumberFormatter {
     }
     return this.info.prefix;
   }
-  coefficient(coef) {
-    if(coef) {
-      this.info.coefficient = coef;
-      return this;
-    }
-    return this.info.coefficient;
-  }
   precision(prcs) {
     if(prcs) {
       this.info.precision = prcs;
@@ -46,7 +39,7 @@ export class NumberFormatter {
   }
 
   format(num) {
-    let modified = num * this.info.coefficient;
+    let modified = num;
     if(!isNaN(this.info.precision))
       modified = modified.toFixed(this.info.precision);
     modified = formatComma(modified);
@@ -57,9 +50,8 @@ export class NumberFormatter {
 
 function parseFormat(fmt) {
   let splits = fmt.split(formatRegex);
-  let [prefix, coefficient, precision, suffix] = splits;
+  let [prefix, precision, suffix] = splits;
 
-  coefficient = coefficient ? Number(coefficient) : 1;
   if(precision) {
     precision = precision.substring(1);
     precision = precision === "" ? 0 : Number(precision);
@@ -68,7 +60,7 @@ function parseFormat(fmt) {
   }
 
   [prefix, suffix] = [prefix, suffix].map(d => d ? d.replace(/\\([{}])/, "$1") : "");
-  return {prefix, coefficient, precision, suffix};
+  return {prefix, precision, suffix};
 }
 
 function formatComma(x) {

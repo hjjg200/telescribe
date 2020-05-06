@@ -77,19 +77,21 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Big data to csv rather than json~~
 1. ~~App.vue implementation~~
 1. ~~Intuitive type names~~
+1. ~~Roles as tags: "bar": "minecraft-server cpu memory"~~
+1. ~~Various http users with different permissions~~
+1. ~~Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting~~
 1. Web: Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
-1. Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting
+
+`prefix{.2f}suffix`
 1. I/O wait monitoring
 1. Per-process monitoring
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
-1. Putting static data into binary
 1. Overall overhaul
 1. Protocol documentation
 1. Monitor documentation
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
-1. Roles as tags: "bar": "minecraft-server cpu memory"
 1. Log files like latest.log, 20191210.1.log.gz...
-1. Various http users with different permissions
+1. Log file separation: access, tasks
 1. Web anchors(#) or queries for fullName, timestamp, and selected items
 
 ## External Libraries

@@ -1,6 +1,10 @@
+
+/* regular */
 @import url('https://fonts.googleapis.com/css?family=Open+Sans:300,400&display=swap');
+/* italic */
 @import url('https://fonts.googleapis.com/css?family=EB+Garamond:400i&display=swap');
-@import url('https://fonts.googleapis.com/css?family=Source+Sans+Pro:900&display=swap');
+/* bold */
+@import url('https://fonts.googleapis.com/css?family=Raleway:900&display=swap');
 
 @mixin font-light {
     font-family: 'Open Sans', sans-serif;
@@ -19,6 +23,6 @@
 }
 
 @mixin font-bold {
-    font-family: 'Source Sans Pro', sans-serif;
+    font-family: 'Raleway', sans-serif;
     font-weight: 900;
 }
