@@ -42,8 +42,6 @@ function getSeriesIdx(i) {
   return "abcdefghijklmnopqrstuvwxyz".charAt(i - 1);
 }
 
-
-
 // MAIN
 (async function() {
   let clMap   = (await api.v1.getClientMap()).clientMap;

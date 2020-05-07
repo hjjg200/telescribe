@@ -16,24 +16,34 @@ This documentation explains the specifications for the web elements.
 
 A format is a string expression that is used to modify how monitored values look on the web UI.
 
-|Format|1.503|Note|
+|Format|1,503.6|Note|
 |-|-|-|
-|`{}` or `{f}`|1.503|Curly brackets are used to represent the value|
-|`{.4f}`|1.5030|The formatted value will contain trailing zeros|
-|`{.f}`|2|When the precision number is omitted, 0 is assumed|
-|`{f}%`|1.503%|Prefix and suffix can be defined outside the brackets|
-|`\{{f}\}`|{1.503}|Escape the brackets when you want to use them as string|
-|`{2.0x}`|3.006|An x can be used to have some value multiplied to the value|
-|`{3x.f}`|5|The order of coefficient and precision cannot be reverted|
+|`{f}`|1,503.6|Curly brackets are used to represent the value|
+|`{.4f}`|1,503.6000|The formatted value will contain trailing zeros|
+|`{.f}`|1,504|When the precision number is omitted, 0 is assumed|
+|`{f}%`|1,503.6%|Prefix and suffix can be defined outside the brackets|
+|`\{{f}\}`|{1,503.6}|Escape the brackets when you want to use them as string|
+|`{}`|1.50K|When an f is not given in the brackets, *the abbreviation format* is assumed|
+
+
+### Abbreviation Format
+
+The abbreviation format is designed for the figures on the axis ticks of graphs.
+
+|Number|Abbreviated|Note|
+|-|-|-|
+|0.00123|1.0e-3|Exponential format is used when it gets longer than 4 characters including the decimal dot|
+|1.02|1.02||
+|123|123||
+|1,234|1.23K|Only up to the second decimal place is expressed|
+|999,000|999K|Units(K, M, B, T) change at 1 thousand, 1 million, 1 billion, and 1 trillion|
+|1234 trillion|1.23e+15|When it is 1,000 trillion or higher, the exponential format is used|
 
 ### Regular Expression
 
 ```regexp
-\{(?:([0-9]*(?:\.[0-9]+)?)x)?(?:(?:\.([0-9]*))?f)?\}
+\{(?:(\.[0-9]*)?(f))?\}
 ```
-
-1. Coefficient
-2. Precision
 
 
 ## Layout

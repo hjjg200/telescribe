@@ -3,7 +3,7 @@
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split
 // If separator is a regular expression that contains capturing parentheses (),
 // matched results are included in the array.
-const formatRegex = /\{(?:(\.[0-9]*)?f)?\}/g;
+const formatRegex = /\{(?:(\.[0-9]*)?(f))?\}/g;
 export class NumberFormatter {
   constructor(fmt) {
     fmt = fmt || "";
@@ -30,6 +30,13 @@ export class NumberFormatter {
     }
     return this.info.precision;
   }
+  isFloat(f) {
+    if(f) {
+      this.info.isFloat = f;
+      return this;
+    }
+    return this.info.isFloat;
+  }
   suffix(str) {
     if(str) {
       this.info.suffix = str;
@@ -40,9 +47,38 @@ export class NumberFormatter {
 
   format(num) {
     let modified = num;
-    if(!isNaN(this.info.precision))
-      modified = modified.toFixed(this.info.precision);
-    modified = formatComma(modified);
+    let prcsNaN = isNaN(this.precision());
+
+    if(this.isFloat()) { // floating point
+
+      if(!prcsNaN)
+        modified = modified.toFixed(this.precision());
+      modified = formatComma(modified);
+
+    } else { // abbreviation format
+
+      let abbreviated = false;
+      const fmts = [[1.0e+3, 'K'], [1.0e+6, 'M'], [1.0e+9, 'B'], [1.0e+12, 'T']];
+      for(let i = 0; i < fmts.length; i++) {
+        let fmt = fmts[i];
+        if(modified < fmt[0] * 1.0e+3 && modified >= fmt[0]) {
+          abbreviated = true;
+          modified /= fmt[0];
+          let digits = Math.floor(Math.log10(modified)) + 1;
+          let prcs   = Math.min(3 - digits, 2);
+          modified = modified.toFixed(prcs);
+          modified = formatComma(modified) + fmt[1];
+        }
+      }
+
+      if(!abbreviated) {
+        if(modified >= 1.0e+15 || modified.toString().length > 4) {
+          modified = modified.toExponential(2);
+        }
+      }
+
+    }
+
   
     return `${this.info.prefix}${modified}${this.info.suffix}`;
   }
@@ -50,7 +86,7 @@ export class NumberFormatter {
 
 function parseFormat(fmt) {
   let splits = fmt.split(formatRegex);
-  let [prefix, precision, suffix] = splits;
+  let [prefix, precision, f, suffix] = splits;
 
   if(precision) {
     precision = precision.substring(1);
@@ -58,9 +94,10 @@ function parseFormat(fmt) {
   } else {
     precision = NaN;
   }
+  let isFloat = f === "f";
 
   [prefix, suffix] = [prefix, suffix].map(d => d ? d.replace(/\\([{}])/, "$1") : "");
-  return {prefix, precision, suffix};
+  return {prefix, precision, isFloat, suffix};
 }
 
 function formatComma(x) {
