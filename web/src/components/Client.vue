@@ -116,6 +116,7 @@ export default {
       boundaries: [],
       duration:   this.$root.webCfg.durations[0],
       dataset:    {},
+      configMap:  {},
       queue:      new Queue(),
       mounted:    false,
 
@@ -165,12 +166,19 @@ export default {
                       value: +row.value
                     });
                   });
-                  $.$set($.dataset, mKey, {
-                    data: buf,
-                    color: colorify(mKey),
-                    formatter: new NumberFormatter($.role.monitorConfigMap[mKey].format)
-                  });
-                  resolve();
+
+                  $.$api.v1.getMonitorConfig($.id, mKey)
+                    .then(function(rsp) {
+                      let cfg = rsp.monitorConfig;
+                      $.configMap[mKey] = cfg;
+                      $.$set($.dataset, mKey, {
+                        data: buf,
+                        color: colorify(mKey),
+                        formatter: new NumberFormatter(cfg.format)
+                      });
+
+                      resolve();
+                    });
                 });
             });
             await p;
