@@ -172,10 +172,11 @@ func(srv *Server) registerAPIV1() {
     type s2i map[string] interface{}
 
     // Helpers
-    respond := func(hctx HttpContext, val s2i) {
+    respond := func(hctx HttpContext, key string, val interface{}) {
         w := hctx.Writer
         w.Header().Set("Content-Type", "application/json")
-        j, err := json.MarshalIndent(val, "", "  ")
+        obj := s2i{key: val}
+        j, err := json.MarshalIndent(obj, "", "  ")
         if err != nil {
             w.WriteHeader(500)
             w.Write([]byte("{}"))
@@ -220,9 +221,7 @@ func(srv *Server) registerAPIV1() {
         }
 
         // Respond
-        respond(hctx, s2i{
-            "clientMap": ret,
-        })
+        respond(hctx, keyClientMap, ret)
     })
 
     // clientRole
@@ -241,9 +240,7 @@ func(srv *Server) registerAPIV1() {
         clRole := srv.clientConfig.RoleMap.Get(clInfo.Role)
 
         // Respond
-        respond(hctx, s2i{
-            "clientRole": clRole,
-        })
+        respond(hctx, keyClientRole, clRole)
     })
 
     // clientStatus
@@ -265,7 +262,13 @@ func(srv *Server) registerAPIV1() {
             if !isPermitted(hctx, keyClientStatus, clId, mKey) {
                 continue
             }
-            mCfg := srv.getMonitorConfig(clId, mKey)
+
+            // Config
+            mCfg, ok := srv.getMonitorConfig(clId, mKey)
+            if !ok {
+                Logger.Warnln("Monitor config for", mKey, "was not found")
+            }
+
             le   := mData[len(mData) - 1]
             ret[mKey] = ClientStatus{
                 Timestamp: le.Timestamp,
@@ -275,9 +278,30 @@ func(srv *Server) registerAPIV1() {
         }
 
         // Respond
-        respond(hctx, s2i{
-            "clientStatus": ret,
-        })
+        respond(hctx, keyClientStatus, ret)
+    })
+
+    // monitorConfig
+    keyMcfg := "monitorConfig"
+    rgxMcfg := formatRgx(keyMcfg, 2)
+    hr.Get(rgxMcfg, func(hctx HttpContext) {
+        defer catchStatus(hctx)
+
+        // Vars
+        w    := hctx.Writer
+        clId := hctx.Matches[1]
+        mKey := hctx.Matches[2]
+
+        // Permission
+        assertStatus(isPermitted(hctx, keyMcfg, clId, mKey), 403)
+
+        // Get Config
+        cfg, ok := srv.getMonitorConfig(clId, mKey)
+        assertStatus(ok, 400)
+
+        // Respond
+        respond(hctx, keyMcfg, cfg)
+
     })
 
     // monitorDataBoundaries
@@ -339,9 +363,7 @@ func(srv *Server) registerAPIV1() {
         assertStatus(isPermitted(hctx, keyWebCfg), 403)
 
         // Respond
-        respond(hctx, s2i{
-            "webConfig": srv.config.Web,
-        })
+        respond(hctx, keyWebCfg, srv.config.Web)
     })
 
     // version
@@ -354,9 +376,7 @@ func(srv *Server) registerAPIV1() {
         assertStatus(isPermitted(hctx, keyVersion), 403)
 
         // Respond
-        respond(hctx, s2i{
-            "version": Version,
-        })
+        respond(hctx, keyVersion, Version)
     })
 
 }

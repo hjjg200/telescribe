@@ -165,8 +165,6 @@ export default {
                       value: +row.value
                     });
                   });
-                  console.log($.role);
-                  console.log($.role.monitorConfigMap);
                   $.$set($.dataset, mKey, {
                     data: buf,
                     color: colorify(mKey),

@@ -623,7 +623,14 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string
         )
 
         // Check Status
-        st := srv.getMonitorConfig(clId, mKey).StatusOf(val)
+        cfg, ok := srv.getMonitorConfig(clId, mKey)
+        if !ok {
+            Logger.Warnln("Monitor config for", mKey, "was not found")
+            return
+        }
+
+        // Fatal Check
+        st := cfg.StatusOf(val)
         if st == MonitorStatusFatal {
             fatalValues[mKey] = val
         }
@@ -700,12 +707,14 @@ func(srv *Server) sendAlarmWebhook(clId string, timestamp int64, fatalValues map
 
 }
 
-func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig) {
+func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig, bool) {
 
     aBase, aParam, aIdx := ParseMonitorKey(mKey)
     // Base + parameter match
     var bpMatch MonitorConfig
+    ok := false
 
+    // Client-related
     clCfg   := srv.clientConfig
     clInfo  := clCfg.ClientMap[clId]
     clRole  := clCfg.RoleMap.Get(clInfo.Role)
@@ -715,13 +724,14 @@ func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig) {
         if aBase == bBase && aParam == bParam {
             if aIdx == bIdx {
                 // Exact match
-                return mCfg
+                return mCfg, true
             }
             bpMatch = mCfg
+            ok = true
         }
     }
 
-    return bpMatch
+    return bpMatch, ok
 
 }
 

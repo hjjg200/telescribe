@@ -48,6 +48,13 @@ export default {
     );
   },
 
+  keyMcfg: "monitorConfig",
+  async getMonitorConfig(clId, mKey) {
+    return await apiFetch(
+      "GET", "text", this.keyMcfg, clId, mKey
+    );
+  },
+
   keyMdb: "monitorDataBoundaries",
   async getMonitorDataBoundaries(clId) {
     return await apiFetch(
