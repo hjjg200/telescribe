@@ -54,6 +54,14 @@ Set Formatter (key, formatter)
 
 */
 
+// Const
+const defaultOptions = {
+  formatValue: "{.2f}",
+  formatYAxis: "{}",
+  formatDateLong: "Y-MM-DD[T]HH:mm:ssZ",
+  formatDateShort: "MMM DD HH:mm"
+};
+
 // Static functions
 function r2px(n) {return remToPx(n);}
 function remToPx(rem) {
@@ -91,16 +99,12 @@ export default {
     boundaries: Array
   },
   data() {
-    this._options = {
-      // TODO $root webcfg is not part of this library
-      formatDateShort: this.$root.webCfg["format.date.short"],
-      formatDateLong: this.$root.webCfg["format.date.long"]
-    };
     return {
       dataset: {},
       visibleBoundary: undefined,
       focusedTime: undefined,
-      focusedValues: {}
+      focusedValues: {},
+      options: defaultOptions
     };
   },
 
@@ -144,6 +148,10 @@ export default {
 
     setFormatter(key, fmt) {
       this.dataset[key].formatter = fmt;
+    },
+
+    setOptions(opts) {
+      this.options = Object.assign({}, defaultOptions, opts);
     },
 
     async _draw() {
@@ -311,7 +319,7 @@ export default {
         .call(d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
-          .tickFormat(timestamp => timestamp.date($._options.formatDateShort)))
+          .tickFormat(timestamp => timestamp.date($.options.formatDateShort)))
             .attr("font-family", "")
             .attr("font-size",   "");
     
@@ -433,14 +441,7 @@ export default {
                 .tickSize(5)
                 .tickSizeOuter(0)
                 .tickFormat(function(value) {
-                  if(value >= 1e+9 * 0.8) {
-                    return (Math.round(value / 1e+9 * 10) / 10) + "B";
-                  } else if(value >= 1e+6 * 0.8) {
-                    return (Math.round(value / 1e+6 * 10) / 10) + "M";
-                  } else if(value >= 1e+3 * 0.8) {
-                    return (Math.round(value / 1e+3 * 10) / 10) + "K";
-                  }
-                  return value;
+                  return Number(value).format($.options.formatYAxis);
                 }))
                 .attr("font-family", "")
                 .attr("font-size", "");
@@ -502,7 +503,7 @@ export default {
 
           var event      = d3.event;
           var target     = event.target;
-          var onPoint    = target.hasClass("point");
+          var onPoint    = target.classList.contains("point");
           var mouse      = d3.mouse(projection.node());
           var [mX, mY]   = mouse;
           var timestamp  = xScale.invert(mX);
@@ -576,7 +577,7 @@ export default {
             tooltipValue.text(ttFmt(ttVal));
             tooltipTimestamp.text(
               // TODO prototype functions are not part of library
-              ttTs.date($._options.formatDateLong)
+              ttTs.date($.options.formatDateLong)
             );
             tooltipIcon.style("fill", ttCl);
           }
@@ -618,7 +619,7 @@ export default {
           .on("mouseout", function() {
             var event = d3.event;
             background.select(".focus-date text").style("opacity", 0);
-            if(event.target.hasClass("point")) {
+            if(event.target.classList.contains("point")) {
               overlay.selectAll(".tooltip").style("opacity", 0);
             }
           })

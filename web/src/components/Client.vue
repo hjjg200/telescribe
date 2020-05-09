@@ -80,6 +80,16 @@ export default {
     $.dataset = {};
     let boundaries = [];
 
+    // Get ClientRole
+    this.queue.queue(new Promise(resolve => {
+      $.$api.v1.getClientRole($.id)
+        .then(function(rsp) {
+          $.role = rsp.clientRole;
+          resolve();
+        });
+    }));
+
+    // Get Monitor Data Boundaries
     this.queue.queue(new Promise(resolve => {
       $.$api.v1.getMonitorDataBoundaries($.id)
         .then(function(csv) {
@@ -90,6 +100,7 @@ export default {
           resolve();
         });
     }));
+
   },
   mounted() {
     this.mounted = true;
@@ -154,10 +165,12 @@ export default {
                       value: +row.value
                     });
                   });
+                  console.log($.role);
+                  console.log($.role.monitorConfigMap);
                   $.$set($.dataset, mKey, {
                     data: buf,
                     color: colorify(mKey),
-                    formatter: new NumberFormatter("{.2f}")
+                    formatter: new NumberFormatter($.role.monitorConfigMap[mKey].format)
                   });
                   resolve();
                 });

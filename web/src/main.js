@@ -30,11 +30,6 @@ String.prototype.escapeQuote = function() {
   return this.replace(/"/g, '\\\"');
 };
 
-Element.prototype.hasClass = function(className) {
-  return (' ' + this.getAttribute('class') + ' ').indexOf(' ' + className + ' ') > -1;
-}
-
-
 
 // MAIN
 (async function() {
@@ -42,13 +37,8 @@ Element.prototype.hasClass = function(className) {
   let webCfg  = (await api.v1.getWebConfig()).webConfig;
   let version = (await api.v1.getVersion()).version;
 
+  // Set the default format
   NumberFormatter.defaultFormat(webCfg['format.value']);
-  console.log(0.00123.format());
-  console.log(1.02.format());
-  console.log(123.0.format());
-  console.log(1234.0.format());
-  console.log(999000.0.format());
-  console.log(1.234e+15.format());
 
   let clStatMap = {};
   for(let id in clMap) {

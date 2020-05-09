@@ -83,6 +83,33 @@ This documentation explains the behavior of API that is used to communicate betw
 * **403:** No permission
 
 
+## monitorConfig
+
+#### URL
+
+`/api/v1/monitorConfig/<Client.ID>/<Monitor.Key>`
+
+#### Permission
+
+`api/v1.get.monitorConfig.<Client.ID>.<Monitor.Key>`
+
+#### GET
+
+* **200:** Provides the user with a **Monitor.Config** for the given **Monitor.Key**.
+
+```text
+{
+    "monitorConfig": {
+        Monitor.Config
+    }
+}
+```
+
+* **400:** Not found
+
+* **403:** No permission
+
+
 ## monitorDataBoundaries
 
 #### URL

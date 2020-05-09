@@ -20,28 +20,8 @@
 @mixin focusable($selector: '') {
     &:focus, &.is-focused {
         &#{$selector} {
-            box-shadow: 0 0 0 .2rem rgba($cl-3-accent, 0.33);
-            &.v-bold {
-                box-shadow: 0 0 0 .2rem rgba($cl-3-secondary-bold, 0.33);
-            }
-            &.v-accent {
-                /* same as normal */
-            }
-            &.v-success {
-                box-shadow: 0 0 0 .2rem rgba($cl-3-success, 0.33);
-            }
-            &.v-warning {
-                box-shadow: 0 0 0 .2rem rgba($cl-3-warning, 0.33);
-            }
-            &.v-danger {
-                box-shadow: 0 0 0 .2rem rgba($cl-3-danger, 0.33);
-            }
-            &.v-special {
-                box-shadow: 0 0 0 .2rem rgba($cl-3-special, 0.33);
-            }
-            &.v-outline {
-                /* same as normal */
-            }
+            box-shadow: none;
+            outline: none;
         }
     }
 }
