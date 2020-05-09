@@ -202,7 +202,9 @@ export default {
       if(this.graphReady) {
         let graph = this.$refs.graph;
         let value = graph.focusedValues[mKey];
-        if(value) return value;
+        if(value) {
+          return Number(value).format(this.configMap[mKey].format);
+        }
       }
       return "-";
     },
