@@ -4,9 +4,19 @@
 // If separator is a regular expression that contains capturing parentheses (),
 // matched results are included in the array.
 const formatRegex = /\{(?:(\.[0-9]*)?(f))?\}/g;
+var defaultFormat = "{}";
 export class NumberFormatter {
+
+  static defaultFormat(fmt) {
+    if(fmt) {
+      defaultFormat = fmt;
+      return;
+    }
+    return defaultFormat;
+  }
+
   constructor(fmt) {
-    fmt = fmt || "";
+    fmt = fmt || this.constructor.defaultFormat();
     this.info = parseFormat(fmt);
   }
 
@@ -79,7 +89,6 @@ export class NumberFormatter {
 
     }
 
-  
     return `${this.info.prefix}${modified}${this.info.suffix}`;
   }
 }

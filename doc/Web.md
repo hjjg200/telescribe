@@ -7,9 +7,10 @@ This documentation explains the specifications for the web elements.
 |Item|Description|
 |-|-|
 |`durations`|The array of duration choices for graph plotting; in minutes|
-|`format.value`|The default moment.js format used for monitored values|
+|`format.value`|The default number format used for monitored values|
+|`format.yAxis`|The format used for figures on y axis|
 |`format.date.long`|moment.js format used for long date|
-|`format.date.short`|moment.js format used for short date|
+|`format.date.short`|moment.js format used for short date and it is the default format for dates|
 
 
 ## Format
@@ -25,17 +26,16 @@ A format is a string expression that is used to modify how monitored values look
 |`\{{f}\}`|{1,503.6}|Escape the brackets when you want to use them as string|
 |`{}`|1.50K|When an f is not given in the brackets, *the abbreviation format* is assumed|
 
-
 ### Abbreviation Format
 
 The abbreviation format is designed for the figures on the axis ticks of graphs.
 
 |Number|Abbreviated|Note|
 |-|-|-|
-|0.00123|1.0e-3|Exponential format is used when it gets longer than 4 characters including the decimal dot|
-|1.02|1.02||
-|123|123||
-|1,234|1.23K|Only up to the second decimal place is expressed|
+|0.00123|1.23e-3|It cannot get longer than 4 characters including the decimal dot|
+|1.02|1.02|No changes as it is exactly 4 characters long|
+|123|123|Nothing special|
+|1,234|1.23K|Expressed is only up to the second decimal place|
 |999,000|999K|Units(K, M, B, T) change at 1 thousand, 1 million, 1 billion, and 1 trillion|
 |1234 trillion|1.23e+15|When it is 1,000 trillion or higher, the exponential format is used|
 
@@ -44,6 +44,21 @@ The abbreviation format is designed for the figures on the axis ticks of graphs.
 ```regexp
 \{(?:(\.[0-9]*)?(f))?\}
 ```
+
+### NumberFormatter
+
+```js
+import {NumberFormatter} from '@/lib/util/web.js';
+```
+
+`NumberFormatter` is a utility class that helps format numbers into strings. It has the following methods.
+
+|Name|Static?|Description|
+|-|-|-|
+|`prefix()`|No|Gets the prefix if the argument is undefined, sets the prefix otherwise|
+|`precision()`|No|Getter and setter for the precision|
+|`suffix()`|No|Getter and setter for the suffix|
+|`defaultFormat()`|Yes|Getter and setter for the default number format. The initial default format is `{}`|
 
 
 ## Layout

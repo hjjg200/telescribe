@@ -26,10 +26,6 @@ Number.prototype.format = function(fmt) {
   return (new NumberFormatter(fmt)).format(this);
 }
 
-Number.prototype.toSeries = function() {
-  return "series-" + "abcdefghijklmnopqrstuvwxyz".charAt(this);
-};
-
 String.prototype.escapeQuote = function() {
   return this.replace(/"/g, '\\\"');
 };
@@ -38,15 +34,21 @@ Element.prototype.hasClass = function(className) {
   return (' ' + this.getAttribute('class') + ' ').indexOf(' ' + className + ' ') > -1;
 }
 
-function getSeriesIdx(i) {
-  return "abcdefghijklmnopqrstuvwxyz".charAt(i - 1);
-}
+
 
 // MAIN
 (async function() {
   let clMap   = (await api.v1.getClientMap()).clientMap;
   let webCfg  = (await api.v1.getWebConfig()).webConfig;
   let version = (await api.v1.getVersion()).version;
+
+  NumberFormatter.defaultFormat(webCfg['format.value']);
+  console.log(0.00123.format());
+  console.log(1.02.format());
+  console.log(123.0.format());
+  console.log(1234.0.format());
+  console.log(999000.0.format());
+  console.log(1.234e+15.format());
 
   let clStatMap = {};
   for(let id in clMap) {
