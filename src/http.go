@@ -288,7 +288,6 @@ func(srv *Server) registerAPIV1() {
         defer catchStatus(hctx)
 
         // Vars
-        w    := hctx.Writer
         clId := hctx.Matches[1]
         mKey := hctx.Matches[2]
 

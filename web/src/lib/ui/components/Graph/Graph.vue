@@ -468,6 +468,7 @@ export default {
         .enter()
         .append("circle")
           .each(function(key) {$._points[key] = this;})
+          .attr("class",    "point")
           .attr("fill",     key => $.dataset[key].color)
           .attr("stroke",   "none")
           .attr("r",        4)
@@ -512,8 +513,8 @@ export default {
           var scrollLeft = segmentsWrap.node().scrollLeft;
 
           // Event Type Check
-          if(event.type === "mousemove" && !(isTouch || isMouseDown))
-            return;
+          //if(!(isTouch || isMouseDown))
+            //return;
 
           // Make Points Visible
           Object.values($._points).forEach(
@@ -538,6 +539,7 @@ export default {
             var cX = xScale(elem.timestamp);
             var cY = yScale(elem.value);
             d3.select($._points[key])
+              .attr("data-key",       key)
               .attr("data-timestamp", elem.timestamp)
               .attr("data-value",     elem.value)
               .attr("cx", cX)

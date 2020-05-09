@@ -51,7 +51,7 @@ export default {
   keyMcfg: "monitorConfig",
   async getMonitorConfig(clId, mKey) {
     return await apiFetch(
-      "GET", "text", this.keyMcfg, clId, mKey
+      "GET", "json", this.keyMcfg, clId, mKey
     );
   },
 
