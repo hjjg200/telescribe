@@ -13,7 +13,7 @@ Overall refinement and system signal handling
 - [x] **Added:** `server` support for multiple HTTP users with different permissions
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [x] **Fixed:** `client` monitor interval now properly changes when a new config is given
-- [ ] **Changed:** `web` uses per-key format
+- [x] **Changed:** `web` uses per-key format
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 - [x] **Changed:** `server` clients can now have several roles rather than just one
 - [x] **Changed:** `web` graph tooltip is now replaced with plain text

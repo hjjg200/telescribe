@@ -398,13 +398,13 @@ export default {
         .attr("y",      r2px(6/16));
       var tooltipValue = tooltip.append("text")
         .attr("class", "value")
-        .attr("text-anchor", "middle")
+        .attr("text-anchor", "left")
         .attr("x",  r2px(26/16))
         .attr("y",  r2px(6/16))
         .attr("dy", r2px(12/16));
       var tooltipTimestamp = tooltip.append("text")
         .attr("class", "timestamp")
-        .attr("text-anchor", "middle")
+        .attr("text-anchor", "left")
         .attr("x",  r2px(6/16))
         .attr("y",  r2px(24/16))
         .attr("dy", r2px(11/16));
@@ -576,7 +576,7 @@ export default {
             let ttTs  = Number(target.getAttribute("data-timestamp"));
             let ttCl  = $.dataset[ttKey].color;
             let ttFmt = $.dataset[ttKey].formatter;
-            tooltipValue.text(ttFmt(ttVal));
+            tooltipValue.text(ttFmt.format(ttVal));
             tooltipTimestamp.text(
               // TODO prototype functions are not part of library
               ttTs.date($.options.formatDateLong)
