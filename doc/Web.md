@@ -4,13 +4,13 @@ This documentation explains the specifications for the web elements.
 
 ## Config
 
-|Item|Description|
-|-|-|
-|`durations`|The array of duration choices for graph plotting; in minutes|
-|`format.value`|The default number format used for monitored values|
-|`format.yAxis`|The format used for figures on y axis|
-|`format.date.long`|moment.js format used for long date|
-|`format.date.short`|moment.js format used for short date and it is the default format for dates|
+|Item|Default|Description|
+|-|-|-|
+|`durations`|`[180,1440,7200]`|The array of duration choices for graph plotting; in minutes|
+|`format.value`|`{.2f}`|The default number format used for monitored values|
+|`format.yAxis`|`{}`|The format used for figures on y axis|
+|`format.date.long`|`Y-MM-DD[T]HH:mm:ssZ`|moment.js format used for long date|
+|`format.date.short`|`MMM DD HH:mm`|moment.js format used for short date and it is the default format for dates|
 
 
 ## Format
