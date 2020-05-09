@@ -45,6 +45,15 @@ The abbreviation format is designed for the figures on the axis ticks of graphs.
 \{(?:(\.[0-9]*)?(f))?\}
 ```
 
+The regular expression works as follows:
+
+|Group|Description|
+|-|-|
+|1|The prefix of the format|
+|2|The precision of the format; it always includes a dot at the start|
+|3|`f` means it is floating point style format -- abbreviation style otherwise|
+|4|The suffix of the format|
+
 ### NumberFormatter
 
 ```js
@@ -55,10 +64,13 @@ import {NumberFormatter} from '@/lib/util/web.js';
 
 |Name|Static?|Description|
 |-|-|-|
-|`prefix()`|No|Gets the prefix if the argument is undefined, sets the prefix otherwise|
-|`precision()`|No|Getter and setter for the precision|
-|`suffix()`|No|Getter and setter for the suffix|
-|`defaultFormat()`|Yes|Getter and setter for the default number format. The initial default format is `{}`|
+|`prefix(string)`|No|Gets the prefix if the argument is undefined, sets the prefix otherwise|
+|`precision(number)`|No|Getter and setter for the precision|
+|`isFloat(boolean)`|No|Getter and setter for the floating point style format boolean|
+|`suffix(string)`|No|Getter and setter for the suffix|
+|`clone()`|No|Clones the formatter|
+|`format(number)`|No|Formats the given number|
+|`defaultFormat(string)`|Yes|Getter and setter for the default number format. The initial default format is `{}`|
 
 
 ## Layout
