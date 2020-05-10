@@ -153,7 +153,7 @@ func LoadKnownHosts(kh string) error {
             if err != nil {
                 continue
             }
-            Logger.Infoln("Loaded the public key of", host)
+            EventLogger.Infoln("Loaded the public key of", host)
             sessionKnownHosts[host] = pub
         }
         return nil
@@ -171,8 +171,8 @@ func LoadAuthPrivateKey(apk string) error {
         return err
     case os.IsNotExist(err):
         // Not exists
-        Logger.Infoln("Server authentication private key does not exist.")
-        Logger.Infoln("Creating a new one at", apk)
+        EventLogger.Infoln("Server authentication private key does not exist.")
+        EventLogger.Infoln("Creating a new one at", apk)
         f, err := os.OpenFile(apk, os.O_WRONLY | os.O_CREATE, 0400)
         if err != nil {
             return err
@@ -180,14 +180,14 @@ func LoadAuthPrivateKey(apk string) error {
         sessionAuthPriv = p256.GenerateKey()
         f.Write([]byte(p256.SerializePrivateKey(sessionAuthPriv)))
         f.Close()
-        Logger.Infoln("Issued a new private key for signature authentication.")
+        EventLogger.Infoln("Issued a new private key for signature authentication.")
         return nil
     default:
         // Exists
         if st.Mode() != 0400 {
             return fmt.Errorf("The server authentication private key is in a wrong permission mode. Please set it to 400.")
         }
-        Logger.Infoln("Reading the server authentication private key...")
+        EventLogger.Infoln("Reading the server authentication private key...")
         serialized, err := ReadFile(apk, 0400)
         if err != nil {
             return err
@@ -196,7 +196,7 @@ func LoadAuthPrivateKey(apk string) error {
         if err != nil {
             return err
         }
-        Logger.Infoln("Successfully loaded the server authentication private key.")
+        EventLogger.Infoln("Successfully loaded the server authentication private key.")
         return nil
     }
 
@@ -474,7 +474,7 @@ func (s *Session) BeginHandshake() (err error) {
         authPub, ok = new(p256.PublicKey).SetBytes(srvAuthPubBytes)
         Assert(ok, "Bad public key bytes")
         fp := authPub.Fingerprint()
-        Logger.Warnln(
+        EventLogger.Warnln(
             "The server you are trying to connect has an unknown public key fingerprint:\n" +
             fp +
             "\n\n" +
@@ -504,7 +504,7 @@ func (s *Session) BeginHandshake() (err error) {
         givenAuthPub, ok := new(p256.PublicKey).SetBytes(srvAuthPubBytes)
         Assert(ok, "Bad public key bytes")
         if cmp != 0 {
-            Logger.Warnln(
+            EventLogger.Warnln(
                 "The host's public key fingerprint does not match!\n" +
                 "Terminating the connection!\n\n" +
                 "Have:", authPub.Fingerprint() +

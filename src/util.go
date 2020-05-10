@@ -42,7 +42,7 @@ func (r Range) Parse() {
                 num, err = strconv.ParseFloat(splits[j], 64)
                 if err != nil {
                     parsedRanges[r] = func(val float64) bool {
-                        Logger.Warnln(r, "is a malformed range!")
+                        EventLogger.Warnln(r, "is a malformed range!")
                         return false
                     }
                     return

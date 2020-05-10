@@ -54,7 +54,7 @@ type MonitorConfig struct {
 func init() {
     // Monitor error callback
     monitor.ErrorCallback = func(err error) {
-        Logger.Warnln("monitor:", err)
+        EventLogger.Warnln("monitor:", err)
     }
 }
 

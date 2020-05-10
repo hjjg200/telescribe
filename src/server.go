@@ -184,7 +184,7 @@ func (srv *Server) LoadConfig(p string) (err error) {
 func(srv *Server) loadClientConfig() (err error) {
 
     // Catch
-    defer CatchFunc(&err, Logger.Warnln)
+    defer CatchFunc(&err, EventLogger.Warnln)
 
     // File path
     fn := srv.config.ClientConfigPath
@@ -255,36 +255,36 @@ func(srv *Server) Addr() string {
 
 func(srv *Server) Start() (err error) {
 
-    defer CatchFunc(&err, Logger.Panicln)
+    defer CatchFunc(&err, EventLogger.Panicln)
 
     // Config
     Try(srv.LoadConfig(flServerConfigPath))
-    Logger.Infoln("Loaded server config")
+    EventLogger.Infoln("Loaded server config")
     Try(srv.loadClientConfig())
-    Logger.Infoln("Loaded client config")
+    EventLogger.Infoln("Loaded client config")
 
     // Private Key
     Try(srv.checkAuthPrivateKey())
-    Logger.Infoln("The fingerprint of the authentication public key is:")
-    Logger.Infoln(sessionAuthPriv.PublicKey.Fingerprint())
+    EventLogger.Infoln("The fingerprint of the authentication public key is:")
+    EventLogger.Infoln(sessionAuthPriv.PublicKey.Fingerprint())
 
     // Cache Executable
     Try(srv.cacheExecutable())
-    Logger.Infoln("Cached executable for auto-update")
+    EventLogger.Infoln("Cached executable for auto-update")
 
     // Read Monitor Data Cache
     Try(srv.readCachedClientMonitorDataMap())
-    Logger.Infoln("Read the cached monitored items")
+    EventLogger.Infoln("Read the cached monitored items")
 
     // Ensure Directories
     Try(EnsureDirectory(srv.config.DataCacheDir))
-    Logger.Infoln("Ensured necessary directories")
+    EventLogger.Infoln("Ensured necessary directories")
 
     // Network
     addr    := srv.Addr()
     ln, err := net.Listen("tcp", addr)
     Try(err)
-    Logger.Infoln("Network is configured to listen at", addr)
+    EventLogger.Infoln("Network is configured to listen at", addr)
 
     // Thread-related
     hs := together.NewHoldSwitch()
@@ -299,9 +299,9 @@ func(srv *Server) Start() (err error) {
     go func() {
         <- sig
         fmt.Println()
-        Logger.Infoln("Waiting for tasks to finish...")
+        EventLogger.Infoln("Waiting for tasks to finish...")
         hs.Add(threadCleanUp, 1)
-        Logger.Infoln("Bye bye")
+        EventLogger.Infoln("Bye bye")
         os.Exit(0)
     }()
 
@@ -309,7 +309,7 @@ func(srv *Server) Start() (err error) {
     go func() {
         for {func() {
             // Function wrapping in order to use defer
-            defer CatchFunc(nil, Logger.Warnln)
+            defer CatchFunc(nil, EventLogger.Warnln)
 
             // Sleep at beginning
             time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
@@ -317,13 +317,13 @@ func(srv *Server) Start() (err error) {
             // Add task
             hs.Add(threadMain, 1)
             Try(srv.CacheClientMonitorDataMap())
-            Logger.Infoln("Cached client monitor data")
+            EventLogger.Infoln("Cached client monitor data")
 
             // Task done
             hs.Done(threadMain)
         }()}
     }()
-    Logger.Infoln("Started monitor data caching thread")
+    EventLogger.Infoln("Started monitor data caching thread")
 
     // Client Config Version Update
     go func() {
@@ -332,7 +332,7 @@ func(srv *Server) Start() (err error) {
         lastMod := st.ModTime()
         for {func() {
             // Catch
-            defer CatchFunc(nil, Logger.Warnln)
+            defer CatchFunc(nil, EventLogger.Warnln)
 
             // Sleep at beginning
             time.Sleep(clientConfigWatchInterval)
@@ -347,18 +347,18 @@ func(srv *Server) Start() (err error) {
             // Changed
             if lastMod != st.ModTime() {
                 Try(srv.loadClientConfig())
-                Logger.Infoln("Reloaded client config")
+                EventLogger.Infoln("Reloaded client config")
                 lastMod = st.ModTime()
             }
             hs.Done(threadMain)
         }()}
     }()
-    Logger.Infoln("Started client config reloading thread")
+    EventLogger.Infoln("Started client config reloading thread")
 
     // Chart-ready Data Preparing Thread
     go func() {
         for {func() {
-            defer CatchFunc(nil, Logger.Warnln)
+            defer CatchFunc(nil, EventLogger.Warnln)
 
             // Add task
             hs.Add(threadMain, 1)
@@ -426,7 +426,7 @@ func(srv *Server) Start() (err error) {
             }
             // Assign
             srv.clientMonitorDataTableBox = tBoxMap
-            Logger.Infoln("Chart-ready data prepared")
+            EventLogger.Infoln("Chart-ready data prepared")
 
             // Task done
             hs.Done(threadMain)
@@ -435,14 +435,14 @@ func(srv *Server) Start() (err error) {
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
         }()}
     }()
-    Logger.Infoln("Started data decimation thread")
+    EventLogger.Infoln("Started data decimation thread")
 
     // Http
     go srv.startHttpServer()
-    Logger.Infoln("Started HTTP server")
+    EventLogger.Infoln("Started HTTP server")
 
     // Main
-    Logger.Infoln("Successfully started the server")
+    EventLogger.Infoln("Successfully started the server")
     for {
 
         // Sleep
@@ -451,13 +451,13 @@ func(srv *Server) Start() (err error) {
         // Connection
         conn, err := ln.Accept()
         if err != nil {
-            Logger.Warnln(err)
+            EventLogger.Warnln(err)
             continue
         }
 
         go func() {
             var host string
-            defer CatchFunc(nil, Logger.Warnln, host)
+            defer CatchFunc(nil, EventLogger.Warnln, host)
 
             host, _  = HostnameOf(conn)
             rd      := bufio.NewReader(conn)
@@ -489,7 +489,7 @@ func(srv *Server) Start() (err error) {
                     }
 
                     // New request
-                    Logger.Infoln(host, req.Method, req.URL.Path, req.Proto)
+                    EventLogger.Infoln(host, req.Method, req.URL.Path, req.Proto)
                     req.WriteProxy(proxy) // Conn -> Proxy
                 }
             case strings.Contains(startLine, "TELESCRIBE"):
@@ -520,7 +520,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
     Try(err)
 
     for _, match := range matches {func() {
-        defer CatchFunc(nil, Logger.Warnln, "Failed to read cache:" + match)
+        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read cache:" + match)
 
         f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
         Try(err2)
@@ -555,12 +555,12 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
 
 func(srv *Server) CacheClientMonitorDataMap() (err error) {
 
-    defer CatchFunc(&err, Logger.Warnln)
+    defer CatchFunc(&err, EventLogger.Warnln)
 
     for clId, mDataMap := range srv.clientMonitorDataMap {
         
         for mKey, mData := range mDataMap {func() {
-            defer CatchFunc(nil, Logger.Warnln, "Failed to cache:", clId, mKey)
+            defer CatchFunc(nil, EventLogger.Warnln, "Failed to cache:", clId, mKey)
 
             // Compress
             cmp, err2 := CompressMonitorData(mData)
@@ -625,7 +625,7 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string
         // Check Status
         cfg, ok := srv.getMonitorConfig(clId, mKey)
         if !ok {
-            Logger.Warnln("Monitor config for", mKey, "was not found")
+            EventLogger.Warnln("Monitor config for", mKey, "was not found")
             return
         }
 
@@ -655,7 +655,7 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string
     go func() {
         err := srv.sendAlarmWebhook(clId, timestamp, fatalValues)
         if err != nil {
-            Logger.Warnln("Failed to send webhook:", err)
+            EventLogger.Warnln("Failed to send webhook:", err)
         }
     }()
 
@@ -737,7 +737,7 @@ func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig, boo
 
 func(srv *Server) HandleSession(s *Session) (err error) {
 
-    defer CatchFunc(&err, Logger.Warnln)
+    defer CatchFunc(&err, EventLogger.Warnln)
 
     // Get Address
     host, err := s.RemoteHost()
@@ -773,7 +773,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
             break
         }
     }
-    Logger.Infoln(clInfo.Alias, "from", clInfo.Host, "connected")
+    AccessLogger.Infoln(clInfo.Alias, "from", clInfo.Host, "connected")
     Assert(clId != "", "Client not found in the config")
     clRole := clCfg.RoleMap.Get(clInfo.Role)
 
@@ -790,7 +790,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         srvRsp := NewResponse("version-mismatch")
         srvRsp.Set("executable", srv.cachedExecutable)
         s.WriteResponse(srvRsp)
-        Logger.Warnln(clId, "version mismatch, session terminated")
+        EventLogger.Warnln(clId, "version mismatch, session terminated")
         return nil
     }
 
@@ -803,7 +803,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         srvRsp := NewResponse("hello")
         srvRsp.Set("role", roleBytes)
         srvRsp.Set("configVersion", srv.clientConfigVersion[clId])
-        Logger.Infoln(clId, "HELLO CLIENT")
+        EventLogger.Infoln(clId, "HELLO CLIENT")
         return s.WriteResponse(srvRsp)
 
     case "monitor-record":

@@ -166,21 +166,20 @@ func main() {
     log.Debug = flDebug
 
     // Executable path
-    var err error
     executablePath, err = os.Executable()
     if err != nil {
-        Logger.Fatalln(err)
+        EventLogger.Fatalln(err)
     }
     executablePath, err = filepath.EvalSymlinks(executablePath)
     if err != nil {
-        Logger.Fatalln(err)
+        EventLogger.Fatalln(err)
     }
 
     switch {
     case !flServer: // Client
         if flClientDaemon {
             // Daemon
-            Logger.Infoln("Running as daemon...")
+            EventLogger.Infoln("Running as daemon...")
             clArgs := strconv.Quote(executablePath)
             flag.Visit(func (f *flag.Flag) {
                 if f.Name == "daemon" && f.Value.String() == "true" {
@@ -198,7 +197,7 @@ func main() {
             })
 
             for {
-                Logger.Infoln("Spawning a child process...")
+                EventLogger.Infoln("Spawning a child process...")
                     
                 // Spawn Child
                 child := exec.Command("bash", "-c", clArgs)
@@ -207,18 +206,18 @@ func main() {
                 child.Stdin = os.Stdin
                 err := child.Start()
                 if err != nil {
-                    Logger.Fatalln(err)
+                    EventLogger.Fatalln(err)
                 }
                 err = child.Wait()
-                Logger.Warnln("The child process exited:", err)
+                EventLogger.Warnln("The child process exited:", err)
                 time.Sleep(childSpawnInterval)
             }
         } else {
             // Non-daemon
             addr := fmt.Sprintf("%s:%d", flClientHostname, flClientPort)
             cl := NewClient(addr)
-            Logger.Infoln("Starting as a client for", addr)
-            Logger.Panicln(cl.Start())
+            EventLogger.Infoln("Starting as a client for", addr)
+            EventLogger.Panicln(cl.Start())
         }
     case flServer: // Server
         // Access Log

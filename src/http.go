@@ -39,7 +39,7 @@ func (srv *Server) startHttpServer() error {
         if usr.Password == "" {
             plainPwd := RandomAlphaNum(13)
             usr.Password = fmt.Sprintf("%x", Sha256Sum([]byte(plainPwd)))
-            Logger.Warnln(
+            EventLogger.Warnln(
                 "Setting a Random Password for",
                 usr.Name + ":",
                 plainPwd,
@@ -65,7 +65,7 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         rc := recover()
         if rc != nil {
             w.WriteHeader(500)
-            Logger.Warnln(rc)
+            EventLogger.Warnln(rc)
         }
     }()
 
@@ -120,7 +120,7 @@ func(srv *Server) populateHttpRouter() {
             r := recover()
             if r != nil {
                 hctx.Writer.WriteHeader(404)
-                Logger.Warnln(r)
+                EventLogger.Warnln(r)
             }
         }()
 
@@ -140,7 +140,7 @@ func(srv *Server) populateHttpRouter() {
             }
             f.Close()
             staticCacheMap[fp] = cache
-            Logger.Infoln("Cached a static file:", fp)
+            EventLogger.Infoln("Cached a static file:", fp)
         }
         http.ServeContent(
             hctx.Writer, hctx.Request, cache.name, cache.modTime, bytes.NewReader(cache.bytes),
@@ -266,7 +266,7 @@ func(srv *Server) registerAPIV1() {
             // Config
             mCfg, ok := srv.getMonitorConfig(clId, mKey)
             if !ok {
-                Logger.Warnln("Monitor config for", mKey, "was not found")
+                EventLogger.Warnln("Monitor config for", mKey, "was not found")
             }
 
             le   := mData[len(mData) - 1]

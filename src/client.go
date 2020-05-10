@@ -35,7 +35,7 @@ func (cl *Client) hello() (err error) {
     conn, err := net.Dial("tcp", cl.serverAddr)
     Try(err)
     defer conn.Close()
-    Logger.Infoln("HELLO SERVER")
+    EventLogger.Infoln("HELLO SERVER")
 
     // Session
     s := NewSession(conn)
@@ -75,8 +75,8 @@ func (cl *Client) checkKnownHosts() error {
 
 func (cl *Client) autoUpdate(executable []byte) error {
 
-    Logger.Infoln("Started Auto Update Procedure.")
-    Logger.Infoln("The service must be set to automatically restart.")
+    EventLogger.Infoln("Started Auto Update Procedure.")
+    EventLogger.Infoln("The service must be set to automatically restart.")
 
     // Remove the current executable
     // -> You need to unlink(rm) the runinng executable file first in order to replace it with a new one
@@ -95,11 +95,11 @@ func (cl *Client) autoUpdate(executable []byte) error {
         return err
     }
 
-    Logger.Infoln("Written bytes:", n)
+    EventLogger.Infoln("Written bytes:", n)
     f.Close()
 
-    Logger.Infoln("Successfully updated the executable.")
-    Logger.Infoln("Exiting the application...")
+    EventLogger.Infoln("Successfully updated the executable.")
+    EventLogger.Infoln("Exiting the application...")
     os.Exit(1)
     // APP EXITED
     return nil
@@ -120,12 +120,12 @@ func (cl *Client) Start() error {
 
         err = cl.hello()
         if err != nil {
-            Logger.Warnln("Hello Failed:", err)
+            EventLogger.Warnln("Hello Failed:", err)
             time.Sleep(hri)
             continue
         }
 
-        Logger.Infoln("SUCCESSFUL HELLO")
+        EventLogger.Infoln("SUCCESSFUL HELLO")
         // Config
         // + Monitor Interval Shorthand Func
         mrif   := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
@@ -146,7 +146,7 @@ func (cl *Client) Start() error {
             }
             conn, err := net.Dial("tcp", cl.serverAddr)
             if err != nil {
-                Logger.Warnln("Server Not Responding")
+                EventLogger.Warnln("Server Not Responding")
                 continue
             }
             cl.s.SetConn(conn)
@@ -174,15 +174,15 @@ func (cl *Client) Start() error {
             clRsp.Set("valueMap", valMap)
             err = cl.s.WriteResponse(clRsp)
             if err != nil {
-                Logger.Warnln(err)
+                EventLogger.Warnln(err)
                 continue
             }
-            Logger.Infoln("Sent Data")
+            AccessLogger.Infoln("Sent Data")
 
             // Get response
             srvRsp, err := cl.s.NextResponse()
             if err != nil {
-                Logger.Warnln(err)
+                EventLogger.Warnln(err)
                 continue
             }
 
@@ -194,14 +194,14 @@ func (cl *Client) Start() error {
                     srvRsp.Bytes("role"), 
                 )
                 if err != nil {
-                    Logger.Warnln(err)
+                    EventLogger.Warnln(err)
                     break MonitorLoop
                 }
                 // Passer Interval
                 passer.SetInterval(mrif())
-                Logger.Infoln("Reconfigured!")
+                EventLogger.Infoln("Reconfigured!")
             case "version-mismatch":
-                Logger.Warnln("Version mismatch! Attempting to auto-update...")
+                EventLogger.Warnln("Version mismatch! Attempting to auto-update...")
                 cl.autoUpdate(srvRsp.Bytes("executable"))
             case "session-expired":
                 break MonitorLoop
@@ -233,14 +233,14 @@ func(clInfo *ClientInfo) HasAddr(addr string) bool {
         var err error
         clInfo.ips, err = net.LookupIP(clInfo.Host)
         if err != nil {
-            Logger.Warnln("Failed to lookup ip for the client host:", clInfo.Host)
+            EventLogger.Warnln("Failed to lookup ip for the client host:", clInfo.Host)
             return false
         }
     }
 
     addrIps, err := net.LookupIP(addr)
     if err != nil {
-        Logger.Warnln("Failed to lookup ip for the address:", addr)
+        EventLogger.Warnln("Failed to lookup ip for the address:", addr)
         return false
     }
 

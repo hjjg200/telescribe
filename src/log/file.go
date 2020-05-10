@@ -33,11 +33,11 @@ func NewFile(prefix string) (lf *File, err error) {
 
     // Open
     // -> read + wrtie in order to read it later for gzipping
-    f, err := os.OpenFile(path, OS.O_CREATE | OS.O_RDWR, 0600)
+    f, err := os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0600)
     Try(err)
 
     // File
-    lf := &File{f: f}
+    lf = &File{f: f}
 
     return lf, nil
 }
