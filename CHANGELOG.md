@@ -3,14 +3,12 @@
 First version that complies with the documentation
 
 - [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
-- [ ] **Added:** `go` IPv6 support
 - [ ] **Fixed:** `go` fixed sig term handler
 - [ ] **Fixed:** `go` fixed auto update feature
 
 #### Known Issues
 
 - [ ] No indicator for status and disabled status for clients not sending data
-- [ ] Machines may have disks of different names which require different roles to monitor separately. This can be solved with mixins
 - [ ] `web` Tiny gaps are present in the graph
 - [ ] `web` Quick selection changing may break functionality of web
 

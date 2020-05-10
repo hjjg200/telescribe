@@ -79,6 +79,7 @@ func (cl *Client) autoUpdate(executable []byte) error {
     Logger.Infoln("The service must be set to automatically restart.")
 
     // Remove the current executable
+    // -> You need to unlink(rm) the runinng executable file first in order to replace it with a new one
     err := os.Remove(executablePath)
     if err != nil {
         return err
@@ -89,10 +90,12 @@ func (cl *Client) autoUpdate(executable []byte) error {
     if err != nil {
         return err
     }
-    _, err = f.Write(executable)
+    n, err := f.Write(executable)
     if err != nil {
         return err
     }
+
+    Logger.Infoln("Written bytes:", n)
     f.Close()
 
     Logger.Infoln("Successfully updated the executable.")

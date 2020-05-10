@@ -45,6 +45,8 @@ Telescribe is designed in such a way that the only thing you have to worry about
 
 ## Production(Stable Release) Checklist
 
+1. IPv6 support
+1. Client config mixins
 1. Project requirements satisfied
 1. Maintainable
 1. Scalable

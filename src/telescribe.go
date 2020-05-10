@@ -142,13 +142,24 @@ func setFlags() {
 
 }
 
-var Logger *log.Logger
+var AccessLogger *log.Logger
+var AccessLogFile *log.File
+var EventLogger *log.Logger
+var EventLogFile *log.File
 
 func main() {
 
     // Loggers
-    Logger = &log.Logger{}
-    Logger.AddWriter(os.Stderr, true)
+    AccessLogger = &log.Logger{}
+    AccessLogger.AddWriter(os.Stderr, true)
+
+    EventLogger = &log.Logger{}
+    EventLogger.AddWriter(os.Stderr, true)
+    EventLogFile, err := log.NewFile("event")
+    if err != nil {
+        EventLogger.Fatalln(err)
+    }
+    EventLogger.AddWriter(EventLogFile, false)
 
     //
     setFlags()
@@ -210,6 +221,13 @@ func main() {
             Logger.Panicln(cl.Start())
         }
     case flServer: // Server
+        // Access Log
+        AccessLogFile, err = log.NewFile("access")
+        if err != nil {
+            EventLogger.Fatalln(err)
+        }
+        AccessLogger.AddWriter(AccessLogFile, false)
+
         srv := NewServer()
         srv.Start()
     }
