@@ -1,8 +1,24 @@
+### Beta 0.1
+
+First version that complies with the documentation
+
+- [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
+- [ ] **Added:** `go` IPv6 support
+- [ ] **Fixed:** `go` fixed sig term handler
+- [ ] **Fixed:** `go` fixed auto update feature
+
+#### Known Issues
+
+- [ ] No indicator for status and disabled status for clients not sending data
+- [ ] Machines may have disks of different names which require different roles to monitor separately. This can be solved with mixins
+- [ ] `web` Tiny gaps are present in the graph
+- [ ] `web` Quick selection changing may break functionality of web
+
+
 ### Alpha 0.13
 
 Overall refinement and system signal handling
 
-- [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
 - [x] **Added:** `server` better handling of API
 - [x] **Added:** `go` system signal handling
 - [x] **Added:** `web` added javascript implementaion of queue
@@ -14,20 +30,11 @@ Overall refinement and system signal handling
 - [x] **Fixed:** `server` EOF errors; low priority, minute error
 - [x] **Fixed:** `client` monitor interval now properly changes when a new config is given
 - [x] **Changed:** `web` uses per-key format
+- [x] **Changed:** `web` changed the default format for figures on y axis
 - [x] **Changed:** `server` manual HTTP request handling for preserving remote address
 - [x] **Changed:** `server` clients can now have several roles rather than just one
 - [x] **Changed:** `web` graph tooltip is now replaced with plain text
 
-#### Known Issues
-
-- [ ] Add IPv6 support
-- [ ] Sometimes sig term did not work
-- [ ] Auto uodate feature is faulty
-- [ ] No indicator for status and disabled status for clients not sending data
-- [ ] Machines may have disks of different names which require different roles to monitor separately. This can be solved with mixins
-- [ ] Graph y-axis figures sometimes get partly invisible.
-- [ ] `web` Tiny gaps are present in the graph
-- [ ] `web` Quick selection changing may break functionality of web
 
 ### Alpha 0.12
 
