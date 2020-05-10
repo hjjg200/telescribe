@@ -32,8 +32,7 @@ func NewFile(prefix string) (lf *File, err error) {
     path := FileDir + "/" + name
 
     // Open
-    // -> read + wrtie in order to read it later for gzipping
-    f, err := os.OpenFile(path, os.O_CREATE | os.O_RDWR, 0600)
+    f, err := os.OpenFile(path, os.O_CREATE | os.O_WRONLY, 0600)
     Try(err)
 
     // File
@@ -49,20 +48,20 @@ func(lf *File) Write(p []byte) (int, error) {
 func(lf *File) Close() (err error) {
     defer Catch(&err)
 
+    // Reopen for read
+    fn := lf.f.Name()
     Try(lf.f.Close())
+    lf.f, err = os.OpenFile(fn, os.O_RDONLY, 0600)
+    Try(err)
 
     // Open gzip
     // -> os.File.Name() gives you name as presented to Open
-    gzf, err := os.OpenFile(lf.f.Name() + fileArchiveExt, os.O_CREATE | os.O_WRONLY, 0600)
+    gzf, err := os.OpenFile(fn + fileArchiveExt, os.O_CREATE | os.O_WRONLY, 0600)
     Try(err)
 
     gz := gzip.NewWriter(gzf)
 
     // Write to gzip
-    // -> os.File.Seek to reset the read pos
-    _, err = lf.f.Seek(0, 0)
-    Try(err)
-
     _, err = io.Copy(gz, lf.f)
     Try(err)
     Try(gz.Close())
@@ -70,7 +69,7 @@ func(lf *File) Close() (err error) {
 
     // Remove log
     Try(lf.f.Close())
-    Try(os.Remove(lf.f.Name()))
+    Try(os.Remove(fn))
 
     return nil
 }

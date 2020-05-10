@@ -150,12 +150,13 @@ var EventLogFile *log.File
 func main() {
 
     // Loggers
+    var err error
     AccessLogger = &log.Logger{}
     AccessLogger.AddWriter(os.Stderr, true)
 
     EventLogger = &log.Logger{}
     EventLogger.AddWriter(os.Stderr, true)
-    EventLogFile, err := log.NewFile("event")
+    EventLogFile, err = log.NewFile("event")
     if err != nil {
         EventLogger.Fatalln(err)
     }

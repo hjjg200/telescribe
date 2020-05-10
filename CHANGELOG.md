@@ -3,8 +3,11 @@
 First version that complies with the documentation
 
 - [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
+- [x] **Added:** `go` added log files and separated logs into access log and event log
 - [ ] **Fixed:** `go` fixed sig term handler
 - [ ] **Fixed:** `go` fixed auto update feature
+- [ ] **Changed:** `go` moved client-related code to `client.go`
+- [ ] **Changed:** `go` make signal handler accessible for both client and server
 
 #### Known Issues
 

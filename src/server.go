@@ -302,6 +302,8 @@ func(srv *Server) Start() (err error) {
         EventLogger.Infoln("Waiting for tasks to finish...")
         hs.Add(threadCleanUp, 1)
         EventLogger.Infoln("Bye bye")
+        EventLogFile.Close()
+        AccessLogFile.Close()
         os.Exit(0)
     }()
 
@@ -489,7 +491,7 @@ func(srv *Server) Start() (err error) {
                     }
 
                     // New request
-                    EventLogger.Infoln(host, req.Method, req.URL.Path, req.Proto)
+                    AccessLogger.Infoln(host, req.Method, req.URL.Path, req.Proto)
                     req.WriteProxy(proxy) // Conn -> Proxy
                 }
             case strings.Contains(startLine, "TELESCRIBE"):
