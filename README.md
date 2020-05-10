@@ -2,6 +2,9 @@
 
 ![](https://img.shields.io/badge/-mini%20project-orange) ![](https://img.shields.io/badge/created-‘19%20Sep%2016-9cf)
 
+Telescribe is standalone application that helps remotely monitor client machines.
+
+
 ## Install
 
 Note that this project is currently in **the alpha stage**; things are liable to change and there is no guarantee of backward compatibility in the alpha stage, which means that using data files or assets created by one version in the alpha stage may not be compatible with another version.
@@ -12,19 +15,21 @@ The install procedure is as follows:
 1. In the bin folder, do `./telescribe -server` to create config files.
 1. Modify the configuration to your taste.
 1. Distribute the binary file `telescribe` to client machines.
-1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS> -alias <ALIAS_NAME|DEFAULT:default> -port <DEFAULT:1226>`
+1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>`
 
 Post-installation process:
 
 1. You can simply edit the config files on the server machine in order to make changes to the configuration.
 
+
 ## Introduction
 
-Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and send the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each client machine has to have nothing but the executable file.
+Telescribe is a standalone app that acts as both a server and a client, which is used for monitoring server machines. When it acts as a client, it monitors the machine that it is on and sends the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, each client machine has to have nothing but the executable file.
 
 And when it acts as a server, it handles connections from telescribe clients and general http clients, handling both connections on the same port. When you use a browser to connect, you'll see graphs and status of the monitored clients.
 
 Telescribe is designed in such a way that the only thing you have to worry about is the machine that acts as a server; client configurations can be modified on the server and they are to be delivered and applied at the next handshake; when an update was made to the server executable and the version does not match with that of a client, the server will give the client its executable and the client will update itself and restart, provided the client is configured to restart on its own. And in order to prevent any MITM attack that may modify the configuration or the executable file, the server has its private key to sign the data. Clients, therefore, have its known hosts list that contain the public key fingerprints of the servers they have identified and thus consider authentic.
+
 
 ## Components
 
@@ -46,6 +51,19 @@ Telescribe is designed in such a way that the only thing you have to worry about
 1. Well-documented
 1. Config validators
 1. Separate access log and event log
+
+
+## TODO (beta)
+
+1. I/O wait monitoring
+1. Per-process monitoring
+1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
+1. Overall overhaul
+1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
+1. Log files like latest.log, 20191210.1.log.gz...
+1. Log file separation: access, events
+1. Web anchors(#) or queries for fullName, timestamp, and selected items
+
 
 ## TODO (alpha)
 
@@ -80,19 +98,9 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Roles as tags: "bar": "minecraft-server cpu memory"~~
 1. ~~Various http users with different permissions~~
 1. ~~Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting~~
-1. Web: Custom number format like `{e2.2f}%` `{e-6.1f}GB` `{e+3.2f}` `regex: /(.+)?(\{(e([+-]?\d+))?(\.(\d+))?f\})(.+)?/ $1:prefix $4:exponent $6:precision $7:suffix`
-
-`prefix{.2f}suffix`
-1. I/O wait monitoring
-1. Per-process monitoring
-1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
-1. Overall overhaul
+1. ~~Web: Custom number format~~
 1. Protocol documentation
 1. Monitor documentation
-1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
-1. Log files like latest.log, 20191210.1.log.gz...
-1. Log file separation: access, tasks
-1. Web anchors(#) or queries for fullName, timestamp, and selected items
 
 ## External Libraries
 - Vue.js
