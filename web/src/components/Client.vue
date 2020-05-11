@@ -126,12 +126,16 @@ export default {
   computed: {
     id() {return this.$vnode.key;},
     graphReady() {return this.boundaries.length > 0 && this.mounted;},
+    
     focusedTime() {
       let fmt = this.$root.webCfg["format.date.long"];
       if(this.graphReady) {
         let graph = this.$refs.graph;
-        if(graph.focusedTime)     return graph.focusedTime.date(fmt);
-        if(graph.visibleBoundary) return graph.visibleBoundary.map(d => d.date(fmt)).join(" – ");
+        let arr;
+        if(graph.focusedTimestamps.length > 0) arr = graph.focusedTimestamps;
+        else if(graph.visibleBoundary)         arr = graph.visibleBoundary;
+
+        if(arr) return arr.map(d => d.date(fmt)).join(" – ");
       }
       return "-";
     }

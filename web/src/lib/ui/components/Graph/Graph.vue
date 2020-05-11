@@ -102,7 +102,7 @@ export default {
     return {
       dataset: {},
       visibleBoundary: undefined,
-      focusedTime: undefined,
+      focusedTimestamps: [],
       focusedValues: {},
       options: defaultOptions
     };
@@ -468,6 +468,7 @@ export default {
         .enter()
         .append("circle")
           .each(function(key) {$._points[key] = this;})
+          .attr("data-key", key => key)
           .attr("class",    "point")
           .attr("fill",     key => $.dataset[key].color)
           .attr("stroke",   "none")
@@ -531,15 +532,19 @@ export default {
           var handX;
     
           // Points
+          $.focusedTimestamps = [];
           for(let key in dataset) {
             let {data} = dataset[key];
             var elem   = bisect(data, timestamp, function(d) { return d.timestamp; });
             // No nearest found, return
-            if(elem === undefined || isNaN(elem.value)) return;
+            if(elem === undefined || isNaN(elem.value)) {
+              d3.select($._points[key])
+                .attr("cx", -100);
+              return;
+            }
             var cX = xScale(elem.timestamp);
             var cY = yScale(elem.value);
             d3.select($._points[key])
-              .attr("data-key",       key)
               .attr("data-timestamp", elem.timestamp)
               .attr("data-value",     elem.value)
               .attr("cx", cX)
@@ -558,7 +563,14 @@ export default {
           
           // Hand timestamp
           var handT = xScale.invert(handX);
-          $.focusedTime = handT;
+          if($.focusedTimestamps.length === 0) {
+            $.focusedTimestamps = [handT, handT];
+          } else {
+            let [ft0, ft1] = $.focusedTimestamps;
+            $.focusedTimestamps = [
+              Math.min(ft0, handT), Math.max(ft1, handT)
+            ];
+          }
           // Move hand
           hand.attr("x1", handX).attr("x2", handX);
 

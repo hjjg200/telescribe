@@ -38,15 +38,39 @@ var (
 
 func setFlags() (err error) {
 
-    flag.BoolVar(&flServer, "server", false, "Run as a server")
-    flag.StringVar(&flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.")
+    // Server flags
+    flag.BoolVar(
+        &flServer, "server", false, 
+        "Run as a server",
+    )
+    flag.StringVar(
+        &flServerConfigPath, "server-config-path", "./serverConfig.json",
+        "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.",
+    )
 
-    flag.StringVar(&flClientHostname, "host", "", "(Client) The hostname of the server for the client to connect to")
-    flag.StringVar(&flClientAlias, "alias", "default", "(Client) The alias of the client")
-    flag.IntVar(&flClientPort, "port", 1226, "(Client) The port of the server for the client to connect to")
-    flag.StringVar(&flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts", "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.")
-    flag.BoolVar(&flClientDaemon, "daemon", false, "(Client) Whether to run the client as daemon.")
+    // Client flags
+    flag.StringVar(
+        &flClientHostname, "host", "",
+        "(Client) The hostname of the server for the client to connect to",
+    )
+    flag.StringVar(
+        &flClientAlias, "alias", "default",
+        "(Client) The alias of the client",
+    )
+    flag.IntVar(
+        &flClientPort, "port", 1226, 
+        "(Client) The port of the server for the client to connect to",
+    )
+    flag.StringVar(
+        &flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts",
+        "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.",
+    )
+    flag.BoolVar(
+        &flClientDaemon, "daemon", false, 
+        "(Client) Whether to run the client as daemon.",
+    )
 
+    // Debug flags
     flag.BoolVar(&flDebug, "debug", false, "(Debug) verbose")
     flag.Parse()
 
@@ -57,17 +81,15 @@ func setFlags() (err error) {
         },
     )
 
-    //// Port range
-    Assert(
-        flClientPort >= 1 && flClientPort <= 65535,
-        fmt.Sprintf("Bad port: %d", flClientPort),
-    )
-
-    //// Client
+    // Client
     if !flServer {
         Assert(
             flClientHostname == "",
             "Hostname must be given",
+        )
+        Assert(
+            flClientPort >= 1 && flClientPort <= 65535,
+            fmt.Sprintf("Bad port: %d", flClientPort),
         )
     }
 
