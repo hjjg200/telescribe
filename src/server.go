@@ -10,13 +10,10 @@ import (
     "net"
     "net/http"
     "os"
-    "os/signal"
     "path/filepath"
     "sort"
     "strings"
-    "syscall"
     "time"
-    "github.com/hjjg200/go-together"
 
     . "github.com/hjjg200/go-act"
 )
@@ -286,27 +283,6 @@ func(srv *Server) Start() (err error) {
     Try(err)
     EventLogger.Infoln("Network is configured to listen at", addr)
 
-    // Thread-related
-    hs := together.NewHoldSwitch()
-    const (
-        threadMain = iota
-        threadCleanUp
-    )
-
-    // Signal Catcher
-    sig := make(chan os.Signal, 1)
-    signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-    go func() {
-        <- sig
-        fmt.Println()
-        EventLogger.Infoln("Waiting for tasks to finish...")
-        hs.Add(threadCleanUp, 1)
-        EventLogger.Infoln("Bye bye")
-        EventLogFile.Close()
-        AccessLogFile.Close()
-        os.Exit(0)
-    }()
-
     // Flush Cache Thread
     go func() {
         for {func() {
@@ -317,12 +293,12 @@ func(srv *Server) Start() (err error) {
             time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
 
             // Add task
-            hs.Add(threadMain, 1)
+            HoldSwitch.Add(ThreadMain, 1)
             Try(srv.CacheClientMonitorDataMap())
             EventLogger.Infoln("Cached client monitor data")
 
             // Task done
-            hs.Done(threadMain)
+            HoldSwitch.Done(ThreadMain)
         }()}
     }()
     EventLogger.Infoln("Started monitor data caching thread")
@@ -340,7 +316,7 @@ func(srv *Server) Start() (err error) {
             time.Sleep(clientConfigWatchInterval)
 
             // Add task
-            hs.Add(threadMain, 1)
+            HoldSwitch.Add(ThreadMain, 1)
 
             // Mod Time Check
             st, err := os.Stat(ccp)
@@ -352,7 +328,7 @@ func(srv *Server) Start() (err error) {
                 EventLogger.Infoln("Reloaded client config")
                 lastMod = st.ModTime()
             }
-            hs.Done(threadMain)
+            HoldSwitch.Done(ThreadMain)
         }()}
     }()
     EventLogger.Infoln("Started client config reloading thread")
@@ -363,7 +339,7 @@ func(srv *Server) Start() (err error) {
             defer CatchFunc(nil, EventLogger.Warnln)
 
             // Add task
-            hs.Add(threadMain, 1)
+            HoldSwitch.Add(ThreadMain, 1)
             tBoxMap := make(map[string/* clId */] MonitorDataTableBox)
             gthSec  := int64(srv.config.GapThresholdTime * 60) // To seconds
             for clId, mdMap := range srv.clientMonitorDataMap {
@@ -431,7 +407,7 @@ func(srv *Server) Start() (err error) {
             EventLogger.Infoln("Chart-ready data prepared")
 
             // Task done
-            hs.Done(threadMain)
+            HoldSwitch.Done(ThreadMain)
 
             // Sleep at end
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))

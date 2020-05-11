@@ -5,89 +5,17 @@ import (
     "fmt"
     "os"
     "os/exec"
+    "os/signal"
     "path/filepath"
     "strconv"
+    "syscall"
     "time"
     "./log"
+
+    "github.com/hjjg200/go-together"
+    . "github.com/hjjg200/go-act"
 )
 
-/*
-
-Check
-Get
-Set
-Add
-Put
-Remove
-Update
-Read
-Ensure
-
-*/
-
-// # Handshake
-// Client -> Server
-// : {
-// :   "name": "handshake-initiate",
-// :   "version": "telescribe-..."
-// : }
-// Server -> Client
-// : Check the hostname is in the whitelist
-// : if not
-// : {
-// :   "name": "not-whitelisted"
-// : }
-// : if in whitelist
-// : if version matched
-// : {
-// :   "name": "handshake-server-publickey",
-// :   "publicKey": "..."
-// : }
-// : if not
-// : {
-// :   "name": "version-mismatch",
-// :   "executable": "..."
-// : }
-// : exits
-// Client -> Server
-// : {
-// :   "name": "handshake-client-publickey",
-// :   "publicKey": "..."
-// : }
-// Server -> Client (It is now encrypted from here)
-// : {
-// :   "name": "handshake-ping"
-// : }
-// Client -> Server
-// : {
-// :   "name": "handshake-pong"
-// : }
-// Server -> Client
-// : {
-// :   "name": "handshake-config",
-// :   "config": "..."
-// : }
-// Client -> Server
-// : Load the config and send the relevant data periodically
-// : {
-// :   "name": "monitored-items",
-// :   "version": "telescribe-...",
-// :   "timestamp": ...,
-// :   "monitoredItems": "..."
-// : }
-// Server -> Client
-// : Server does not respond unless...
-// : Version is different
-// : {
-// :   "name": "version-mismatch",
-// :   "executable": "..."
-// : }
-// : Session restarted (public key does not work)
-// : {
-// :   "name": "session-restarted"
-// : }
-
-//const Version = "telescribe-alpha-0.12"
 var Version string
 const (
     childSpawnInterval = time.Second * 10
@@ -108,7 +36,7 @@ var (
     executablePath string
 )
 
-func setFlags() {
+func setFlags() (err error) {
 
     flag.BoolVar(&flServer, "server", false, "Run as a server")
     flag.StringVar(&flServerConfigPath, "server-config-path", "./serverConfig.json", "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.")
@@ -123,22 +51,53 @@ func setFlags() {
     flag.Parse()
 
     // Check wrong flags
+    defer CatchFunc(
+        &err, func(is ...interface{}) {
+            flag.PrintDefaults()
+        },
+    )
 
     //// Port range
-    if flClientPort < 1 || flClientPort > 65535 {
-        fmt.Printf("Bad port: %d\n\n", flClientPort)
-        flag.PrintDefaults()
-        os.Exit(1)
-    }
+    Assert(
+        flClientPort >= 1 && flClientPort <= 65535,
+        fmt.Sprintf("Bad port: %d", flClientPort),
+    )
 
     //// Client
     if !flServer {
-        if flClientHostname == "" {
-            fmt.Println("No hostname was given\n")
-            flag.PrintDefaults()
-            os.Exit(1)
-        }
+        Assert(
+            flClientHostname == "",
+            "Hostname must be given",
+        )
     }
+
+    return nil
+
+}
+
+const (
+    ThreadMain = iota
+    ThreadCleanUp
+)
+var HoldSwitch *together.HoldSwitch
+func registerSignalHandler() {
+    
+    // Thread-related
+    HoldSwitch = together.NewHoldSwitch()
+
+    // Signal Catcher
+    sig := make(chan os.Signal, 1)
+    signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+    go func() {
+        <- sig
+        fmt.Println()
+        EventLogger.Infoln("Waiting for tasks to finish...")
+        HoldSwitch.Add(ThreadCleanUp, 1)
+        EventLogger.Infoln("Bye bye")
+        EventLogFile.Close()
+        AccessLogFile.Close()
+        os.Exit(0)
+    }()
 
 }
 
@@ -146,35 +105,39 @@ var AccessLogger *log.Logger
 var AccessLogFile *log.File
 var EventLogger *log.Logger
 var EventLogFile *log.File
+func registerLoggers() (err error) {
 
-func main() {
+    defer Catch(&err)
 
-    // Loggers
-    var err error
     AccessLogger = &log.Logger{}
     AccessLogger.AddWriter(os.Stderr, true)
 
     EventLogger = &log.Logger{}
     EventLogger.AddWriter(os.Stderr, true)
     EventLogFile, err = log.NewFile("event")
-    if err != nil {
-        EventLogger.Fatalln(err)
-    }
+    Try(err)
     EventLogger.AddWriter(EventLogFile, false)
 
-    //
+    return nil
+
+}
+
+func main() {
+
+    var err error
+    defer CatchFunc(&err, EventLogger.Fatalln)
+
+    // Prepare
+    Try(registerLoggers())
+    registerSignalHandler()
     setFlags()
     log.Debug = flDebug
 
     // Executable path
     executablePath, err = os.Executable()
-    if err != nil {
-        EventLogger.Fatalln(err)
-    }
+    Try(err)
     executablePath, err = filepath.EvalSymlinks(executablePath)
-    if err != nil {
-        EventLogger.Fatalln(err)
-    }
+    Try(err)
 
     switch {
     case !flServer: // Client
@@ -205,12 +168,9 @@ func main() {
                 child.Stderr = os.Stderr
                 child.Stdout = os.Stdout
                 child.Stdin = os.Stdin
-                err := child.Start()
-                if err != nil {
-                    EventLogger.Fatalln(err)
-                }
-                err = child.Wait()
-                EventLogger.Warnln("The child process exited:", err)
+                Try(child.Start())
+
+                EventLogger.Warnln("The child process exited:", child.Wait())
                 time.Sleep(childSpawnInterval)
             }
         } else {
@@ -221,15 +181,15 @@ func main() {
             EventLogger.Panicln(cl.Start())
         }
     case flServer: // Server
+
         // Access Log
         AccessLogFile, err = log.NewFile("access")
-        if err != nil {
-            EventLogger.Fatalln(err)
-        }
+        Try(err)
         AccessLogger.AddWriter(AccessLogFile, false)
 
         srv := NewServer()
         srv.Start()
+
     }
 
 }
