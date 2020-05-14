@@ -4,12 +4,11 @@ First version that complies with the documentation
 
 - [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
 - [x] **Added:** `go` added log files and separated logs into access log and event log
-- [ ] **Added:** `go` add `Colorer` to log package
+- [x] **Added:** `go` add `Colorer` to log package
 - [ ] **Fixed:** `go` fixed sig term handler
 - [ ] **Fixed:** `go` fixed auto update feature
-- [ ] **Changed:** `go` moved client-related code to `client.go`
 - [x] **Changed:** `go` make signal handler accessible for both client and server
-- [ ] **Changed:** `go` log package's debug feature now can have different categories
+- [x] **Changed:** `go` log package's debug feature now can have different categories
 
 #### Known Issues
 
