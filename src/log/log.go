@@ -7,8 +7,12 @@ import (
     "path/filepath"
     "time"
     "runtime"
-    "strings"
 )
+
+type logEntry struct {
+    color int
+    val interface{}
+}
 
 type Logger struct {
     writers []Writer
@@ -16,19 +20,15 @@ type Logger struct {
 
 type Writer struct {
     w io.Writer
-    color bool
+    clr Colorer
 }
 
-const (
-    clGreen = "\033[32;1m"
-    clYellow = "\033[33;1m"
-    clRed = "\033[31;1m"
-    clReset = "\033[0m"
-    prefixInfo = clGreen + "INFO" + clReset
-    prefixWarn = clYellow + "WARN" + clReset
-    prefixFatal = clRed + "FATAL!" + clReset
-    prefixPanic = clRed + "PANIC!" + clReset
-    prefixDebug = "+DEBUG"
+var (
+    prefixInfo = logEntry{color: clGreen, val: " INFO "}
+    prefixWarn = logEntry{color: clYellow, val: " WARN "}
+    prefixFatal = logEntry{color: clRed, val: "FATAL!"}
+    prefixPanic = logEntry{color: clRed, val: "PANIC!"}
+    prefixDebug = logEntry{color: clMagenta, val: "+DEBUG"}
 )
 
 var logStartTime time.Time
@@ -43,8 +43,8 @@ func secondsFromStart() string {
     return fmt.Sprintf("%11.3f", float64(time.Now().Sub(logStartTime)) / float64(time.Second))
 }
 
-func (lgr *Logger) AddWriter(w io.Writer, cl bool) {
-    lgr.writers = append(lgr.writers, Writer{ w, cl })
+func (lgr *Logger) AddWriter(w io.Writer, clr Colorer) {
+    lgr.writers = append(lgr.writers, Writer{ w, clr })
 }
 
 func (lgr *Logger) Infoln(args ...interface{}) {
@@ -79,17 +79,37 @@ func (lgr *Logger) Debugln(args ...interface{}) {
     lgr.println(prefixDebug, args...)
 }
 
-func (lgr *Logger) caller(skip int) string {
-    pc, _, _, ok := runtime.Caller(skip)
-    if !ok  {
-        return ""
+func (lgr *Logger) println(prefix logEntry, args ...interface{}) {
+    args = append(args, "\n")
+    lgr.print(prefix, args...)
+}
+
+func (lgr *Logger) print(prefix logEntry, args ...interface{}) {
+    for _, w := range lgr.writers {
+        w.print(prefix, args...)
     }
-    fn := runtime.FuncForPC(pc)
-    f, l := fn.FileLine(pc)
-    dir := filepath.Base(filepath.Dir(f))
-    f = dir + "/" + filepath.Base(f)
-    n := filepath.Base(fn.Name())
-    return fmt.Sprintf("%s[%s:%d]", n, f, l)
+}
+
+func (w *Writer) print(prefix logEntry, args ...interface{}) {
+
+    out := "[" + prefix.Colorify(w.clr) + "] "
+    out += secondsFromStart()
+    out += " - "
+
+    for i := range args {
+        if i > 0 {
+            out += " "
+        }
+        switch v := args[i].(type) {
+        case logEntry:
+            out += v.Colorify(w.clr)
+        default:
+            out += fmt.Sprint(args[i])
+        }
+    }
+
+    fmt.Fprint(w.w, out)
+
 }
 
 func (lgr *Logger) callers(skip int) []interface{} {
@@ -106,74 +126,4 @@ func (lgr *Logger) callers(skip int) []interface{} {
         ret = append(ret, fmt.Sprintf("%s[%s:%d]\n  ", n, f, l))
     }
     return ret
-}
-
-func (lgr *Logger) println(prefix string, args ...interface{}) {
-    args = append(args, "\n")
-    lgr.print(prefix, args...)
-}
-
-func (lgr *Logger) print(prefix string, args ...interface{}) {
-    for _, w := range lgr.writers {
-        w.print(prefix, args...)
-    }
-}
-
-func (w *Writer) print(prefix string, args ...interface{}) {
-
-    if !w.color {
-        prefix = stripAnsiColor(prefix)
-    }
-
-    out := "[" + padPrefix(prefix, 6) + "] "
-    out += secondsFromStart()
-    out += " - "
-
-    for i := range args {
-        if i > 0 {
-            out += " "
-        }
-        out += fmt.Sprint(args[i])
-    }
-
-    fmt.Fprint(w.w, out)
-
-}
-
-func padPrefix(str string, width int) string {
-
-    strLen := len(stripAnsiColor(str))
-    if strLen > width {
-        return str
-    }
-
-    for diff := width - strLen; diff > 0; diff-- {
-        if diff % 2 == 1 {
-            str += " "
-        } else {
-            str = " " + str
-        }
-    }
-    return str
-}
-
-func stripAnsiColor(str string) string {
-
-    for i := 0; i < 5; i++ {
-        pos := strings.Index(str, "\033")
-        if pos == -1 {
-            break
-        }
-        pos2 := strings.Index(str[pos:], "m") + pos
-        if pos2 == -1 {
-            break
-        }
-        if pos2 == len(str) - 1 {
-            str = str[:pos]
-        } else {
-            str = str[:pos] + str[pos2 + 1:]
-        }
-    }
-    return str
-
 }

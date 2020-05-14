@@ -473,8 +473,7 @@ export default {
           .attr("fill",     key => $.dataset[key].color)
           .attr("stroke",   "none")
           .attr("r",        4)
-          .attr("cx",       -100)
-          .style("opacity", 0);
+          .attr("cx",       -100);
 
     // Plot Visible Parts
       await this._plotVisible();
@@ -517,33 +516,32 @@ export default {
           //if(!(isTouch || isMouseDown))
             //return;
 
-          // Make Points Visible
-          Object.values($._points).forEach(
-            point => d3.select(point).style("opacity", 1)
-          );
-          background.select(".focus-date text").style("opacity", 1);
-
           // If mouse is on a point, show the tooltip
           if(onPoint) {
             overlay.selectAll(".tooltip").style("opacity", 1);
           }
 
           //
-          var handX;
+          let handX;
     
           // Points
           $.focusedTimestamps = [];
           for(let key in dataset) {
             let {data} = dataset[key];
-            var elem   = bisect(data, timestamp, function(d) { return d.timestamp; });
+            let elem   = bisect(data, timestamp, function(d) { return d.timestamp; });
+
             // No nearest found, return
             if(elem === undefined || isNaN(elem.value)) {
+              // Blur Key
               d3.select($._points[key])
                 .attr("cx", -100);
+              $.focusedValues[key] = undefined;
               return;
             }
-            var cX = xScale(elem.timestamp);
-            var cY = yScale(elem.value);
+            
+            // Focus Key
+            let cX = xScale(elem.timestamp);
+            let cY = yScale(elem.value);
             d3.select($._points[key])
               .attr("data-timestamp", elem.timestamp)
               .attr("data-value",     elem.value)
@@ -552,6 +550,9 @@ export default {
             
             // Set focused value
             $.focusedValues[key] = elem.value;
+
+            // Focused timestamps
+            $.focusedTimestamps.push(elem.timestamp);
 
             // Hand X is nearest point to the mouse from all data
             if(handX === undefined) handX =  cX;
@@ -562,21 +563,11 @@ export default {
           if(handX === undefined) return;
           
           // Hand timestamp
-          var handT = xScale.invert(handX);
-          if($.focusedTimestamps.length === 0) {
-            $.focusedTimestamps = [handT, handT];
-          } else {
-            let [ft0, ft1] = $.focusedTimestamps;
-            $.focusedTimestamps = [
-              Math.min(ft0, handT), Math.max(ft1, handT)
-            ];
-          }
+          $.focusedTimestamps = d3.extent($.focusedTimestamps);
+
           // Move hand
           hand.attr("x1", handX).attr("x2", handX);
 
-          // Time (disabled for now)
-          // background.select(".focus-date text").text(handT.date("MM/DD"));
-    
           // Tooltip
           var [tw, th] = [tooltipSize.width, tooltipSize.height];
           var tx       = Math.min(Math.max(mX - scrollLeft - tw/2, 0), graphRect.width - tw);

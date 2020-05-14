@@ -84,7 +84,7 @@ func setFlags() (err error) {
     // Client
     if !flServer {
         Assert(
-            flClientHostname == "",
+            flClientHostname != "",
             "Hostname must be given",
         )
         Assert(
@@ -152,7 +152,7 @@ func main() {
     // Prepare
     Try(registerLoggers())
     registerSignalHandler()
-    setFlags()
+    Try(setFlags())
     log.Debug = flDebug
 
     // Executable path
