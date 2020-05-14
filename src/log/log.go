@@ -79,7 +79,7 @@ func (lgr *Logger) Panicln(args ...interface{}) {
 }
 
 func (lgr *Logger) Debugln(category string, args ...interface{}) {
-    if !Debug || DebugFilter.Filter(category) == false {
+    if !(Debug && DebugFilter.Filter(category)) {
         return
     }
     args = append(lgr.callers(3), args...)

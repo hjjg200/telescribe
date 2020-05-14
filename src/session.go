@@ -16,6 +16,7 @@ import (
     "sync/atomic"
     "time"
 
+    "./log"
     "./secret"
     "./secret/p256"
     "./secret/aesgcm"
@@ -637,14 +638,25 @@ func readVarint(r io.Reader) (int64, error) {
 }
 
 func readNextPacket(r io.Reader) ([]byte, error) {
+
     n, err := readVarint(r)
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf(fmt.Sprint("Bad varint: ", err))
     }
-    buf := bytes.NewBuffer(nil)
+    
+    buf         := bytes.NewBuffer(nil)
     copied, err := io.CopyN(buf, r, n)
+
     if err != nil || n != copied {
-        return nil, fmt.Errorf("Bad packet")
+        EventLogger.Debugln(
+            debugSessionMay15,
+            log.Red("n:"), n,
+            log.Red("copied:"), copied,
+            log.Red("buf:"), buf.Bytes(),
+            log.Red("err:"), err,
+        )
+
+        return nil, fmt.Errorf(fmt.Sprint("Bad packet: ", err))
     }
     return buf.Bytes(), nil
 }

@@ -781,7 +781,6 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         srvRsp := NewResponse("hello")
         srvRsp.Set("role", roleBytes)
         srvRsp.Set("configVersion", srv.clientConfigVersion[clId])
-        EventLogger.Debugln(len(roleBytes), len(srv.clientConfigVersion[clId]))
         EventLogger.Infoln(clId, "HELLO CLIENT")
         return s.WriteResponse(srvRsp)
 

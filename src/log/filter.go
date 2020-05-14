@@ -10,12 +10,18 @@ type Filter struct {
 }
 
 func NewFilter(pattern string) (*Filter, error) {
+
     f := &Filter{}
+    if pattern == "" { // Return empty filter for empty string
+        return f, nil
+    }
+
     err := f.SetRegexp(pattern)
     if err != nil {
         return nil, err
     }
     return f, nil
+
 }
 
 func newFilter(pattern string) *Filter {

@@ -32,6 +32,7 @@ var (
     flClientDaemon bool
 
     flDebug bool
+    flDebugFilter string
 
     executablePath string
 )
@@ -44,7 +45,7 @@ func setFlags() (err error) {
         "Run as a server",
     )
     flag.StringVar(
-        &flServerConfigPath, "server-config-path", "./serverConfig.json",
+        &flServerConfigPath, "server_config_path", "./serverConfig.json",
         "(Server) The path to the server config file. The server configuration must be done in a file rather than in a command.",
     )
 
@@ -62,7 +63,7 @@ func setFlags() (err error) {
         "(Client) The port of the server for the client to connect to",
     )
     flag.StringVar(
-        &flClientKnownHostsPath, "known-hosts-path", "./clientKnownHosts",
+        &flClientKnownHostsPath, "known_hosts_path", "./clientKnownHosts",
         "(Client) The file that contains all the public key fingerprints of the accepted servers. Crucial for preventing MITM attacks that may exploit the auto update procedure.",
     )
     flag.BoolVar(
@@ -71,7 +72,16 @@ func setFlags() (err error) {
     )
 
     // Debug flags
-    flag.BoolVar(&flDebug, "debug", false, "(Debug) verbose")
+    flag.BoolVar(
+        &flDebug, "debug", false,
+        "(Debug) verbose",
+    )
+    flag.StringVar(
+        &flDebugFilter, "debug_filter", "",
+        "(Debug) regular expression for debug category filtering; empty string stands for .*",
+    )
+
+    // Parse
     flag.Parse()
 
     // Check wrong flags
@@ -92,6 +102,11 @@ func setFlags() (err error) {
             fmt.Sprintf("Bad port: %d", flClientPort),
         )
     }
+
+    // Debug
+    log.Debug = flDebug
+    log.DebugFilter, err = log.NewFilter(flDebugFilter)
+    Try(err)
 
     return nil
 
@@ -131,14 +146,15 @@ func registerLoggers() (err error) {
 
     defer Catch(&err)
 
+    // Access and Event
     AccessLogger = &log.Logger{}
-    AccessLogger.AddWriter(os.Stderr, true)
+    AccessLogger.AddWriter(os.Stderr, log.ANSIColorer)
 
     EventLogger = &log.Logger{}
-    EventLogger.AddWriter(os.Stderr, true)
+    EventLogger.AddWriter(os.Stderr, log.ANSIColorer)
     EventLogFile, err = log.NewFile("event")
     Try(err)
-    EventLogger.AddWriter(EventLogFile, false)
+    EventLogger.AddWriter(EventLogFile, nil)
 
     return nil
 
@@ -153,7 +169,6 @@ func main() {
     Try(registerLoggers())
     registerSignalHandler()
     Try(setFlags())
-    log.Debug = flDebug
 
     // Executable path
     executablePath, err = os.Executable()
@@ -207,7 +222,7 @@ func main() {
         // Access Log
         AccessLogFile, err = log.NewFile("access")
         Try(err)
-        AccessLogger.AddWriter(AccessLogFile, false)
+        AccessLogger.AddWriter(AccessLogFile, nil)
 
         srv := NewServer()
         srv.Start()
