@@ -14,6 +14,38 @@
       <Rule type="hr" variant="dark"/>
     </div>
 
+    <Modal ref="modal">
+      <h3>No Cache</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th><th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>cpu-count</td><td>4 CPUs</td>
+          </tr>
+          <tr>
+            <td>memory-size-gb</td><td>7.83 GB</td>
+          </tr>
+          <tr>
+            <td>swap-size-gb</td><td>3.92 GB</td>
+          </tr>
+          <tr>
+            <td>disk-size-gb[xvda1]</td><td>49.71 GB</td>
+          </tr>
+          <tr>
+            <td>disk-size-gb[sda1]</td><td>9.66 GB</td>
+          </tr>
+          <tr>
+            <td>command(minecraft-users)</td><td>8 Online</td>
+          </tr>
+        </tbody>
+      </table>
+    </Modal>
+    <Button @click="$refs.modal.open = true">Open Modal</Button>
+
     <Cover v-show="!graphReady">
       No Available Data
     </Cover>

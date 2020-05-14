@@ -33,6 +33,7 @@
       </div>
     </header>
     <Rule type="hr"/>
+
     <main>
       <section>
         <Cover v-show="visibleClient === null">
