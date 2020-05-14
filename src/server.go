@@ -474,17 +474,6 @@ func(srv *Server) Start() (err error) {
                 // TELESCRIBE
                 s := NewSession(conn)
 
-                // When a connection is closed on the server side and
-                // the transport time is not short enough,
-                // it causes an error on the client side as it has not
-                // received the server's message but it received an RST
-                // (reset on purpose) message
-
-                // This `defer s.Close()` ,ist be moved or removed after
-                // a thorough inspection
-                
-                //defer s.Close()
-
                 // Prepend raw input
                 s.PrependRawInput(bytes.NewReader(already))
                 Try(srv.HandleSession(s))

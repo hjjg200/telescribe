@@ -11,6 +11,7 @@ Hello is a procedure where the server and the client create shared secret and th
 |Client|1 Hello Server|Gives its version and alias|
 |Server|2 Hello Client|Gives config for the client|
 |Server|2a Version Mismatch|When version does not match, initiates **Version Mismatch**|
+|Server|2b Not Whitelisted|When the client is not whitelisted, initiates **Not Whitelisted**|
 |Client|3 Terminate|Terminate connection|
 
 
@@ -20,7 +21,7 @@ Version Mismatch is a procedure where the version of the client does not match w
 
 |Origin|Round|Details|
 |-|-|-|
-|Server|1 Version Mismatch|Gives its executable content|
+|Server|1 Version Mismatch|Gives **Executable Bytes**|
 |Client|2 Terminate|Terminate connection|
 
 
@@ -30,10 +31,12 @@ Monitor Record is a procedure where the client sends the monitored items to the 
 
 |Origin|Round|Details|
 |-|-|-|
-|Client|1 Monitor Record|Gives the following: **Version, Config Version, Alias, Timestamp, Value Map**|
-|Server|2 Terminate|Terminate connection|
+|Client|1 Monitor Record|Gives **Version, Config Version, Alias, Timestamp, Value Map**|
+|Server|2 OK|Ok|
 |Server|2a Version Mismatch|When version does not match, initiates **Version Mismatch**|
 |Server|2b Reconfigure|When client config version does not match, initiates **Reconfigure**|
+|Server|2c Not Whitelisted|When the client is not whitelisted, initiates **Not Whitelisted**|
+|Client|3 Terminate|Terminate connection|
 
 
 ## Reconfigure
@@ -42,5 +45,15 @@ Reconfigure is a procedure where the server notifies the client that the client 
 
 |Origin|Round|Details|
 |-|-|-|
-|Server|1 Reconfigure|Gives the following: **Config in JSON, Config Version**|
+|Server|1 Reconfigure|Gives **Config in JSON, Config Version**|
+|Client|2 Terminate|Terminate connection|
+
+
+## Not Whitelisted
+
+Not Whitelisted is a procedure where the server notifies the client that the client is not on the whitelist.
+
+|Origin|Round|Details|
+|-|-|-|
+|Server|1 Not Whitelisted|Notifies the client that it is not whitelisted|
 |Client|2 Terminate|Terminate connection|
