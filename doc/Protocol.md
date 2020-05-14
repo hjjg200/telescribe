@@ -30,12 +30,7 @@ Monitor Record is a procedure where the client sends the monitored items to the 
 
 |Origin|Round|Details|
 |-|-|-|
-|Client|1 Monitor Record|Gives the following:
-* Version
-* Config version
-* Alias
-* Timestamp
-* Value map|
+|Client|1 Monitor Record|Gives the following: <ul><li>Version</li><li>Config version</li><li>Alias</li><li>Timestamp</li><li>Value map</li></ul>|
 |Server|2 Terminate|Terminate connection|
 |Server|2a Version Mismatch|When version does not match, initiates **Version Mismatch**|
 |Server|2b Reconfigure|When client config version does not match, initiates **Reconfigure**|
