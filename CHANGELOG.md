@@ -2,19 +2,23 @@
 
 First version that complies with the documentation
 
-- [ ] **Added:** `web` cpu count, memory size, swap size, etc. above graphs
+- [ ] **Added:** `web` add `no-cache` entry to **Monitor.Config** and list no-cache monitored items in a table
 - [x] **Added:** `go` added log files and separated logs into access log and event log
 - [x] **Added:** `go` add `Colorer` to log package
-- [ ] **Fixed:** `go` fixed sig term handler
 - [ ] **Fixed:** `go` fixed auto update feature
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
+- [ ] **Changed:** `server` flush monitor data cache when exiting app
 
 #### Known Issues
 
 - [ ] No indicator for status and disabled status for clients not sending data
-- [ ] `web` Tiny gaps are present in the graph
+- [ ] `web` Tiny gaps are present in the graph; it is because segments do not have path that connects them to each other
 - [ ] `web` Quick selection changing may break functionality of web
+- [ ] GapThresholdTime might have to be per-client
+- [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
+- [ ] `web` no status indicator in the client select menu
+- [ ] Sometimes SIGTERM does not terminate server instance
 
 
 ### Alpha 0.13

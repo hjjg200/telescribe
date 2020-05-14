@@ -43,6 +43,16 @@ Telescribe is designed in such a way that the only thing you have to worry about
 - **Gob Encoding:** To serialize the monitored data and cache them as files.
 - **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
 
+
+## Web Design
+
+The exterior-wise design is mainly done on the following Figma document:
+
+> [https://www.figma.com/file/jVXjr7BLJLdOHWe2TSPuZW/Telescribe](https://www.figma.com/file/jVXjr7BLJLdOHWe2TSPuZW/Telescribe)
+
+Note that, however, the above document is not a faithful representation of the web design; rather, it must be taken as a prototype for it.
+
+
 ## Production(Stable Release) Checklist
 
 1. IPv6 support
