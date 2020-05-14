@@ -24,15 +24,16 @@ type Writer struct {
 }
 
 var (
-    prefixInfo = logEntry{color: clGreen, val: " INFO "}
-    prefixWarn = logEntry{color: clYellow, val: " WARN "}
-    prefixFatal = logEntry{color: clRed, val: "FATAL!"}
-    prefixPanic = logEntry{color: clRed, val: "PANIC!"}
-    prefixDebug = logEntry{color: clMagenta, val: "+DEBUG"}
+    prefixInfo  = Green(" INFO ")
+    prefixWarn  = Yellow(" WARN ")
+    prefixFatal = Red("FATAL!")
+    prefixPanic = Red("PANIC!")
+    prefixDebug = Magenta("+DEBUG")
 )
 
 var logStartTime time.Time
 var Debug = false
+var DebugFilter = &Filter{}
 
 func secondsFromStart() string {
     var t time.Time
@@ -41,6 +42,12 @@ func secondsFromStart() string {
         return fmt.Sprintf("%11d", time.Now().Unix())
     }
     return fmt.Sprintf("%11.3f", float64(time.Now().Sub(logStartTime)) / float64(time.Second))
+}
+
+// Logger
+
+func NewLogger() *Logger {
+    return &Logger{}
 }
 
 func (lgr *Logger) AddWriter(w io.Writer, clr Colorer) {
@@ -71,11 +78,12 @@ func (lgr *Logger) Panicln(args ...interface{}) {
     panic(fmt.Sprintln(args...))
 }
 
-func (lgr *Logger) Debugln(args ...interface{}) {
-    if !Debug {
+func (lgr *Logger) Debugln(category string, args ...interface{}) {
+    if !Debug || DebugFilter.Filter(category) == false {
         return
     }
     args = append(lgr.callers(3), args...)
+    args = append([]interface{}{Magenta(category)}, args...)
     lgr.println(prefixDebug, args...)
 }
 
@@ -113,17 +121,19 @@ func (w *Writer) print(prefix logEntry, args ...interface{}) {
 }
 
 func (lgr *Logger) callers(skip int) []interface{} {
-    pcs := make([]uintptr, 128)
+    pcs   := make([]uintptr, 128)
     count := runtime.Callers(skip, pcs)
-    ret := make([]interface{}, 0)
+    ret   := make([]interface{}, 0)
     for i := count - 1; i >= 0; i-- {
-        pc := pcs[i]
-        fn := runtime.FuncForPC(pc)
+        pc   := pcs[i]
+        fn   := runtime.FuncForPC(pc)
         f, l := fn.FileLine(pc)
-        dir := filepath.Base(filepath.Dir(f))
-        f = dir + "/" + filepath.Base(f)
-        n := filepath.Base(fn.Name())
-        ret = append(ret, fmt.Sprintf("%s[%s:%d]\n  ", n, f, l))
+
+        dir  := filepath.Base(filepath.Dir(f))
+        f     = dir + "/" + filepath.Base(f)
+        n    := filepath.Base(fn.Name())
+
+        ret   = append(ret, fmt.Sprintf("%s[%s:%d]\n  ", n, f, l))
     }
     return ret
 }

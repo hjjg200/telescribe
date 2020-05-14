@@ -23,3 +23,30 @@ func TestNoColorer(t *testing.T) {
     lgr.Warnln("warn")
     lgr.Infoln(Red("no red"), Green("no green"))
 }
+
+func TestDebugFilter(t *testing.T) {
+    lgr := Logger{}
+    lgr.AddWriter(os.Stderr, ANSIColorer)
+
+    repeat := func() {
+        lgr.Debugln("abc1", "abc1")
+        lgr.Debugln("def2", "def2")
+        lgr.Debugln("xyz3", "xyz3")
+    }
+
+    Debug = true
+
+    lgr.Infoln("Empty filter")
+    repeat()
+
+    DebugFilter, _ = NewFilter("(abc|def)\\d")
+    
+    lgr.Infoln("Filter = (abc|def)\\d")
+    repeat()
+
+    DebugFilter, _ = NewFilter(".+3")
+    
+    lgr.Infoln("Filter = .+3")
+    repeat()
+    
+}
