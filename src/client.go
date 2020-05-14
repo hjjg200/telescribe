@@ -153,6 +153,7 @@ func (cl *Client) Start() error {
 
             // Monitored values
             valMap := make(map[string] interface{})
+            mapLen := 0
             for rawKey := range cl.role.MonitorConfigMap {
                 getter, ok := monitor.Getter(string(rawKey))
                 if !ok {
@@ -162,6 +163,7 @@ func (cl *Client) Start() error {
                 got := getter()
                 for key, val := range got {
                     valMap[key] = val
+                    mapLen++
                 }
             }
 
@@ -177,7 +179,7 @@ func (cl *Client) Start() error {
                 EventLogger.Warnln(err)
                 continue
             }
-            AccessLogger.Infoln("Sent Data")
+            AccessLogger.Infoln("Sent Data:", mapLen, "items")
 
             // Get response
             srvRsp, err := cl.s.NextResponse()

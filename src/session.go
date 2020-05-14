@@ -265,11 +265,6 @@ func (s *Session) ReadEncrypted(p []byte) (i int, err error) {
     defer Catch(&err)
     encrypted, err := readNextPacket(s.rawInput)
     Try(err)
-    EventLogger.Debugln(
-        debugSessionMay15,
-        log.Red("encrypted:"), encrypted,
-        log.Red("err:"), err,
-    )
     decrypted, err := aesgcm.Decrypt(s.info.ephmMaster, encrypted)
     Try(err)
     s.input = bytes.NewReader(decrypted)
@@ -299,30 +294,16 @@ func (s *Session) read(p []byte, nested bool) (int, error) {
 
     //
     if s.input != nil && s.input.Len() > 0 {
-        n, err := s.input.Read(p)
-        EventLogger.Debugln(
-            debugSessionMay15,
-            log.Red("n:"), n,
-            log.Red("err:"), err,
-        )
-        return n, err
+        return s.input.Read(p)
     }
 
     //
     prh, err := s.readRecordHeader()
     if err != nil {
-        EventLogger.Debugln(
-            debugSessionMay15,
-            log.Red("err:"), err,
-        )
         return 0, err
     }
 
     //
-    EventLogger.Debugln(
-        debugSessionMay15,
-        log.Red("prh.typ:"), prh.typ,
-    )
     switch prh.typ {
     case packetTypeSessionNotFound:
         // Not found
@@ -340,10 +321,6 @@ func (s *Session) read(p []byte, nested bool) (int, error) {
     case packetTypeEncrypted:
         sessionId, err := readNextPacket(s.rawInput)
         if err != nil {
-            EventLogger.Debugln(
-                debugSessionMay15,
-                log.Red("err:"), err,
-            )
             return 0, err
         }
         if s.info == nil {
@@ -361,13 +338,7 @@ func (s *Session) read(p []byte, nested bool) (int, error) {
             return 0, fmt.Errorf("Session id mismatch")
         }
 
-        n, err := s.ReadEncrypted(p)
-        EventLogger.Debugln(
-            debugSessionMay15,
-            log.Red("n:"), n,
-            log.Red("err:"), err,
-        )
-        return n, err
+        return s.ReadEncrypted(p)
     }
 
     return 0, fmt.Errorf("Invalid")
@@ -679,14 +650,6 @@ func readNextPacket(r io.Reader) ([]byte, error) {
     copied, err := io.CopyN(buf, r, n)
 
     if err != nil || n != copied {
-        EventLogger.Debugln(
-            debugSessionMay15,
-            log.Red("n:"), n,
-            log.Red("copied:"), copied,
-            log.Red("buf:"), buf.Bytes(),
-            log.Red("err:"), err,
-        )
-
         return nil, fmt.Errorf(fmt.Sprint("Bad packet: ", err))
     }
     return buf.Bytes(), nil
