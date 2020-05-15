@@ -2,20 +2,29 @@
   <article class="client">
 
     <div class="client-header">
-      <h2 class="name">{{ info.alias }}</h2>
+      <div class="name-flex">
+        <h2 class="name">{{ info.alias }}</h2>
+        <div class="menu-wrap">
+          <Button class="menu-button" @click="$refs.menu.toggle($event)">
+            <font-awesome icon="caret-down"/>
+          </Button>
+          <Menu ref="menu">
+            <MenuItem @click="$refs.modal.open = true">Constants</MenuItem>
+          </Menu>
+        </div>
+      </div>
       <div class="summary-flex">
         <div class="status">
           <Icon :type="statusIconOf(statusMap)" />
         </div>
         <div class="info">{{ id }} &middot; {{ info.host }}</div>
-        <Badge>foo</Badge>
-        <Badge>bar</Badge>
+        <Badge v-for="tag in tags" :key="tag">{{ tag }}</Badge>
       </div>
       <Rule type="hr" variant="dark"/>
     </div>
 
     <Modal ref="modal">
-      <h3>No Cache</h3>
+      <h3>Constants</h3>
       <table>
         <thead>
           <tr>
@@ -44,7 +53,6 @@
         </tbody>
       </table>
     </Modal>
-    <Button @click="$refs.modal.open = true">Open Modal</Button>
 
     <Cover v-show="!graphReady">
       No Available Data
@@ -94,14 +102,14 @@
 
 import {csvParse} from 'd3-dsv';
 const d3 = {csvParse};
-import {NumberFormatter, statusIconOf} from '@/lib/util/web.js';
+import {NumberFormatter, statusIconOf, splitWhitespace} from '@/lib/util/web.js';
 import {colorify} from '@/lib/ui/util/util.js';
 import Queue from '@/lib/util/queue.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
-  faMicrochip, faHdd, faServer, faMemory
+  faCaretDown
 } from '@fortawesome/free-solid-svg-icons';
-library.add(faMicrochip, faHdd, faServer, faMemory);
+library.add(faCaretDown);
 
 export default {
   name: "Client",
@@ -158,6 +166,7 @@ export default {
   computed: {
     id() {return this.$vnode.key;},
     graphReady() {return this.boundaries.length > 0 && this.mounted;},
+    tags() {return splitWhitespace(this.info.role);},
     
     focusedTime() {
       let fmt = this.$root.webCfg["format.date.long"];

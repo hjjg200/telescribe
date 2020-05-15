@@ -17,7 +17,6 @@ First version that complies with the documentation
 - [ ] `web` Quick selection changing may break functionality of web
 - [ ] GapThresholdTime might have to be per-client
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
-- [ ] `web` no status indicator in the client select menu
 - [ ] Sometimes SIGTERM does not terminate server instance
 
 

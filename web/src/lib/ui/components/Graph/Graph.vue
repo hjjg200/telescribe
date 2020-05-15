@@ -563,7 +563,10 @@ export default {
           if(handX === undefined) return;
           
           // Hand timestamp
-          $.focusedTimestamps = d3.extent($.focusedTimestamps);
+          let [fts0, fts1] = d3.extent($.focusedTimestamps);
+          $.focusedTimestamps = fts0 === fts1
+            ? [fts0]
+            : [fts0, fts1];
 
           // Move hand
           hand.attr("x1", handX).attr("x2", handX);

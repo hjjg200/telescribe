@@ -82,7 +82,7 @@ export class NumberFormatter {
       }
 
       if(!abbreviated) {
-        if(modified >= 1.0e+15 || modified.toString().length > 4) {
+        if(modified >= 1.0e+15 || modified.toString().length > 5) {
           modified = modified.toExponential(2);
         }
       }
@@ -131,4 +131,11 @@ export function statusIconOf(val, ignoreGreen = false) {
   else if(st === 8)            return 'warning';
   else if(st === 16)           return 'error';
 
+}
+
+// SPLIT ---
+
+let whitespaceRegexp = /\s+/g;
+export function splitWhitespace(str) {
+  return str.split(whitespaceRegexp);
 }

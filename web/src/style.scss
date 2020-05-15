@@ -94,10 +94,27 @@ footer {
 
 .client .client-header {
     padding: 1rem 0;
-    h2.name {
-        color: $cl-text-accent;
-        font-weight: normal;
-        font-size: 2rem;
+    .name-flex {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        h2 {
+            color: $cl-text-accent;
+            font-weight: normal;
+            font-size: 2rem;
+            margin-right: .25rem;
+        }
+        .menu-wrap {
+            position: relative;
+        }
+        .menu-button {
+            background: none;
+            font-size: 1rem;
+            padding: 0 .5rem;
+            padding-top: .6rem;
+            line-height: 1;
+        }
     }
     .summary-flex {
         line-height: 1.25rem;
