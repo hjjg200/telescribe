@@ -214,7 +214,7 @@ func (cl *Client) Start() error {
                     break MonitorLoop
                 }
                 // Passer Interval
-                passer.SetInterval(mrif())
+                passer = together.NewPasser(mrif())
                 EventLogger.Infoln("Reconfigured!")
             case "version-mismatch":
                 EventLogger.Warnln("Version mismatch! Attempting to auto-update...")

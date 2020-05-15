@@ -6,6 +6,7 @@ First version that complies with the documentation
 - [x] **Added:** `go` added log files and separated logs into access log and event log
 - [x] **Added:** `go` add `Colorer` to log package
 - [ ] **Fixed:** `go` fixed auto update feature
+- [x] **Fixed:** `client` made moniter interval change is immediately effective
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [ ] **Changed:** `server` flush monitor data cache when exiting app
