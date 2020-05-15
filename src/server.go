@@ -51,6 +51,7 @@ type ServerConfig struct { // srvCfg
 }
 
 var DefaultServerConfig = ServerConfig{
+
     // General
     AuthPrivateKeyPath: "./.serverAuth.priv",
     ClientConfigPath:   "./clientConfig.json",
@@ -166,14 +167,14 @@ type Server struct { // srv
     httpRouter                *httpRouter
     authFingerprint           string
     clientConfig              ClientConfig
-    clientConfigVersion       map[string/* clientId */] string
-    clientMonitorDataTableBox map[string/* clientId */] MonitorDataTableBox
-    clientMonitorDataMap      map[string/* clientId */] MonitorDataMap
+    clientConfigVersion       map[string/* clId */] string
+    clientMonitorDataTableBox map[string/* clId */] MonitorDataTableBox
+    clientMonitorDataMap      map[string/* clId */] MonitorDataMap
 }
 
 func NewServer() *Server {
     srv := &Server{
-        clientMonitorDataMap: make(map[string/* clientId */] MonitorDataMap),
+        clientMonitorDataMap: make(map[string/* clId */] MonitorDataMap),
     }
     return srv
 }
@@ -373,8 +374,8 @@ func(srv *Server) Start() (err error) {
             // Add task
             HoldSwitch.Add(ThreadMain, 1)
 
-            tBoxMap := make(map[string/* clId */] MonitorDataTableBox)
-            gthSec  := int64(srv.config.GapThresholdTime * 60) // To seconds
+            clMdtBox := make(map[string/* clId */] MonitorDataTableBox)
+            gthSec   := int64(srv.config.GapThresholdTime * 60) // To seconds
 
             for clId, mdMap := range srv.clientMonitorDataMap {
 
@@ -442,7 +443,7 @@ func(srv *Server) Start() (err error) {
                 fmt.Fprintf(bds, "%d\n", tss[len(tss)-1])
 
                 // Assign
-                tBoxMap[clId] = MonitorDataTableBox{
+                clMdtBox[clId] = MonitorDataTableBox{
                     Boundaries: bds.Bytes(),
                     DataMap: mdtMap,
                 }
@@ -450,7 +451,7 @@ func(srv *Server) Start() (err error) {
             }
 
             // Assign
-            srv.clientMonitorDataTableBox = tBoxMap
+            srv.clientMonitorDataTableBox = clMdtBox
             EventLogger.Infoln("Chart-ready data prepared")
 
             // Task done
@@ -599,9 +600,9 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
     defer CatchFunc(&err, EventLogger.Warnln)
 
-    for clId, mDataMap := range srv.clientMonitorDataMap {
+    for clId, mdMap := range srv.clientMonitorDataMap {
         
-        for mKey, mData := range mDataMap {func() {
+        for mKey, mData := range mdMap {func() {
             defer CatchFunc(nil, EventLogger.Warnln, "Failed to store:", clId, mKey)
 
             // Compress

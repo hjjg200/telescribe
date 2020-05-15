@@ -85,11 +85,13 @@ The monitor configuration contains information of fatal and warning ranges of va
 |`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
 |`constant`|Boolean for whether it is considered hardly changing and thus not stored for graph plotting|
 
+
 ## Config Map
 
 |Go|Javascript|HTML|
 |-|-|-|
 |mCfgMap|monitorConfigMap|monitor-config-map|
+
 
 ## Status
 
@@ -104,11 +106,26 @@ The monitor configuration contains information of fatal and warning ranges of va
 |`16`|Fatal|
 
 
+## Timestamp
+
+|Go|Javascript|HTML|
+|-|-|-|
+|ts|timestamp|timestamp|
+
+
+## Value
+
+|Go|Javascript|HTML|
+|-|-|-|
+|val|value|value|
+
+
 ## Datum
 
 |Go|Javascript|HTML|
 |-|-|-|
 |mDatum|monitorDatum|monitor-datum|
+
 
 ## Data
 
@@ -116,11 +133,13 @@ The monitor configuration contains information of fatal and warning ranges of va
 |-|-|-|
 |mData|monitorData|monitor-data|
 
+
 ## Data Map
 
 |Go|Javascript|HTML|
 |-|-|-|
 |mdMap|monitorDataMap|monitor-data-map|
+
 
 ## Data Table Box
 
