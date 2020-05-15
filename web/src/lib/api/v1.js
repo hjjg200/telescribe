@@ -27,50 +27,50 @@ async function apiFetch(method, typ, key, ...args) {
 
 export default {
 
-  keyClientMap: "clientMap",
-  async getClientMap() {
+  keyClientInfoMap: "clientInfoMap",
+  async getClientInfoMap() {
     return await apiFetch(
-      "GET", "json", this.keyClientMap
+      "GET", "json", this.keyClientInfoMap
     );
   },
 
-  keyClientRole: "clientRole",
-  async getClientRole(clId) { 
+  keyClientRule: "clientRule",
+  async getClientRule(clientId) { 
     return await apiFetch(
-      "GET", "json", this.keyClientRole, clId
+      "GET", "json", this.keyClientRule, clientId
     );
   },
 
-  keyClientStatus: "clientStatus",
-  async getClientStatus(clId) { 
+  keyClientItemStatus: "clientItemStatus",
+  async getClientItemStatus(clientId) { 
     return await apiFetch(
-      "GET", "json", this.keyClientStatus, clId
+      "GET", "json", this.keyClientItemStatus, clientId
     );
   },
 
   keyMcfg: "monitorConfig",
-  async getMonitorConfig(clId, mKey) {
+  async getMonitorConfig(clientId, monitorKey) {
     return await apiFetch(
-      "GET", "json", this.keyMcfg, clId, mKey
+      "GET", "json", this.keyMcfg, clientId, monitorKey
     );
   },
 
   keyMdb: "monitorDataBoundaries",
-  async getMonitorDataBoundaries(clId) {
+  async getMonitorDataBoundaries(clientId) {
     return await apiFetch(
-      "GET", "text", this.keyMdb, clId
+      "GET", "text", this.keyMdb, clientId
     );
   },
 
   keyMdt: "monitorDataTable",
-  async getMonitorDataTable(clId, mKey) {
+  async getMonitorDataTable(clientId, monitorKey) {
     return await apiFetch(
-      "GET", "text", this.keyMdt, clId, mKey
+      "GET", "text", this.keyMdt, clientId, monitorKey
     );
   },
-  async deleteMonitorDataTable(clId, mKey) {
+  async deleteMonitorDataTable(clientId, monitorKey) {
     return await apiFetch(
-      "DELETE", undefined, this.keyMdt, clId, mKey
+      "DELETE", undefined, this.keyMdt, clientId, monitorKey
     );
   },
 

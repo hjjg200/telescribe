@@ -70,7 +70,7 @@
         </div>
         <div class="option option--duration">
           <ButtonGroup>
-            <Button v-for="d in $root.webCfg.durations"
+            <Button v-for="d in $root.webConfig.durations"
               :variant="d === duration ? 'accent' : ''"
               :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
           </ButtonGroup>
@@ -120,15 +120,6 @@ export default {
     $.dataset = {};
     let boundaries = [];
 
-    // Get ClientRole
-    this.queue.queue(new Promise(resolve => {
-      $.$api.v1.getClientRole($.id)
-        .then(function(rsp) {
-          $.role = rsp.clientRole;
-          resolve();
-        });
-    }));
-
     // Get Monitor Data Boundaries
     this.queue.queue(new Promise(resolve => {
       $.$api.v1.getMonitorDataBoundaries($.id)
@@ -154,22 +145,20 @@ export default {
     return {
       activeKeys: [],
       boundaries: [],
-      duration:   this.$root.webCfg.durations[0],
+      duration:   this.$root.webConfig.durations[0],
       dataset:    {},
       configMap:  {},
       queue:      new Queue(),
-      mounted:    false,
-
-      temp1: false
+      mounted:    false
     };
   },
   computed: {
     id() {return this.$vnode.key;},
     graphReady() {return this.boundaries.length > 0 && this.mounted;},
-    tags() {return splitWhitespace(this.info.role);},
+    tags() {return splitWhitespace(this.info.tags);},
     
     focusedTime() {
-      let fmt = this.$root.webCfg["format.date.long"];
+      let fmt = this.$root.webConfig["format.date.long"];
       if(this.graphReady) {
         let graph = this.$refs.graph;
         let arr;
@@ -179,7 +168,12 @@ export default {
         if(arr) return arr.map(d => d.date(fmt)).join(" – ");
       }
       return "-";
+    },
+
+    constantItemStatusMap() {
+
     }
+
   },
   watch: {
     graphReady(newVal) {
@@ -237,6 +231,7 @@ export default {
     }
   },
   methods: {
+    colorify,
     statusIconOf,
     formatDuration(t) {
       if(t <= 60) return `${t}m`;
@@ -252,9 +247,6 @@ export default {
         }
       }
       return "-";
-    },
-    colorify(str) {
-      return colorify(str);
     }
   }
 }

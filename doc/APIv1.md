@@ -2,15 +2,19 @@
 
 This documentation explains the behavior of API that is used to communicate between a server and a web client.
 
-## clientMap
+## clientInfoMap
 
 #### URL
 
-`/api/v1/clientMap`
+`/api/v1/clientInfoMap`
 
 #### Permission
 
-`api/v1.get.clientMap.<Client.ID>`
+`api/v1.get.<Client.ID>`
+
+#### Sub-Permission
+
+* `clientInfoMap.host`: Whether the **Client.Info** object should include host address
 
 #### GET
 
@@ -18,7 +22,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 ```text
 {
-    "clientMap": {
+    "clientInfoMap": {
         "<Client.ID>": {
             Client.Info
         }
@@ -29,24 +33,24 @@ This documentation explains the behavior of API that is used to communicate betw
 * **403:** No permission
 
 
-## clientRole
+## clientRule
 
 #### URL
 
-`/api/v1/clientRole/<Client.ID>`
+`/api/v1/clientRule/<Client.ID>`
 
 #### Permission
 
-`api/v1.get.clientRole.<Client.ID>`
+`api/v1.get.<Client.ID>`
 
 #### GET
 
-* **200:** Provides the user with a **Client.Role** object.
+* **200:** Provides the user with a **Client.Rule** object. Note that rule objects generally hold raw **Monitor.Config**.
 
 ```text
 {
-    "clientRole": {
-        Client.Role
+    "clientRule": {
+        Client.Rule
     }
 }
 ```
@@ -54,25 +58,25 @@ This documentation explains the behavior of API that is used to communicate betw
 * **403:** No permission
 
 
-## clientStatus
+## clientItemStatus
 
 #### URL
 
-`/api/v1/clientStatus/<Client.ID>`
+`/api/v1/clientItemStatus/<Client.ID>`
 
 #### Permission
 
-`api/v1.get.clientStatus.<Client.ID>.<Monitor.Key>`
+`api/v1.get.<Client.ID>.monitor.<Monitor.Key>`
 
 #### GET
 
-* **200:** Provides the user with a **Monitor.Key** to **Client.Status** object.
+* **200:** Provides the user with a **Monitor.Key** to **Client.ItemStatus** object.
 
 ```text
 {
-    "clientStatus": {
+    "clientItemStatus": {
         "<Monitor.Key>": {
-            Client.Status
+            Client.ItemStatus
         }
     }
 }
@@ -91,7 +95,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.get.monitorConfig.<Client.ID>.<Monitor.Key>`
+`api/v1.get.<Client.ID>.monitor.<Monitor.Key>`
 
 #### GET
 
@@ -118,7 +122,7 @@ This documentation explains the behavior of API that is used to communicate betw
 
 #### Permission
 
-`api/v1.get.monitorDataBoundaries.<Client.ID>`
+`api/v1.get.<Client.ID>`
 
 #### GET
 
@@ -141,7 +145,7 @@ timestamp
 
 #### Permission
 
-`api/v1.<method>.monitorDataTable.<Client.ID>.<Monitor.Key>`
+`api/v1.<method>.<Client.ID>.monitor.<Monitor.Key>`
 
 #### GET
 
@@ -176,7 +180,7 @@ timestamp,value
 
 #### Permission
 
-`api/v1.get.webConfig`
+`api/v1.get`
 
 #### GET
 
@@ -201,7 +205,7 @@ timestamp,value
 
 #### Permission
 
-`api/v1.get.version`
+`api/v1.get`
 
 #### GET
 

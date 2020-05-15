@@ -21,7 +21,7 @@
               <div class="thumbnail">
                 <TextIcon :text="clId"/>
               </div>
-              <Icon :type="statusIconOf(clStatMap[clId], true)" />
+              <Icon :type="statusIconOf(itemStatusMap[clId], true)" />
               <div class="text">
                 <div class="alias">{{ info.alias }}</div>
                 <div class="host">{{ info.host }}</div>
@@ -42,7 +42,7 @@
         <Client v-for="(clInfo, clId) in clMap"
           :key="clId"
           :info="clInfo"
-          :statusMap="clStatMap[clId]"
+          :statusMap="itemStatusMap[clId]"
           :class="{visible: (visibleClient === clId)}"></Client>
       </section>
     </main>
@@ -69,9 +69,9 @@ export default {
   name: "App",
   components: {Client, Logo},
   data() {
-    let {clMap, clStatMap, webCfg, version} = this.$root;
+    let {infoMap, itemStatusMap, webConfig, version} = this.$root;
     return {
-      clMap, clStatMap, webCfg, version,
+      infoMap, itemStatusMap, webConfig, version,
       visibleClient: null
     };
   },

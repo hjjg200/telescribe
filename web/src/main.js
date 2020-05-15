@@ -33,24 +33,26 @@ String.prototype.escapeQuote = function() {
 
 // MAIN
 (async function() {
-  let clMap   = (await api.v1.getClientMap()).clientMap;
-  let webCfg  = (await api.v1.getWebConfig()).webConfig;
-  let version = (await api.v1.getVersion()).version;
+  let infoMap   = (await api.v1.getClientInfoMap()).infoMap;
+  let webConfig = (await api.v1.getWebConfig()).webConfig;
+  let version   = (await api.v1.getVersion()).version;
 
   // Set the default format
-  NumberFormatter.defaultFormat(webCfg['format.value']);
+  NumberFormatter.defaultFormat(webConfig['format.value']);
 
-  let clStatMap = {};
-  for(let id in clMap) {
+  let itemStatusMap = {};
+  for(let id in infoMap) {
     try {
-      clStatMap[id] = (await api.v1.getClientStatus(id)).clientStatus;
+      itemStatusMap[id] = (await api.v1.getClientItemStatus(id)).clientItemStatus;
     } catch(ex) {
       continue;
     }
   }
 
   new Vue({
-    data: {clMap, clStatMap, webCfg, version},
+    data: {
+      infoMap, itemStatusMap, webConfig, version
+    },
     created() {
       document.title = "Telescribe";
     },

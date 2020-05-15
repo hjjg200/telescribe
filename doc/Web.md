@@ -21,7 +21,7 @@ This documentation explains the specifications for the web elements.
 
 |Go|Javascript|HTML|
 |-|-|-|
-|webFmt|format|format|
+|format|format|format|
 
 A format is a string expression that is used to modify how monitored values look on the web UI.
 
