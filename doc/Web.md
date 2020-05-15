@@ -4,6 +4,10 @@ This documentation explains the specifications for the web elements.
 
 ## Config
 
+|Go|Javascript|HTML|
+|-|-|-|
+|webCfg|webConfig|web-config|
+
 |Item|Default|Description|
 |-|-|-|
 |`durations`|`[180,1440,7200]`|The array of duration choices for graph plotting; in minutes|
@@ -14,6 +18,10 @@ This documentation explains the specifications for the web elements.
 
 
 ## Format
+
+|Go|Javascript|HTML|
+|-|-|-|
+|webFmt|format|format|
 
 A format is a string expression that is used to modify how monitored values look on the web UI.
 
@@ -74,6 +82,10 @@ import {NumberFormatter} from '@/lib/util/web.js';
 
 
 ## Gtaph
+
+|Javascript|HTML|
+|-|-|
+|graph|graph|
 
 A graph component is used to plot a line chart for provided dataset.
 

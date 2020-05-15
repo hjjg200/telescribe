@@ -4,6 +4,10 @@ This documentation contains the specifications for monitor-related information.
 
 ## Key
 
+|Go|Javascript|HTML|
+|-|-|-|
+|mKey|monitorKey|monitor-key|
+
 A key can be divided into three parts: base, parameter, and index; `<base>(<parameter>)[<index>]`. Base represents what type of key it basically is; parameter acts as the parameter when the base key is mapped to a functional metrics; index acts as the index when the base metrics produce mapped values. When you would like to use `[]` or `()` as plain text, you must use double quotation marks to enclose them: `someKey["a[1]"]`.
 
 |Key|Description|
@@ -68,6 +72,10 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 
 ## Config
 
+|Go|Javascript|HTML|
+|-|-|-|
+|mCfg|monitorConfig|monitor-config|
+
 The monitor configuration contains information of fatal and warning ranges of values.
 
 |Item|Description|
@@ -77,10 +85,45 @@ The monitor configuration contains information of fatal and warning ranges of va
 |`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
 |`constant`|Boolean for whether it is considered hardly changing and thus not stored for graph plotting|
 
+## Config Map
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mCfgMap|monitorConfigMap|monitor-config-map|
+
 ## Status
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mStat|monitorStatus|monitor-status|
 
 |Value|Status|
 |-|-|
 |`0`|Normal|
 |`8`|Warning|
 |`16`|Fatal|
+
+
+## Datum
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mDatum|monitorDatum|monitor-datum|
+
+## Data
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mData|monitorData|monitor-data|
+
+## Data Map
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mdMap|monitorDataMap|monitor-data-map|
+
+## Data Table Box
+
+|Go|Javascript|HTML|
+|-|-|-|
+|mdtBox|monitorData|monitor-key|

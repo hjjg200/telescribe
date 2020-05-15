@@ -2,7 +2,37 @@
 
 This documentation contains the specifications of the HTTP-related elements.
 
+
+## StaticCache
+
+|Go|
+|-|
+|cache|
+
+## Router
+
+|Go|
+|-|
+|hrt|
+
+## Request
+
+|Go|
+|-|
+|hreq|
+
+## Context
+
+|Go|
+|-|
+|hctx|
+
+
 ## User
+
+|Go|Javascript|
+|-|-|
+|husr|httpUser|
 
 A user is an individual account used for basic authentication of HTTP requests.
 
@@ -12,7 +42,12 @@ A user is an individual account used for basic authentication of HTTP requests.
 |`password`|The case-insensitive string representation of sha256 hash of the password|
 |`permissions`|The array of **HTTP.Permission** for the account|
 
-## Permission
+
+## Permission Node
+
+|Go|Javascript|
+|-|-|
+|pNode|permissionNode|
 
 Permission is used to differentiate between privileged users and general users. Permission is expressed in the case-insensitive string form. When a node contains a dot, you must use double quotation marks to eliminate ambiguity.
 

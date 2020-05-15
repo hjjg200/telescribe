@@ -2,7 +2,18 @@
 
 This documentation contains the specifications of elements of server.
 
-## serverConfig.json
+
+## Server Instance
+
+|Go|
+|-|
+|srv|
+
+## Server Config
+
+|Go|Javascript|
+|-|-|
+|srvCfg|serverConfig|
 
 By default, `serverConfig.json` contains the configuration of a server.
 
@@ -25,7 +36,12 @@ By default, `serverConfig.json` contains the configuration of a server.
 |`network.tickrate`|How often the server handles incoming connections; in Hz|
 |`alarm.webhookUrl`|The url the server sends fatal alarms to|
 
-## clientConfig.json
+
+## Client Config
+
+|Go|Javascript|HTML|
+|-|-|-|
+|clCfg|clientConfig|client-config|
 
 By default, `clientConfig.json` contains the client configurations.
 
@@ -33,3 +49,10 @@ By default, `clientConfig.json` contains the client configurations.
 |-|-|
 |`infoMap`|A map of **Client.Info**; keys of the map are **Client.ID** of each client|
 |`ruleMap`|A map of **Client.Rule** objects which contain monitoring configuration; keys of the map are rule names of each rule|
+
+
+## Webhook
+
+|Go|
+|-|
+|webhook|
