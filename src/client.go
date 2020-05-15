@@ -227,6 +227,8 @@ type ClientInfo struct {
     ips   []net.IP
 }
 
+type ClientInfoMap map[string/* clientId */] ClientInfo
+
 // Returns whether the client's host resolves to the same ip addresses
 // as the ip addresses to which the given address resolves
 func(clInfo *ClientInfo) HasAddr(addr string) bool {

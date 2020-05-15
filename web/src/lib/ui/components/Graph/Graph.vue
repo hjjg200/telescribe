@@ -528,10 +528,12 @@ export default {
           $.focusedTimestamps = [];
           for(let key in dataset) {
             let {data} = dataset[key];
-            let elem   = bisect(data, timestamp, function(d) { return d.timestamp; });
+            let elem   = bisect(data, timestamp, d => d.timestamp);
+            let elTs   = elem.timestamp;
+            let elVal  = elem.value;
 
             // No nearest found, return
-            if(elem === undefined || isNaN(elem.value)) {
+            if(elem === undefined || isNaN(elVal)) {
               // Blur Key
               d3.select($._points[key])
                 .attr("cx", -100);
@@ -540,19 +542,19 @@ export default {
             }
             
             // Focus Key
-            let cX = xScale(elem.timestamp);
-            let cY = yScale(elem.value);
+            let cX = xScale(elTs);
+            let cY = yScale(elVal);
             d3.select($._points[key])
-              .attr("data-timestamp", elem.timestamp)
-              .attr("data-value",     elem.value)
+              .attr("data-timestamp", elTs)
+              .attr("data-value",     elVal)
               .attr("cx", cX)
               .attr("cy", cY);
             
             // Set focused value
-            $.focusedValues[key] = elem.value;
+            $.focusedValues[key] = elVal;
 
             // Focused timestamps
-            $.focusedTimestamps.push(elem.timestamp);
+            $.focusedTimestamps.push(elTs);
 
             // Hand X is nearest point to the mouse from all data
             if(handX === undefined) handX =  cX;
@@ -626,7 +628,6 @@ export default {
         graph
           .on("mouseout", function() {
             var event = d3.event;
-            background.select(".focus-date text").style("opacity", 0);
             if(event.target.classList.contains("point")) {
               overlay.selectAll(".tooltip").style("opacity", 0);
             }

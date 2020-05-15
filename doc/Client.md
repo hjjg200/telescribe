@@ -13,12 +13,12 @@ A client ID is typically key to a **Client.Info** object in maps, which must be 
 |-|-|
 |`Host`|The address of the client|
 |`Alias`|The alias of the client|
-|`Role`|The role of the client; roles are separated by spaces; roles get overlapped in sequence|
+|`Tags`|The rule tags for the client; tags are separated by whitespaces; relevant rules get overlapped in order|
 
 
-## Role
+## Rule
 
-A role is a compound of monitoring configurations which is used to configure clients.
+A rule is a compound of monitoring configurations which is used to configure clients.
 
 |Item|Description|
 |-|-|
@@ -26,9 +26,9 @@ A role is a compound of monitoring configurations which is used to configure cli
 |`MonitorInterval`|How often the client sends its metrics; in seconds|
 
 
-## Status
+## ItemStatus
 
-A status object typically has the most recent information about the client. This should not be confused with **Monitor.Status**.
+A status object typically has the most recent status information about the client.
 
 |Item|Description|
 |-|-|

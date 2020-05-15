@@ -19,7 +19,7 @@ import (
 )
 
 const (
-    dataCacheExt              = ".cache"
+    dataStoreExt              = ".store"
     clientConfigWatchInterval = time.Second * 5
 )
 
@@ -34,8 +34,8 @@ type ServerConfig struct { // srvCfg
     HttpCertFilePath    string     `json:"http.certFilePath"` // For TLS
     HttpKeyFilePath     string     `json:"http.keyFilePath"` // For TLS
     // Monitor
-    DataCacheInterval   int    `json:"monitor.dataCacheInterval"` // (minutes)
-    DataCacheDir        string `json:"monitor.dataCacheDir"`
+    DataStoreInterval   int    `json:"monitor.dataStoreInterval"` // (minutes)
+    DataStoreDir        string `json:"monitor.dataStoreDir"`
     MaxDataLength       int    `json:"monitor.maxDataLength"`
     GapThresholdTime    int    `json:"monitor.gapThresholdTime"` // (minutes)
     DecimationThreshold int    `json:"monitor.decimationThreshold"`
@@ -67,9 +67,9 @@ var DefaultServerConfig = ServerConfig{
     HttpCertFilePath:    "",
     HttpKeyFilePath:     "",
     // Monitor
-    DataCacheInterval:   1,
-    DataCacheDir:        "./serverCache.d",
-    MaxDataLength:       43200, // 30 days for 1-minute interval
+    DataStoreInterval:   1,
+    DataStoreDir:        "./serverStore.d",
+    MaxDataLength:       43200, // 30 days long for 1-minute interval
     GapThresholdTime:    15,
     DecimationThreshold: 1500,
     DecimationInterval:  10,
@@ -87,23 +87,41 @@ var DefaultServerConfig = ServerConfig{
 // CLIENT CONFIG ---
 
 type ClientConfig struct { // clCfg
-    ClientMap map[string/* clId */] ClientInfo    `json:"clientMap"`
-    RoleMap                         ClientRoleMap `json:"roleMap"`
+    InfoMap ClientInfoMap `json:"infoMap"`
+    RuleMap ClientRuleMap `json:"ruleMap"`
 }
 
 var DefaultClientConfig = ClientConfig{
-    // ClientMap
-    ClientMap: map[string/* clientId */] ClientInfo{
+    
+    InfoMap: ClientInfoMap{
         "example-01": ClientInfo{
             Host:  "127.0.0.1",
-            Alias: "example",
+            Alias: "Example",
             Role:  "foo bar",
         },
     },
-    // Roles
-    RoleMap: ClientRoleMap{
+    
+    RuleMap: ClientRuleMap{
+
+        "basic": {
+            MonitorConfigMap: MonitorConfigMap{
+                "cpu-count": MonitorConfig{
+                    Format: "{} CPUs",
+                    Constant: true,
+                },
+                "memory-size-gb": MonitorConfig{
+                    Format: "{.2f} GB",
+                    Constant: true,
+                },
+                "swap-size-gb": MonitorConfig{
+                    Format: "{.2f} GB",
+                    Constant: true,
+                },
+                
+            }
+        },
         "foo": {
-            MonitorConfigMap: map[string] MonitorConfig{
+            MonitorConfigMap: MonitorConfigMap{
                 "cpu-usage": MonitorConfig{
                     FatalRange:   "80:",
                     WarningRange: "50:",
@@ -122,7 +140,9 @@ var DefaultClientConfig = ClientConfig{
             },
             MonitorInterval: 60,
         },
+
     },
+
 }
 
 
@@ -442,7 +462,7 @@ func(srv *Server) Start() (err error) {
             // Start line
             startLine, err := rd.ReadString('\n')
             if err == io.EOF { return }
-            Assert(err == nil, "Unexpected start line:" + startLine)
+            Assert(err == nil, "Unexpected start line: " + startLine)
             // Read rest bytes without advancing the reader
             rest, err := rd.Peek(rd.Buffered()) 
             Try(err)

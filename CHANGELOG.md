@@ -18,6 +18,7 @@ First version that complies with the documentation
 - [ ] GapThresholdTime might have to be per-client
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
 - [ ] Sometimes SIGTERM does not terminate server instance
+- [ ] `web` sometimes mousemove event takes much more time than usual
 
 
 ### Alpha 0.13

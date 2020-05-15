@@ -30,7 +30,7 @@ type MonitorDataTableBox struct {
     DataMap    map[string] []byte
 }
 
-type MonitorDataMap map[string] MonitorData
+type MonitorDataMap map[string/* monitorKey */] MonitorData
 type MonitorData []MonitorDatum
 type MonitorDatum struct {
     Timestamp int64
@@ -50,6 +50,7 @@ type MonitorConfig struct {
     WarningRange Range `json:"warningRange"`
     Format string `json:"format"`
 }
+type MonitorConfigMap map[string/* monitorKey */] MonitorConfig
 
 func init() {
     // Monitor error callback
