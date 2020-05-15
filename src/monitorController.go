@@ -11,9 +11,14 @@ import (
     . "github.com/hjjg200/go-act"
 )
 
-//
-// STATUS
-//
+func init() {
+    // Monitor error callback
+    monitor.ErrorCallback = func(err error) {
+        EventLogger.Warnln("monitor:", err)
+    }
+}
+
+// STATUS ---
 
 const (
     MonitorStatusNormal  = 0
@@ -21,13 +26,11 @@ const (
     MonitorStatusFatal   = 16
 )
 
-//
-// DATA
-//
+// DATA ---
 
 type MonitorDataTableBox struct {
     Boundaries []byte
-    DataMap    map[string] []byte
+    DataMap    map[string/* monitorKey */] []byte
 }
 
 type MonitorDataMap map[string/* monitorKey */] MonitorData
@@ -45,21 +48,17 @@ func (md MonitorData) Swap(i, j int) { md[i], md[j] = md[j], md[i] }
 func (datum MonitorDatum) X() float64 { return float64(datum.Timestamp) }
 func (datum MonitorDatum) Y() float64 { return datum.Value }
 
+// CONFIG ---
+
 type MonitorConfig struct {
-    FatalRange Range `json:"fatalRange"`
-    WarningRange Range `json:"warningRange"`
-    Format string `json:"format"`
+    FatalRange   Range  `json:"fatalRange"`
+    WarningRange Range  `json:"warningRange"`
+    Format       string `json:"format"`
+    Constant     bool   `json:"constant"`
 }
 type MonitorConfigMap map[string/* monitorKey */] MonitorConfig
 
-func init() {
-    // Monitor error callback
-    monitor.ErrorCallback = func(err error) {
-        EventLogger.Warnln("monitor:", err)
-    }
-}
-
-func (mCfg MonitorConfig) StatusOf(val float64) int {
+func(mCfg MonitorConfig) StatusOf(val float64) int {
     switch {
     case mCfg.FatalRange.Includes(val):
         return MonitorStatusFatal
@@ -69,9 +68,7 @@ func (mCfg MonitorConfig) StatusOf(val float64) int {
     return MonitorStatusNormal
 }
 
-//
-// KEY
-//
+// KEY ---
 
 type monitorKey struct {
     base, param, idx string
@@ -93,9 +90,9 @@ func FormatMonitorKey(base, param, idx string) string {
     return monitor.FormatWrapperKey(base, param, idx)
 }
 
-//
-// Compression
-//
+
+// COMPRESSION ---
+
 func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
 
     defer Catch(&err)
@@ -104,20 +101,27 @@ func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
     gzw := gzip.NewWriter(buf)
     enc := gob.NewEncoder(gzw)
 
-    // | type | timestamps | values | 
+    // |       entire content       |
+    // | type | timestamps | values |
 
     if len(md) > 0 {
+
         enc.Encode("float64")
+
         timestamps := make([]int64, len(md))
         values     := make([]float64, len(md))
         for i := range md {
             timestamps[i] = md[i].Timestamp
             values[i] = md[i].Value
         }
+
         enc.Encode(timestamps)
         enc.Encode(values)
+
     } else {
+
         enc.Encode("nil")
+
     }
 
     // Return
@@ -136,7 +140,7 @@ func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
     Try(err)
     dec      := gob.NewDecoder(gzr)
 
-    //
+    // Vars
     var typ string
     timestamps := make([]int64, 0)
     put        := func(slice []float64) {
@@ -148,20 +152,26 @@ func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
             }
         }
     }
+
     // Type
     dec.Decode(&typ)
+
     // Timestamp
     dec.Decode(&timestamps)
+
     // Value
     switch typ {
     case "float64":
+
         values := make([]float64, 0)
         dec.Decode(&values)
         put(values)
+
     case "nil":
+
         // Return empty
         md = make(MonitorData, 0)
-        return
+
     }
 
     return

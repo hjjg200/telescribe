@@ -17,7 +17,7 @@ const defaultHelloRetryInterval = time.Minute * 1
 type Client struct {
     serverAddr    string
     s             *Session
-    role          ClientRole
+    rule          ClientRule
     configVersion string
 }
 
@@ -34,6 +34,7 @@ func (cl *Client) hello() (err error) {
     // Connection
     conn, err := net.Dial("tcp", cl.serverAddr)
     Try(err)
+
     defer conn.Close()
     EventLogger.Infoln("HELLO SERVER")
 
@@ -51,22 +52,24 @@ func (cl *Client) hello() (err error) {
 
     switch srvRsp.Name() {
     case "hello":
-        return cl.configureRole(
+        Try(cl.configureRule(
             srvRsp.String("configVersion"),
-            srvRsp.Bytes("role"), 
-        )
+            srvRsp.Bytes("rule"), 
+        ))
     case "version-mismatch":
-        return cl.autoUpdate(srvRsp.Bytes("executable"))
+        Try(cl.autoUpdate(srvRsp.Bytes("executable")))
     default:
-        return fmt.Errorf("Bad config response")
+        panic("Bad config response")
     }
+
+    return nil
 
 }
 
-func (cl *Client) configureRole(cv string, role []byte) error {
+func (cl *Client) configureRule(cv string, rule []byte) error {
     cl.configVersion = cv
-    cl.role = ClientRole{}
-    return json.Unmarshal(role, &cl.role)
+    cl.rule = ClientRule{}
+    return json.Unmarshal(rule, &cl.rule)
 }
 
 func (cl *Client) checkKnownHosts() error {
@@ -77,6 +80,9 @@ func (cl *Client) autoUpdate(executable []byte) error {
 
     EventLogger.Infoln("Started Auto Update Procedure.")
     EventLogger.Infoln("The service must be set to automatically restart.")
+
+    // Size
+    EventLogger.Infoln("Size of new executalbe:", len(executable))
 
     // Remove the current executable
     // -> You need to unlink(rm) the runinng executable file first in order to replace it with a new one
@@ -95,13 +101,14 @@ func (cl *Client) autoUpdate(executable []byte) error {
         return err
     }
 
-    EventLogger.Infoln("Written bytes:", n)
     f.Close()
 
+    EventLogger.Infoln("Written bytes:", n)
     EventLogger.Infoln("Successfully updated the executable.")
     EventLogger.Infoln("Exiting the application...")
     os.Exit(1)
     // APP EXITED
+
     return nil
 
 }
@@ -126,6 +133,7 @@ func (cl *Client) Start() error {
         }
 
         EventLogger.Infoln("SUCCESSFUL HELLO")
+
         // Config
         // + Monitor Interval Shorthand Func
         mrif   := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
@@ -133,38 +141,44 @@ func (cl *Client) Start() error {
         passer := together.NewPasser(mrif())
 
         // Loop
+        var conn net.Conn
+
         MonitorLoop:
         for {
 
-            var conn net.Conn
             passer.Pass()
 
-            // Connection
+            // Close open connection
             if conn != nil {
                 conn.Close()
                 conn = nil
             }
+
+            // Dial
             conn, err := net.Dial("tcp", cl.serverAddr)
             if err != nil {
-                EventLogger.Warnln("Server Not Responding")
+                EventLogger.Warnln("Server is not responding")
                 continue
             }
             cl.s.SetConn(conn)
 
             // Monitored values
             valMap := make(map[string] interface{})
-            mapLen := 0
             for rawKey := range cl.role.MonitorConfigMap {
+
+                // Get Getter
                 getter, ok := monitor.Getter(string(rawKey))
                 if !ok {
                     valMap[rawKey] = nil
                     continue
                 }
+
+                // 
                 got := getter()
                 for key, val := range got {
                     valMap[key] = val
-                    mapLen++
                 }
+
             }
 
             // Send to Server
@@ -179,7 +193,7 @@ func (cl *Client) Start() error {
                 EventLogger.Warnln(err)
                 continue
             }
-            AccessLogger.Infoln("Sent Data:", mapLen, "items")
+            AccessLogger.Infoln("Sent")
 
             // Get response
             srvRsp, err := cl.s.NextResponse()
@@ -191,9 +205,9 @@ func (cl *Client) Start() error {
             switch srvRsp.Name() {
             case "ok":
             case "reconfigure":
-                err = cl.configureRole(
+                err = cl.configureRule(
                     srvRsp.String("configVersion"),
-                    srvRsp.Bytes("role"), 
+                    srvRsp.Bytes("rule"), 
                 )
                 if err != nil {
                     EventLogger.Warnln(err)
@@ -223,7 +237,8 @@ func (cl *Client) Start() error {
 type ClientInfo struct {
     Host  string `json:"host"`
     Alias string `json:"alias"`
-    Role  string `json:"role"`
+    Tags  string `json:"tags"`
+
     ips   []net.IP
 }
 
@@ -262,20 +277,20 @@ func(clInfo *ClientInfo) HasAddr(addr string) bool {
 
 // ROLE ---
 
-type ClientRole struct { // clRole
-    MonitorConfigMap map[string/* mKey */] MonitorConfig `json:"monitorConfigMap"`
-    MonitorInterval  int                       `json:"monitorInterval"`
+type ClientRule struct { // clRule
+    MonitorConfigMap MonitorConfigMap `json:"monitorConfigMap"`
+    MonitorInterval  int              `json:"monitorInterval"`
 }
 
-func(clRole ClientRole) Version() string {
-    j, _ := json.Marshal(clRole)
+func(clRule ClientRule) Version() string {
+    j, _ := json.Marshal(clRule)
     return fmt.Sprintf("%x", Sha256Sum(j))[:6]
 }
-func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
-    lhs := clRole
+func(clRule ClientRule) Merge(rhs ClientRule) ClientRule {
+    lhs := clRule
     // MonitorConfigMap
     if lhs.MonitorConfigMap == nil {
-        lhs.MonitorConfigMap = make(map[string] MonitorConfig)
+        lhs.MonitorConfigMap = make(MonitorConfigMap)
     }
     for mKey, mCfg := range rhs.MonitorConfigMap {
         lhs.MonitorConfigMap[mKey] = mCfg
@@ -286,22 +301,22 @@ func(clRole ClientRole) Merge(rhs ClientRole) ClientRole {
     return lhs
 }
 
-type ClientRoleMap map[string/* roleName */] ClientRole
+type ClientRuleMap map[string/* roleName */] ClientRule
 
-func(roleMap ClientRoleMap) Get(r string) ClientRole {
-    split := SplitWhitespace(r)
-    ret   := ClientRole{}
-    for _, n := range split {
-        if clRole, ok := roleMap[n]; ok {
-            ret = ret.Merge(clRole)
+func(roleMap ClientRuleMap) Get(r string) ClientRule {
+    tags := SplitWhitespace(r)
+    ret  := ClientRule{}
+    for _, tag := range tags {
+        if clRule, ok := roleMap[tag]; ok {
+            ret = ret.Merge(clRule)
         }
     }
     return ret
 }
 
-// STATUS ---
+// ITEM STATUS ---
 
-type ClientStatus struct { // clStat
+type ClientItemStatus struct { // clItemSt
     Timestamp int64   `json:"timestamp"`
     Value     float64 `json:"value"`
     Status    int     `json:"status"`

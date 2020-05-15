@@ -97,13 +97,14 @@ var DefaultClientConfig = ClientConfig{
         "example-01": ClientInfo{
             Host:  "127.0.0.1",
             Alias: "Example",
-            Role:  "foo bar",
+            Role:  "basic example",
         },
     },
     
     RuleMap: ClientRuleMap{
 
         "basic": {
+
             MonitorConfigMap: MonitorConfigMap{
                 "cpu-count": MonitorConfig{
                     Format: "{} CPUs",
@@ -117,28 +118,36 @@ var DefaultClientConfig = ClientConfig{
                     Format: "{.2f} GB",
                     Constant: true,
                 },
-                
-            }
+                "disk-size-gb": MonitorConfig{
+                    Format: "{.2f} GB",
+                    Constant: true,
+                },
+            },
+            MonitorInterval: 60,
+
         },
-        "foo": {
+
+        "example": {
+
             MonitorConfigMap: MonitorConfigMap{
                 "cpu-usage": MonitorConfig{
-                    FatalRange:   "80:",
-                    WarningRange: "50:",
+                    FatalRange:   "90:",
+                    WarningRange: "82:",
                     Format:       "{.1f}%",
                 },
-                "memory-usage": MonitorConfig{},
-            },
-            MonitorInterval: 60,
-        },
-        "bar": {
-            MonitorConfigMap: map[string] MonitorConfig{
-                "swap-usage":   MonitorConfig{},
                 "memory-usage": MonitorConfig{
-                    Format: "Using {.f}%",
+                    FatalRange:   "88:",
+                    WarningRange: "75:",
+                    Format:       "{.1f}%",
+                },
+                "swap-usage": MonitorConfig{
+                    FatalRange:   "88:",
+                    WarningRange: "75:",
+                    Format:       "{.1f}%",
                 },
             },
             MonitorInterval: 60,
+
         },
 
     },
@@ -231,11 +240,11 @@ func(srv *Server) loadClientConfig() (err error) {
     }
 
     // Version
-    clCfg   := srv.clientConfig
-    ccv     := make(map[string] string)
-    for clId, clInfo := range clCfg.ClientMap {
-        clRole    := clCfg.RoleMap.Get(clInfo.Role)
-        ccv[clId]  = clRole.Version()
+    clCfg := srv.clientConfig
+    ccv   := make(map[string] string)
+    for clId, clInfo := range clCfg.InfoMap {
+        clRule    := clCfg.RuleMap.Get(clInfo.Tags)
+        ccv[clId]  = clRule.Version()
     }
     srv.clientConfigVersion = ccv
     
@@ -280,21 +289,21 @@ func(srv *Server) Start() (err error) {
     Try(srv.loadClientConfig())
     EventLogger.Infoln("Loaded client config")
 
-    // Private Key
+    // Private key
     Try(srv.checkAuthPrivateKey())
     EventLogger.Infoln("The fingerprint of the authentication public key is:")
     EventLogger.Infoln(sessionAuthPriv.PublicKey.Fingerprint())
 
-    // Cache Executable
+    // Cache executable
     Try(srv.cacheExecutable())
     EventLogger.Infoln("Cached executable for auto-update")
 
-    // Read Monitor Data Cache
-    Try(srv.readCachedClientMonitorDataMap())
+    // Read stored monitor data
+    Try(srv.readStoredClientMonitorDataMap())
     EventLogger.Infoln("Read the cached monitored items")
 
-    // Ensure Directories
-    Try(EnsureDirectory(srv.config.DataCacheDir))
+    // Ensure directories
+    Try(EnsureDirectory(srv.config.DataStoreDir))
     EventLogger.Infoln("Ensured necessary directories")
 
     // Network
@@ -314,8 +323,8 @@ func(srv *Server) Start() (err error) {
 
             // Add task
             HoldSwitch.Add(ThreadMain, 1)
-            Try(srv.CacheClientMonitorDataMap())
-            EventLogger.Infoln("Cached client monitor data")
+            Try(srv.StoreClientMonitorDataMap())
+            EventLogger.Infoln("Stored client monitor data")
 
             // Task done
             HoldSwitch.Done(ThreadMain)
@@ -353,53 +362,68 @@ func(srv *Server) Start() (err error) {
     }()
     EventLogger.Infoln("Started client config reloading thread")
 
-    // Chart-ready Data Preparing Thread
+    // Chart-ready csv preparing thread
     go func() {
         for {func() {
+
             defer CatchFunc(nil, EventLogger.Warnln)
 
             // Add task
             HoldSwitch.Add(ThreadMain, 1)
+
             tBoxMap := make(map[string/* clId */] MonitorDataTableBox)
             gthSec  := int64(srv.config.GapThresholdTime * 60) // To seconds
+
             for clId, mdMap := range srv.clientMonitorDataMap {
-                // MonitorData
+
+                // Maps
                 tsMap  := make(map[int64/* timestamp */] struct{})
                 mdtMap := make(map[string] []byte)
+
                 // Table-writing loop
                 for mKey, mData := range mdMap {
+
                     // Decimate monitor data
                     decimated := LttbMonitorData(
                         mData, srv.config.DecimationThreshold,
                     )
+
                     // Write CSV(table)
-                    table  := bytes.NewBuffer(nil)
+                    csv    := bytes.NewBuffer(nil)
                     prevTs := decimated[0].Timestamp
-                    fmt.Fprint(table, "timestamp,value\n")
+                    fmt.Fprint(csv, "timestamp,value\n")
+
+                    // Write rows
                     for _, each := range decimated {
+
                         ts := each.Timestamp
+
                         // Check if there is gap
                         if ts - prevTs > gthSec {
-                            // Put NaN(Gap)
+                            // Put NaN which indicates a gap
                             midTs        := (ts + prevTs) / 2
                             tsMap[midTs]  = struct{}{}
-                            fmt.Fprintf(table, "%d,NaN\n", midTs)
+                            fmt.Fprintf(csv, "%d,NaN\n", midTs)
                         }
+
                         prevTs    = ts
                         tsMap[ts] = struct{}{}
-                        fmt.Fprintf(table, "%d,%f\n", ts, each.Value)
+                        fmt.Fprintf(csv, "%d,%f\n", ts, each.Value)
+
                     }
+
                     // Assign csv
-                    mdtMap[mKey] = table.Bytes()
+                    mdtMap[mKey] = csv.Bytes()
+
                 }
 
-                // Timestamps Slice
+                // Timestamps slice
                 i, tss := 0, make([]int64, len(tsMap))
                 for t := range tsMap {
                     tss[i] = t
                     i++
                 }
-                sort.Sort(Int64Slice(tss))
+                sort.Sort(Int64Slice(tss)) // Sort
 
                 // Write boundaries table
                 bds := bytes.NewBuffer(nil)
@@ -422,6 +446,7 @@ func(srv *Server) Start() (err error) {
                 }
 
             }
+
             // Assign
             srv.clientMonitorDataTableBox = tBoxMap
             EventLogger.Infoln("Chart-ready data prepared")
@@ -431,6 +456,7 @@ func(srv *Server) Start() (err error) {
 
             // Sleep at end
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
+
         }()}
     }()
     EventLogger.Infoln("Started data decimation thread")
@@ -454,34 +480,42 @@ func(srv *Server) Start() (err error) {
         }
 
         go func() {
-            var host string
+
+            host, _ := HostnameOf(conn)
             defer CatchFunc(nil, EventLogger.Warnln, host)
 
-            host, _  = HostnameOf(conn)
-            rd      := bufio.NewReader(conn)
+            rd := bufio.NewReader(conn)
+
             // Start line
             startLine, err := rd.ReadString('\n')
             if err == io.EOF { return }
             Assert(err == nil, "Unexpected start line: " + startLine)
+
             // Read rest bytes without advancing the reader
             rest, err := rd.Peek(rd.Buffered()) 
             Try(err)
+
             // Bytes that are already read
             already := append([]byte(startLine), rest...)
 
             switch {
             case strings.Contains(startLine, "HTTP"):
+
                 // HTTP
                 proxy, err := net.Dial("tcp", srv.HttpAddr())
                 Try(err)
+
                 // Source reader
                 src := bufio.NewReader(io.MultiReader(bytes.NewReader(already), conn))
                 go connCopy(conn, proxy) // Proxy -> Conn
+
+                // Keep connection open and stream requests continuously
                 for {
+
                     // Look for requests
                     req, err := http.ReadRequest(src)
                     if err == io.EOF {
-                        break
+                        return
                     } else if err != nil {
                         panic(err)
                     }
@@ -489,14 +523,18 @@ func(srv *Server) Start() (err error) {
                     // New request
                     AccessLogger.Infoln(host, req.Method, req.URL.Path, req.Proto)
                     req.WriteProxy(proxy) // Conn -> Proxy
+
                 }
+
             case strings.Contains(startLine, "TELESCRIBE"):
+
                 // TELESCRIBE
                 s := NewSession(conn)
 
                 // Prepend raw input
                 s.PrependRawInput(bytes.NewReader(already))
                 Try(srv.HandleSession(s))
+
             default:
             }
         }()
@@ -507,18 +545,20 @@ func(srv *Server) Start() (err error) {
 
 }
 
-func(srv *Server) readCachedClientMonitorDataMap() (err error) {
+func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
 
     // Search for cache files
     matches, err := filepath.Glob(
-        srv.config.DataCacheDir + "/*" + dataCacheExt,
+        srv.config.DataStoreDir + "/*" + dataStoreExt,
     )
     Try(err)
 
+    // Per file
     for _, match := range matches {func() {
-        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read cache:" + match)
+
+        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read cache: " + match)
 
         f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
         Try(err2)
@@ -529,6 +569,7 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
             cmp  []byte
         )
 
+        // Decode gob
         dec := gob.NewDecoder(f)
         Try(dec.Decode(&clId))
         Try(dec.Decode(&mKey))
@@ -545,13 +586,14 @@ func(srv *Server) readCachedClientMonitorDataMap() (err error) {
             srv.clientMonitorDataMap[clId] = make(MonitorDataMap)
         }
         srv.clientMonitorDataMap[clId][mKey] = mData
+
     }()}
 
     return
 
 }
 
-func(srv *Server) CacheClientMonitorDataMap() (err error) {
+func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
     defer CatchFunc(&err, EventLogger.Warnln)
 
@@ -575,7 +617,7 @@ func(srv *Server) CacheClientMonitorDataMap() (err error) {
             h  := fmt.Sprintf("%x", Sha256Sum([]byte(
                 clId + string(mKey), // TODO: Add specs for cache name in the documentation
             )))
-            fn := srv.config.DataCacheDir + "/" + h + dataCacheExt
+            fn := srv.config.DataStoreDir + "/" + h + dataStoreExt
             Try(rewriteFile(fn, buf))
 
         }()}
@@ -595,13 +637,12 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string
     }
 
     //
-    initialized := make(MonitorData, 0)
     fatalValues := make(map[string] float64)
     appendValue := func(mKey string, val float64) {
 
         short, ok := srv.clientMonitorDataMap[clId][mKey]
         if !ok {
-            short = initialized
+            short = make(MonitorData, 0)
         }
 
         // Trim Data
@@ -668,7 +709,7 @@ type alarmWebhook struct {
 }
 func(srv *Server) sendAlarmWebhook(clId string, timestamp int64, fatalValues map[string] float64) error {
 
-    // Empty Values
+    // Empty values
     if len(fatalValues) == 0 {
         return nil
     }
@@ -735,11 +776,13 @@ func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig, boo
 
 func(srv *Server) HandleSession(s *Session) (err error) {
 
-    defer CatchFunc(&err, EventLogger.Warnln)
+    logParams := make([]interface{}, 0)
+    defer CatchFunc(&err, EventLogger.Warnln, logParams...)
 
     // Get Address
     host, err := s.RemoteHost()
     Try(err)
+    logParams = append(logParams, host)
 
     // Check Whitelisted
     clCfg       := srv.clientConfig
@@ -760,11 +803,11 @@ func(srv *Server) HandleSession(s *Session) (err error) {
     clRsp, err := s.NextResponse()
     Try(err)
 
-    // Role
+    // Rule
     var clId   string
     var clInfo ClientInfo
     alias := clRsp.String("alias")
-    for id, info := range clCfg.ClientMap {
+    for id, info := range clCfg.InfoMap {
         if info.HasAddr(host) && info.Alias == alias {
             clId   = id
             clInfo = info
@@ -772,8 +815,9 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         }
     }
     AccessLogger.Infoln(clInfo.Alias, "from", clInfo.Host, "connected")
-    Assert(clId != "", "Client not found in the config")
-    clRole := clCfg.RoleMap.Get(clInfo.Role)
+    Assert(clId != "", "Client must be configured in the config")
+    logParams  = append(logParams, clId)
+    clRule    := clCfg.RoleMap.Get(clInfo.Rule)
 
     // Version Check
     ver := clRsp.String("version")
@@ -788,36 +832,39 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         srvRsp := NewResponse("version-mismatch")
         srvRsp.Set("executable", srv.cachedExecutable)
         s.WriteResponse(srvRsp)
-        EventLogger.Warnln(clId, "version mismatch, session terminated")
-        return nil
+        panic("Version mismatch, session terminated")
     }
 
     // Main handling
     switch clRsp.Name() {
     case "hello":
 
-        roleBytes, err := json.Marshal(clRole)
+        ruleBytes, err := json.Marshal(clRule)
         Try(err)
+
         srvRsp := NewResponse("hello")
-        srvRsp.Set("role", roleBytes)
+        srvRsp.Set("rule", ruleBytes)
         srvRsp.Set("configVersion", srv.clientConfigVersion[clId])
         EventLogger.Infoln(clId, "HELLO CLIENT")
-        return s.WriteResponse(srvRsp)
+        Try(s.WriteResponse(srvRsp))
+        return nil
 
     case "monitor-record":
-        //
+        
         valMap, ok := clRsp.Args()["valueMap"].(map[string] interface{})
         Assert(ok, "Malformed value map")
         timestamp := clRsp.Int64("timestamp")
         srv.RecordValueMap(clId, timestamp, valMap)
+
     default:
         panic("Unknown response")
     }
 
     // Post Handling
-    // # Config Version Check
-    configVersion := clRsp.String("configVersion")
-    switch configVersion {
+
+    // Config Version Check
+    clCfgVer := clRsp.String("configVersion")
+    switch clCfgVer {
     case "":
         // Version empty
         panic("Client response does not include config version")
@@ -825,16 +872,19 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         // Version match
     default:
         // Version mismatch
-        roleBytes, err := json.Marshal(clRole)
+        ruleBytes, err := json.Marshal(clRule)
         Try(err)
+
         srvRsp := NewResponse("reconfigure")
-        srvRsp.Set("role", roleBytes)
+        srvRsp.Set("rule", ruleBytes)
         srvRsp.Set("configVersion", srv.clientConfigVersion[clId])
-        return s.WriteResponse(srvRsp)
+        Try(s.WriteResponse(srvRsp))
+        return nil
     }
 
-    // # OK
+    // OK
     srvRsp := NewResponse("ok")
-    return s.WriteResponse(srvRsp)
+    Try(s.WriteResponse(srvRsp))
+    return nil
 
 }

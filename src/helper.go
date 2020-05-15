@@ -37,9 +37,7 @@ func RandomAlphaNum(l int) string {
     return string(b)
 }
 
-//
-// FILE
-//
+// FILE ---
 
 func ReadFile(fn string, mode os.FileMode) ([]byte, error) {
     f, err := os.OpenFile(fn, os.O_RDONLY, mode)
@@ -51,8 +49,7 @@ func ReadFile(fn string, mode os.FileMode) ([]byte, error) {
     if err != nil {
         return nil, err
     }
-    f.Close()
-    return buf.Bytes(), nil
+    return buf.Bytes(), f.Close()
 }
 
 func TouchFile(fn string, mode os.FileMode) error {
@@ -60,15 +57,32 @@ func TouchFile(fn string, mode os.FileMode) error {
     if err != nil {
         return err
     }
-    f.Close()
-    return nil
+    return f.Close()
 }
 
-//
-// REGEXP
-//
+func rewriteFile(path string, rd io.Reader) error {
 
-var whitespaceRegexp = regexp.MustCompile("[\\s\\t ]+")
+    // Temp
+    tmpPath  := path + ".tmp"
+    tmp, err := os.OpenFile(tmpPath, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0600)
+    if err != nil {
+        return err
+    }
+
+    // Copy
+    io.Copy(tmp, rd)
+    tmp.Close()
+
+    // Replace
+    // + os.Rename replaces the old file with the new one if there is any, provided
+    //   the old path does not resolve to a directory
+    return os.Rename(tmpPath, path)
+
+}
+
+// REGEXP ---
+
+var whitespaceRegexp = regexp.MustCompile("[\\s\\t ]+") // tabs, spaces
 func SplitWhitespace(str string) []string {
     return whitespaceRegexp.Split(str, -1)
 }
@@ -76,7 +90,7 @@ func SplitWhitespaceN(str string, i int) []string {
     return whitespaceRegexp.Split(str, i)
 }
 
-var linebreakRegexp = regexp.MustCompile("\\r\\n|\\n")
+var linebreakRegexp = regexp.MustCompile("\\r\\n|\\n") // CRLF, LF
 func SplitLines(str string) []string {
     return linebreakRegexp.Split(str, -1)
 }
@@ -86,32 +100,14 @@ func SplitComma(str string) []string {
     return commaSplitRegexp.Split(str, -1)
 }
 
-//
-// FULLNAME
-//
-
-func parseFullName(fn string) (string, string) {
-    defer recover() // Possible index panic
-    i := strings.Index(fn, "(")
-    return fn[i + 1:len(fn) - 1], fn[:i]
-}
-
-func formatFullName(host, alias string) string {
-    return alias + "(" + host + ")"
-}
-
-//
-// SORT
-//
+// SORT ---
 
 type Int64Slice []int64
 func (s Int64Slice) Len() int { return len(s) }
 func (s Int64Slice) Less(i, j int) bool { return s[i] < s[j] }
 func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
-//
-// RECOVER
-//
+// RECOVER ---
 
 func CatchFunc(err *error, f func(...interface{}), prepend ...interface{}) {
     r := recover()
@@ -129,32 +125,10 @@ func CatchFunc(err *error, f func(...interface{}), prepend ...interface{}) {
     }
 }
 
-//
-// IO
-//
+// IO ---
 
 func connCopy(dest, src net.Conn) {
     defer src.Close()
     defer dest.Close()
     io.Copy(dest, src)
-}
-
-func rewriteFile(path string, rd io.Reader) error {
-
-    // Temp
-    tmpPath  := path + ".tmp"
-    tmp, err := os.OpenFile(tmpPath, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
-    if err != nil {
-        return err
-    }
-
-    // Copy
-    io.Copy(tmp, rd)
-    tmp.Close()
-
-    // Replace
-    // + os.Rename replaces the old file with the new one if there is any, provided
-    //   the old path does not resolve to a directory
-    return os.Rename(tmpPath, path)
-
 }

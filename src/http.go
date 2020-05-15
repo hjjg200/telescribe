@@ -8,7 +8,6 @@ import (
     "io"
     "net"
     "net/http"
-  //netUrl "net/url"
     "os"
     "regexp"
     "strconv"
@@ -19,6 +18,7 @@ import (
 )
 
 func (srv *Server) startHttpServer() error {
+
     var err error
     srv.httpListener, err = net.Listen("tcp", "127.0.0.1:0") // Random port
     if err != nil {
@@ -47,6 +47,7 @@ func (srv *Server) startHttpServer() error {
         }
     }
 
+    // TLS
     if certFile != "" && keyFile != "" {
         return httpServer.ServeTLS(srv.httpListener, certFile, keyFile)
     }
@@ -101,12 +102,6 @@ func(srv *Server) populateHttpRouter() {
     }
     srv.httpRouter = hr
 
-    // Constants
-    const (
-        prefixMdtBox = "/monitorDataTableBox/"
-        rgxMdtBox = prefixMdtBox + "([^/]+)/([^/]+)\\.csv"
-    )
-
     // Functions
     type staticCache struct {
         name string
@@ -124,23 +119,29 @@ func(srv *Server) populateHttpRouter() {
             }
         }()
 
-        fp := hctx.Request.URL.Path[1:]
+        fp        := hctx.Request.URL.Path[1:]
         cache, ok := staticCacheMap[fp]
         if !ok {
+
+            // TODO: mutex
             Assert(strings.HasPrefix(fp, "static/"), "Static file path must start with static/")
             Assert(strings.Contains("/" + fp, "/../") == false, "File path must not have .. in it")
-            f, err := os.OpenFile(fp, os.O_RDONLY, 0644); Try(err)
+
+            f, err  := os.OpenFile(fp, os.O_RDONLY, 0644); Try(err)
             st, err := f.Stat(); Try(err)
-            buf := bytes.NewBuffer(nil)
+            buf     := bytes.NewBuffer(nil)
+
             io.Copy(buf, f)
             cache = staticCache{
                 name: f.Name(),
                 modTime: st.ModTime(),
                 bytes: buf.Bytes(),
             }
+
             f.Close()
             staticCacheMap[fp] = cache
             EventLogger.Infoln("Cached a static file:", fp)
+
         }
         http.ServeContent(
             hctx.Writer, hctx.Request, cache.name, cache.modTime, bytes.NewReader(cache.bytes),
@@ -148,6 +149,7 @@ func(srv *Server) populateHttpRouter() {
 
     }
 
+    // Static files
     hr.Get("/(index.html)?", func(hctx HttpContext) {
         hctx.Request.URL.Path = "/static/index.html"
         serveStatic(hctx)
@@ -169,20 +171,24 @@ func(srv *Server) registerAPIV1() {
         apiName = "api/v1"
         prefix  = "/" + apiName + "/"
     )
-    type s2i map[string] interface{}
 
     // Helpers
     respond := func(hctx HttpContext, key string, val interface{}) {
+
         w := hctx.Writer
         w.Header().Set("Content-Type", "application/json")
-        obj := s2i{key: val}
+
+        obj    := map[string] interface{}{key: val}
         j, err := json.MarshalIndent(obj, "", "  ")
+
         if err != nil {
             w.WriteHeader(500)
             w.Write([]byte("{}"))
             return
         }
+
         w.Write(j)
+
     }
     isPermitted := func(hctx HttpContext, key string, params ...string) bool {
         args := []string{ apiName, hctx.Request.Method, key }
@@ -202,64 +208,66 @@ func(srv *Server) registerAPIV1() {
         }
     }
 
-    // clientMap
-    keyClientMap := "clientMap"
-    rgxClientMap := formatRgx(keyClientMap, 0)
-    hr.Get(rgxClientMap, func(hctx HttpContext) {
+    // clientInfoMap
+    keyClientInfoMap := "clientInfoMap"
+    rgxClientInfoMap := formatRgx(keyClientInfoMap, 0)
+    hr.Get(rgxClientInfoMap, func(hctx HttpContext) {
         defer catchStatus(hctx)
 
         // Permission
-        assertStatus(isPermitted(hctx, keyClientMap), 403)
+        assertStatus(isPermitted(hctx, keyClientInfoMap), 403)
 
-        ret := make(map[string] ClientInfo)
-        clMap := srv.clientConfig.ClientMap
-        for clId, clInfo := range clMap {
-            if !isPermitted(hctx, keyClientMap, clId) {
+        ret  := ClientInfoMap
+        iMap := srv.clientConfig.InfoMap
+        for clId, clInfo := range iMap {
+            if !isPermitted(hctx, keyClientInfoMap, clId) {
                 continue
             }
             ret[clId] = clInfo
         }
 
         // Respond
-        respond(hctx, keyClientMap, ret)
+        respond(hctx, keyClientInfoMap, ret)
     })
 
-    // clientRole
-    keyClientRole := "clientRole"
-    rgxClientRole := formatRgx(keyClientRole, 1)
-    hr.Get(rgxClientRole, func(hctx HttpContext) {
+    // clientRule
+    keyClientRule := "clientRule"
+    rgxClientRule := formatRgx(keyClientRule, 1)
+    hr.Get(rgxClientRule, func(hctx HttpContext) {
         defer catchStatus(hctx)
 
         // Vars
         clId := hctx.Matches[1]
         // Permission
-        assertStatus(isPermitted(hctx, keyClientRole, clId), 403)
+        assertStatus(isPermitted(hctx, keyClientRule, clId), 403)
 
-        clInfo, ok := srv.clientConfig.ClientMap[clId]
+        clInfo, ok := srv.clientConfig.InfoMap[clId]
         assertStatus(ok, 400)
-        clRole := srv.clientConfig.RoleMap.Get(clInfo.Role)
+        clRule := srv.clientConfig.RuleMap.Get(clInfo.Tags)
 
         // Respond
-        respond(hctx, keyClientRole, clRole)
+        respond(hctx, keyClientRule, clRule)
     })
 
-    // clientStatus
-    keyClientStatus := "clientStatus"
-    rgxClientStatus := formatRgx(keyClientStatus, 1)
-    hr.Get(rgxClientStatus, func(hctx HttpContext) {
+    // clientItemStatus
+    keyClItStat := "clientItemStatus"
+    rgxClItStat := formatRgx(keyClItStat, 1)
+    hr.Get(rgxClItStat, func(hctx HttpContext) {
+
         defer catchStatus(hctx)
 
         // Vars
-        ret  := make(map[string/* mKey */] ClientStatus)
+        ret  := make(ClientItemStatusMap)
         clId := hctx.Matches[1]
+
         // Permission
-        assertStatus(isPermitted(hctx, keyClientStatus, clId), 403)
+        assertStatus(isPermitted(hctx, keyClItStat, clId), 403)
 
         mdMap, ok :=  srv.clientMonitorDataMap[clId]
         assertStatus(ok, 400)
 
         for mKey, mData := range mdMap {
-            if !isPermitted(hctx, keyClientStatus, clId, mKey) {
+            if !isPermitted(hctx, keyClItStat, clId, mKey) {
                 continue
             }
 
@@ -270,7 +278,7 @@ func(srv *Server) registerAPIV1() {
             }
 
             le   := mData[len(mData) - 1]
-            ret[mKey] = ClientStatus{
+            ret[mKey] = ClientItemStatus{
                 Timestamp: le.Timestamp,
                 Value:     le.Value,
                 Status:    mCfg.StatusOf(le.Value),
@@ -278,7 +286,7 @@ func(srv *Server) registerAPIV1() {
         }
 
         // Respond
-        respond(hctx, keyClientStatus, ret)
+        respond(hctx, keyClItStat, ret)
     })
 
     // monitorConfig
@@ -380,9 +388,7 @@ func(srv *Server) registerAPIV1() {
 
 }
 
-////////////////
-//-- Router --//
-////////////////
+// ROUTER ---
 
 type httpRouter struct {
     // [regexp] => [method] => route
@@ -455,9 +461,7 @@ func(hr *httpRouter) Options(rstr string, h func(HttpContext)) { hr.addRoute("OP
 func(hr *httpRouter) Patch(rstr string, h func(HttpContext)) { hr.addRoute("PATCH", rstr, h) }
 
 
-//////////////
-//-- USER --//
-//////////////
+// USER ---
 
 type HttpUser struct {
     Name string `json:"name"`
@@ -557,9 +561,7 @@ func(pn *PermissionNode) Add(p string) {
 }
 
 func(pn PermissionNode) IsPermitted(nodes ...string) bool {
-//  nodes := permissionSplit(p)
-    root  := strings.ToLower(nodes[0])
-
+    root    := strings.ToLower(nodes[0])
     _, wild := pn[permissionWildcard]
     
     switch {
