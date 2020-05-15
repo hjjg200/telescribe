@@ -136,7 +136,7 @@ func (cl *Client) Start() error {
 
         // Config
         // + Monitor Interval Shorthand Func
-        mrif   := func() time.Duration { return time.Second * time.Duration(cl.role.MonitorInterval) }
+        mrif   := func() time.Duration { return time.Second * time.Duration(cl.rule.MonitorInterval) }
         hri     = mrif()
         passer := together.NewPasser(mrif())
 
@@ -164,7 +164,7 @@ func (cl *Client) Start() error {
 
             // Monitored values
             valMap := make(map[string] interface{})
-            for rawKey := range cl.role.MonitorConfigMap {
+            for rawKey := range cl.rule.MonitorConfigMap {
 
                 // Get Getter
                 getter, ok := monitor.Getter(string(rawKey))
@@ -321,3 +321,5 @@ type ClientItemStatus struct { // clItemSt
     Value     float64 `json:"value"`
     Status    int     `json:"status"`
 }
+
+type ClientItemStatusMap map[string/* monitorKey */] ClientItemStatus

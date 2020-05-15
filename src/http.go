@@ -217,7 +217,7 @@ func(srv *Server) registerAPIV1() {
         // Permission
         assertStatus(isPermitted(hctx, keyClientInfoMap), 403)
 
-        ret  := ClientInfoMap
+        ret  := make(ClientInfoMap)
         iMap := srv.clientConfig.InfoMap
         for clId, clInfo := range iMap {
             if !isPermitted(hctx, keyClientInfoMap, clId) {

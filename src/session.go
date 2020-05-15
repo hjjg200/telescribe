@@ -16,7 +16,6 @@ import (
     "sync/atomic"
     "time"
 
-    "./log"
     "./secret"
     "./secret/p256"
     "./secret/aesgcm"

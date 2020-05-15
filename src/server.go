@@ -94,11 +94,13 @@ type ClientConfig struct { // clCfg
 var DefaultClientConfig = ClientConfig{
     
     InfoMap: ClientInfoMap{
+
         "example-01": ClientInfo{
             Host:  "127.0.0.1",
             Alias: "Example",
-            Role:  "basic example",
+            Tags:  "basic example",
         },
+
     },
     
     RuleMap: ClientRuleMap{
@@ -300,7 +302,7 @@ func(srv *Server) Start() (err error) {
 
     // Read stored monitor data
     Try(srv.readStoredClientMonitorDataMap())
-    EventLogger.Infoln("Read the cached monitored items")
+    EventLogger.Infoln("Read the stored monitored data")
 
     // Ensure directories
     Try(EnsureDirectory(srv.config.DataStoreDir))
@@ -312,14 +314,14 @@ func(srv *Server) Start() (err error) {
     Try(err)
     EventLogger.Infoln("Network is configured to listen at", addr)
 
-    // Flush Cache Thread
+    // Data storing thread
     go func() {
         for {func() {
             // Function wrapping in order to use defer
             defer CatchFunc(nil, EventLogger.Warnln)
 
             // Sleep at beginning
-            time.Sleep(time.Minute * time.Duration(srv.config.DataCacheInterval))
+            time.Sleep(time.Minute * time.Duration(srv.config.DataStoreInterval))
 
             // Add task
             HoldSwitch.Add(ThreadMain, 1)
@@ -549,7 +551,7 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
 
-    // Search for cache files
+    // Search for stored files
     matches, err := filepath.Glob(
         srv.config.DataStoreDir + "/*" + dataStoreExt,
     )
@@ -558,7 +560,7 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
     // Per file
     for _, match := range matches {func() {
 
-        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read cache: " + match)
+        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read stored data: " + match)
 
         f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
         Try(err2)
@@ -600,7 +602,7 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
     for clId, mDataMap := range srv.clientMonitorDataMap {
         
         for mKey, mData := range mDataMap {func() {
-            defer CatchFunc(nil, EventLogger.Warnln, "Failed to cache:", clId, mKey)
+            defer CatchFunc(nil, EventLogger.Warnln, "Failed to store:", clId, mKey)
 
             // Compress
             cmp, err2 := CompressMonitorData(mData)
@@ -615,7 +617,7 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
             // Write file
             h  := fmt.Sprintf("%x", Sha256Sum([]byte(
-                clId + string(mKey), // TODO: Add specs for cache name in the documentation
+                clId + string(mKey), // TODO: Add specs for store name in the documentation
             )))
             fn := srv.config.DataStoreDir + "/" + h + dataStoreExt
             Try(rewriteFile(fn, buf))
@@ -755,9 +757,9 @@ func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig, boo
 
     // Client-related
     clCfg   := srv.clientConfig
-    clInfo  := clCfg.ClientMap[clId]
-    clRole  := clCfg.RoleMap.Get(clInfo.Role)
-    mCfgMap := clRole.MonitorConfigMap
+    clInfo  := clCfg.InfoMap[clId]
+    clRule  := clCfg.RuleMap.Get(clInfo.Tags)
+    mCfgMap := clRule.MonitorConfigMap
     for b, mCfg := range mCfgMap {
         bBase, bParam, bIdx := ParseMonitorKey(b)
         if aBase == bBase && aParam == bParam {
@@ -787,7 +789,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
     // Check Whitelisted
     clCfg       := srv.clientConfig
     whitelisted := false
-    for _, clInfo := range clCfg.ClientMap {
+    for _, clInfo := range clCfg.InfoMap {
         // Find the first with the address
         if clInfo.HasAddr(host) {
             whitelisted = true
@@ -817,7 +819,7 @@ func(srv *Server) HandleSession(s *Session) (err error) {
     AccessLogger.Infoln(clInfo.Alias, "from", clInfo.Host, "connected")
     Assert(clId != "", "Client must be configured in the config")
     logParams  = append(logParams, clId)
-    clRule    := clCfg.RoleMap.Get(clInfo.Rule)
+    clRule    := clCfg.RuleMap.Get(clInfo.Tags)
 
     // Version Check
     ver := clRsp.String("version")
