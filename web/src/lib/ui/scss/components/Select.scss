@@ -47,11 +47,11 @@ $select-caret-width: 2.5rem;
         transform: translateY(50%);
     }
     .items {
+        overflow: auto;
         position: absolute;
         transform: translateY(-1px)
             translateX(1px);
         z-index: 1000;
-        width: max-content;
         min-width: calc(100% - 2px);
         @include themed-scrollbar;
     }
@@ -64,6 +64,9 @@ $select-caret-width: 2.5rem;
         &.is-selected, &:hover {
             background: $cl-5-accent;
             color: $cl-3-accent;
+        }
+        .text {
+            white-space: nowrap;
         }
     }
 

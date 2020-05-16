@@ -42,7 +42,7 @@
         <Client v-for="(clientInfo, clientId) in infoMap"
           :key="clientId"
           :info="clientInfo"
-          :statusMap="itemStatusMap[clientId]"
+          :itemStatusMap="itemStatusMap[clientId]"
           :class="{visible: (visibleClient === clientId)}"></Client>
       </section>
     </main>

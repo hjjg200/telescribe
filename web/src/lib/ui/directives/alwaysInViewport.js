@@ -2,7 +2,7 @@
 // Util
 import {addThrottledAsyncEvent, addDebouncedAsyncEvent} from '../util/util.js';
 
-let overflow = {
+const overflow = {
   width: "overflowX", height: "overflowY"
 };
 
@@ -65,12 +65,21 @@ function bind(el, {expression}) {
   addThrottledAsyncEvent(
     window, "resize", move, 10
   );
+  addThrottledAsyncEvent(
+    el, "open", move, 10
+  );
 
+}
+
+function componentUpdated(el) {
+  let event = new Event("open");
+  el.dispatchEvent(event);
 }
 
 const directive = {
   name: "always-in-viewport",
-  bind
+  bind,
+  componentUpdated
 };
 
 export default directive;

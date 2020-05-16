@@ -125,6 +125,7 @@ export default {
     addDebouncedAsyncEvent(
       window, "resize", this._draw, 100
     );
+    this._draw();
   },
 
   methods: {

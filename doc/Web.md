@@ -2,6 +2,10 @@
 
 This documentation explains the specifications for the web elements.
 
+## Naming
+
+In the web source, Javascript and HTML, when a variable, the name of which is specified in the documentation, is used in under a component or such, the part which matches the name of that parent component is omitted; e.g., when `clientInfo` is used as data of `Client` component, it is named as just `info` not `clientInfo`.
+
 ## Config
 
 |Go|Javascript|HTML|

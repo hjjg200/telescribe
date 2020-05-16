@@ -9,15 +9,23 @@ import (
 
 type wrapper struct {
     body interface{}
+    coef float64
+}
+func Wrap(body interface{}, coef float64) wrapper {
+    return wrapper{body, coef}
 }
 
 // CPU
 const KeyCpuCount = "cpu-count"
 const KeyCpuUsage = "cpu-usage"
 // Memory
-const KeyMemoryTotal = "memory-total"
+const KeyMemorySize = "memory-size"
+const KeyMemorySizeMB = "memory-size-mb"
+const KeyMemorySizeGB = "memory-size-gb"
 const KeyMemoryUsage = "memory-usage"
-const KeySwapTotal = "swap-total"
+const KeySwapSize = "swap-size"
+const KeySwapSizeMB = "swap-size-mb"
+const KeySwapSizeGB = "swap-size-gb"
 const KeySwapUsage = "swap-usage"
 // Load
 const KeyLoadAverage = "load"
@@ -34,7 +42,13 @@ const KeyMountReadBytes = "mount-readBytes"
 const KeyDiskUsage = "disk-usage"
 const KeyMountUsage  = "mount-usage"
 const KeyDiskSize = "disk-size"
+const KeyDiskSizeMB = "disk-size-mb"
+const KeyDiskSizeGB = "disk-size-gb"
+const KeyDiskSizeTB = "disk-size-tb"
 const KeyMountSize = "mount-size"
+const KeyMountSizeMB = "mount-size-mb"
+const KeyMountSizeGB = "mount-size-gb"
+const KeyMountSizeTB = "mount-size-tb"
 // Network
 const KeyNetworkIn = "network-in"
 const KeyNetworkInPackets = "network-inPackets"
@@ -45,36 +59,46 @@ const KeyCustomCommand = "command"
 
 var Wrappers = map[string] wrapper {
     // CPU
-    KeyCpuCount: wrapper{ GetCpuCount },
-    KeyCpuUsage: wrapper{ GetCpuUsage },
+    KeyCpuCount: Wrap(GetCpuCount, 1.0),
+    KeyCpuUsage: Wrap(GetCpuUsage, 1.0),
     // Memory
-    KeyMemoryTotal: wrapper{ GetMemoryTotal },
-    KeySwapTotal: wrapper{ GetSwapTotal },
-    KeyMemoryUsage: wrapper{ GetMemoryUsage },
-    KeySwapUsage: wrapper{ GetSwapUsage },
+    KeyMemorySize: Wrap(GetMemoryTotal, 1.0),
+    KeyMemorySizeMB: Wrap(GetMemoryTotal, 1.0e-3),
+    KeyMemorySizeGB: Wrap(GetMemoryTotal, 1.0e-6),
+    KeyMemoryUsage: Wrap(GetMemoryUsage, 1.0),
+    KeySwapSize: Wrap(GetSwapTotal, 1.0),
+    KeySwapSizeMB: Wrap(GetSwapTotal, 1.0e-3),
+    KeySwapSizeGB: Wrap(GetSwapTotal, 1.0e-6),
+    KeySwapUsage: Wrap(GetSwapUsage, 1.0),
     // Load
-    KeyLoadAverage: wrapper{ GetLoadAverage },
-    KeyLoadAveragePerCpu: wrapper{ GetLoadAveragePerCpu },
+    KeyLoadAverage: Wrap(GetLoadAverage, 1.0),
+    KeyLoadAveragePerCpu: Wrap(GetLoadAveragePerCpu, 1.0),
     // Disk
-    KeyDiskWrites: wrapper{ GetDiskWrites },
-    KeyMountWrites: wrapper{ GetMountWrites },
-    KeyDiskReads: wrapper{ GetDiskReads },
-    KeyMountReads: wrapper{ GetMountReads },
-    KeyDiskWriteBytes: wrapper{ GetDiskWriteBytes },
-    KeyMountWriteBytes: wrapper{ GetMountWriteBytes },
-    KeyDiskReadBytes: wrapper{ GetDiskReadBytes },
-    KeyMountReadBytes: wrapper{ GetMountReadBytes },
-    KeyDiskUsage: wrapper{ GetDiskUsage },
-    KeyMountUsage: wrapper{ GetMountUsage },
-    KeyDiskSize: wrapper{ GetDiskSize },
-    KeyMountSize: wrapper{ GetMountSize },
+    KeyDiskWrites: Wrap(GetDiskWrites, 1.0),
+    KeyMountWrites: Wrap(GetMountWrites, 1.0),
+    KeyDiskReads: Wrap(GetDiskReads, 1.0),
+    KeyMountReads: Wrap(GetMountReads, 1.0),
+    KeyDiskWriteBytes: Wrap(GetDiskWriteBytes, 1.0),
+    KeyMountWriteBytes: Wrap(GetMountWriteBytes, 1.0),
+    KeyDiskReadBytes: Wrap(GetDiskReadBytes, 1.0),
+    KeyMountReadBytes: Wrap(GetMountReadBytes, 1.0),
+    KeyDiskUsage: Wrap(GetDiskUsage, 1.0),
+    KeyMountUsage: Wrap(GetMountUsage, 1.0),
+    KeyDiskSize: Wrap(GetDiskSize, 1.0),
+    KeyDiskSizeMB: Wrap(GetDiskSize, 1.0e-3),
+    KeyDiskSizeGB: Wrap(GetDiskSize, 1.0e-6),
+    KeyDiskSizeTB: Wrap(GetDiskSize, 1.0e-9),
+    KeyMountSize: Wrap(GetMountSize, 1.0),
+    KeyMountSizeMB: Wrap(GetMountSize, 1.0e-3),
+    KeyMountSizeGB: Wrap(GetMountSize, 1.0e-6),
+    KeyMountSizeTB: Wrap(GetMountSize, 1.0e-9),
     // Network
-    KeyNetworkIn: wrapper{ GetNetworkIn },
-    KeyNetworkInPackets: wrapper{ GetNetworkInPackets },
-    KeyNetworkOut: wrapper{ GetNetworkOut },
-    KeyNetworkOutPackets: wrapper{ GetNetworkOutPackets },
+    KeyNetworkIn: Wrap(GetNetworkIn, 1.0),
+    KeyNetworkInPackets: Wrap(GetNetworkInPackets, 1.0),
+    KeyNetworkOut: Wrap(GetNetworkOut, 1.0),
+    KeyNetworkOutPackets: Wrap(GetNetworkOutPackets, 1.0),
    // Misc
-    KeyCustomCommand: wrapper{ CustomCommand },
+    KeyCustomCommand: Wrap(CustomCommand, 1.0),
 }
 
 var ErrorCallback = func(err error) {
@@ -220,16 +244,22 @@ func (w wrapper) Get(param string) interface{} {
         }
     }
 
+    // Coefficient
+    coef := w.coef
+
     switch cast := val.Interface().(type) {
     case float64:
-        return cast
+        return cast * coef
     case []float64:
         ret := make(map[string] float64)
         for i := 0; i < len(cast); i++ {
-            ret[fmt.Sprint(i)] = cast[i]
+            ret[fmt.Sprint(i)] = cast[i] * coef
         }
         return ret
     case map[string] float64:
+        for key := range cast {
+            cast[key] *= coef
+        }
         return cast
     }
 
