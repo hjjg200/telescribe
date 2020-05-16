@@ -182,7 +182,7 @@ export default {
             $.$set($.dataset, monitorKey, {
               data: buf,
               color: colorify(monitorKey),
-              formatter: (new NumberFormatter(format)).format
+              formatter: new NumberFormatter(format)
             });
 
           }

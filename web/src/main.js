@@ -22,14 +22,6 @@ Number.prototype.date = function(str) {
   return moment.unix(this).format(str);
 };
 
-Number.prototype.format = function(fmt) {
-  return (new NumberFormatter(fmt)).format(this);
-}
-
-String.prototype.escapeQuote = function() {
-  return this.replace(/"/g, '\\\"');
-};
-
 
 // MAIN
 (async function() {

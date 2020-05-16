@@ -618,7 +618,7 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
             // Write file
             h  := fmt.Sprintf("%x", Sha256Sum([]byte(
-                clId + string(mKey), // TODO: Add specs for store name in the documentation
+                clId + string(mKey),
             )))
             fn := srv.config.DataStoreDir + "/" + h + dataStoreExt
             Try(rewriteFile(fn, buf))

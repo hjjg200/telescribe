@@ -19,10 +19,12 @@ export class NumberFormatter {
     fmt = fmt || this.constructor.defaultFormat();
 
     let parsed = parsedFormatters[fmt];
-    if(parsed) return parsed;
+    if(parsed) return parsed.format.bind(parsed);
 
     this.info = parseFormat(fmt);
     parsedFormatters[fmt] = this;
+
+    return this.format.bind(this);
   }
 
   clone() {
@@ -99,7 +101,7 @@ export class NumberFormatter {
 }
 
 export function formatNumber(format, value) {
-  return (new NumberFormatter(format)).format(value);
+  return (new NumberFormatter(format))(value);
 }
 
 let parsedFormatters = {};

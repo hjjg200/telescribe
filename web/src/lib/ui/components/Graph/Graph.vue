@@ -80,8 +80,14 @@ function keysEqual(a, b) {
   return true;
 }
 
+// TODO: make this independent from external code
+//  + change timestamp to x
+//  + change value to y
+//  + format -- not as string but as function
+
 // Util
 import {addThrottledAsyncEvent, addDebouncedAsyncEvent} from '../../util/util.js';
+import {formatNumber} from '@/lib/util/web.js'; // TODO no external dependencies
 
 // D3
 import {event, select, mouse, customEvent} from "d3-selection";
@@ -442,7 +448,7 @@ export default {
                 .tickSize(5)
                 .tickSizeOuter(0)
                 .tickFormat(function(value) {
-                  return Number(value).format($.options.formatYAxis);
+                  return formatNumber($.options.formatYAxis, value);
                 }))
                 .attr("font-family", "")
                 .attr("font-size", "");
@@ -847,6 +853,7 @@ export default {
         for(let key in visibleDataset) {
           let data = visibleDataset[key].filter(i => {
             return start <= i.timestamp && i.timestamp <= end;
+            // TODO include the neighboring point to the end in order to connect paths of segments together
           });
           if(data.length > 0) {
             segDataGroups.push({key, data});
@@ -865,12 +872,12 @@ export default {
             .each(function(d) {$._lines[d.key].push(this);})
             .attr("stroke-width", 1)
             .attr("stroke", d => $.dataset[d.key].color)
-            .attr("fill",   "none")
+            .attr("fill", "none")
             .attr("d", d => d3.line()
-                .defined(e => !isNaN(e.value))
-                .x(e => xScale(e.timestamp))
-                .y(e => yScale(e.value))
-                (d.data)
+              .defined(e => !isNaN(e.value))
+              .x(e => xScale(e.timestamp))
+              .y(e => yScale(e.value))
+              (d.data)
             );
 
       });

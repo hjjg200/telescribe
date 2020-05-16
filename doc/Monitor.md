@@ -101,9 +101,9 @@ The monitor configuration contains information of fatal and warning ranges of va
 
 |Value|Status|
 |-|-|
-|`0`|Normal|
-|`8`|Warning|
-|`16`|Fatal|
+|0|Normal|
+|8|Warning|
+|16|Fatal|
 
 
 ## Timestamp
@@ -112,12 +112,23 @@ The monitor configuration contains information of fatal and warning ranges of va
 |-|-|-|
 |`ts`|`timestamp`|`timestamp`|
 
+A timestamp is defined as unix timestamp in seconds and expressed as `int64`.
+
+
+## Boundaries
+
+|Go|Javascript|HTML|
+|-|-|-|
+|`bds`|`boundaries`|`boundaries`|
+
 
 ## Value
 
 |Go|Javascript|HTML|
 |-|-|-|
 |`val`|`value`|`value`|
+
+A value is defined as floating point value and expressed as `float64`.
 
 
 ## Value Map
@@ -126,12 +137,7 @@ The monitor configuration contains information of fatal and warning ranges of va
 |-|-|-|
 |`valMap`|`valueMap`|`value-map`|
 
-
-## Raw Value Map
-
-|Go|Javascript|
-|-|-|
-|`rvMap`|`rawValueMap`|
+A value map can be expressed as `map[string] float64` in go. The keys are **Monitor.Key** and the values are **Monitor.Value**.
 
 
 ## Datum
@@ -140,12 +146,16 @@ The monitor configuration contains information of fatal and warning ranges of va
 |-|-|-|
 |`mDatum`|`monitorDatum`|`monitor-datum`|
 
+A datum is a set of **Monitor.Timestamp** and **Monitor.Value**. Each represents a recorded value at a certain time.
+
 
 ## Data
 
 |Go|Javascript|HTML|
 |-|-|-|
 |`mData`|`monitorData`|`monitor-data`|
+
+Data is an array of **Monitor.Datum**. Typically, it is sorted in ascending order for timestamps.
 
 
 ### Compressed
@@ -154,8 +164,8 @@ The compression for **Monitor.Data** is done in the following manner in gzip enc
 
 |Order|Encoding|Type|Description|
 |-|-|-|-|
-|1|gob|`string`|`float64` or `nil`|
-|2|gob|`[]float64`|An array of **Monitor.Timestamp**|
+|1|gob|`string`|`"float64"` or `"nil"`|
+|2|gob|`[]int64`|An array of **Monitor.Timestamp**|
 |3|gob|`[]float64`|An array of **Monitor.Value**|
 
 
@@ -165,9 +175,24 @@ The compression for **Monitor.Data** is done in the following manner in gzip enc
 |-|-|-|
 |`mdMap`|`monitorDataMap`|`monitor-data-map`|
 
+A data map is a map of **Monitor.Data** whose keys are, typically, **Monitor.Key**.
+
 
 ## Data Table Box
 
 |Go|Javascript|HTML|
 |-|-|-|
 |`mdtBox`|`monitorData`|`monitor-key`|
+
+
+### Boundaries Table
+
+|Column|Description|
+|`timestamp`||
+
+
+### Monitor Data Table
+
+|Column|Description|
+|`timestamp`||
+|`value`||
