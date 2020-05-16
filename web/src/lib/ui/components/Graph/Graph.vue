@@ -585,7 +585,7 @@ export default {
             let ttTs  = Number(target.getAttribute("data-timestamp"));
             let ttCl  = $.dataset[ttKey].color;
             let ttFmt = $.dataset[ttKey].formatter;
-            tooltipValue.text(ttFmt.format(ttVal));
+            tooltipValue.text(ttFmt(ttVal));
             tooltipTimestamp.text(
               // TODO prototype functions are not part of library
               ttTs.date($.options.formatDateLong)

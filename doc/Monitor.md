@@ -130,7 +130,7 @@ The monitor configuration contains information of fatal and warning ranges of va
 ## Raw Value Map
 
 |Go|Javascript|
-|-|-|-|
+|-|-|
 |`rvMap`|`rawValueMap`|
 
 
@@ -146,6 +146,17 @@ The monitor configuration contains information of fatal and warning ranges of va
 |Go|Javascript|HTML|
 |-|-|-|
 |`mData`|`monitorData`|`monitor-data`|
+
+
+### Compressed
+
+The compression for **Monitor.Data** is done in the following manner in gzip encoding; the entire content of compressed data is as follows:
+
+|Order|Encoding|Type|Description|
+|-|-|-|-|
+|1|gob|`string`|`float64` or `nil`|
+|2|gob|`[]float64`|An array of **Monitor.Timestamp**|
+|3|gob|`[]float64`|An array of **Monitor.Value**|
 
 
 ## Data Map

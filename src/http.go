@@ -109,6 +109,7 @@ func(srv *Server) populateHttpRouter() {
         bytes []byte
     }
     staticCacheMap := make(map[string] staticCache)
+    cacheHolder    := together.NewHoldGroup()
     serveStatic    := func(hctx HttpContext) {
 
         defer func() {
@@ -121,9 +122,16 @@ func(srv *Server) populateHttpRouter() {
 
         fp        := hctx.Request.URL.Path[1:]
         cache, ok := staticCacheMap[fp]
-        if !ok {
+        if !ok {func() {
 
-            // TODO: mutex
+            // Mutex
+            cacheHolder.HoldAt(fp)
+            defer cacheHolder.UnholdAt(fp)
+
+            // Check again since a cache could have been created
+            _, ok = staticCacheMap[fp]
+            if ok { return }
+
             Assert(strings.HasPrefix(fp, "static/"), "Static file path must start with static/")
             Assert(strings.Contains("/" + fp, "/../") == false, "File path must not have .. in it")
 
@@ -142,7 +150,8 @@ func(srv *Server) populateHttpRouter() {
             staticCacheMap[fp] = cache
             EventLogger.Infoln("Cached a static file:", fp)
 
-        }
+        }()}
+
         http.ServeContent(
             hctx.Writer, hctx.Request, cache.name, cache.modTime, bytes.NewReader(cache.bytes),
         )

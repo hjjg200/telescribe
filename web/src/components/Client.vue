@@ -9,7 +9,7 @@
             <font-awesome icon="caret-down"/>
           </Button>
           <Menu ref="menu">
-            <MenuItem>Add to Favorites</MenuItem>
+            <MenuItem>Add to Favorites</MenuItem><!-- TODO -->
             <MenuItem @click="$refs.modal.open = true">Constants</MenuItem>
           </Menu>
         </div>
@@ -26,15 +26,10 @@
 
     <Modal ref="modal">
       <h3>Constants</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Item</th><th>Value</th>
-          </tr>
-        </thead>
+      <table><!-- TODO -->
         <tbody>
           <tr v-for="(itemStatus, monitorKey) in itemStatusMap"
-            :key="monitorKey" v-if="itemStatus.constant">
+            :key="monitorKey" v-if="isConstant(monitorKey)">
             <td>{{ monitorKey }}</td>
             <td>{{ formatNumber(monitorKey, itemStatus.value) }}</td>
           </tr>
@@ -52,7 +47,7 @@
           <Select v-model="activeKeys" multiple>
             <SelectItem v-for="(itemStatus, monitorKey) in itemStatusMap"
               :key="monitorKey" :value="monitorKey"
-              v-if="itemStatus.constant === false">
+              v-if="isConstant(monitorKey) === false">
               <Icon :type="statusIconOf(itemStatus.status, true)"/> {{ monitorKey }}
             </SelectItem>
           </Select>
@@ -121,9 +116,7 @@ export default {
     // Get Monitor Data Boundaries
     this.queue.queue(async() => {
       let csv = await $.$api.v1.getMonitorDataBoundaries($.id);
-      d3.csvParse(csv, row => {
-        boundaries.push(+row.timestamp);
-      });
+      d3.csvParse(csv, row => boundaries.push(+row.timestamp));
       $.boundaries = boundaries;
     });
 
@@ -145,8 +138,8 @@ export default {
   },
   computed: {
     id() {return this.$vnode.key;},
-    graphReady() {return this.boundaries.length > 0},
     tags() {return splitWhitespace(this.info.tags);},
+    graphReady() {return this.boundaries.length > 0},
     
     focusedTime() {
       let fmt = this.$root.webConfig["format.date.long"];
@@ -163,54 +156,55 @@ export default {
 
   },
   watch: {
+
     activeKeys(newVal, oldVal) {
-      var $ = this;
-      var activeDataset = {};
-      var ensure = (i = 0) => {
-        if(i >= newVal.length) {
-          $.$refs.graph.plot(activeDataset);
-          return;
-        }
 
-        var monitorKey = newVal[i];
-        (async function() {
-          if($.dataset[monitorKey] == undefined) {
-            var p = new Promise(resolve => {
-              // Make buf so as not to invoke watchers
-              let buf = [];
+      let $ = this;
+      let activeDataset = {};
 
-              $.$api.v1.getMonitorDataTable($.id, monitorKey)
-                .then(function(csv) {
-                  d3.csvParse(csv, row => {
-                    buf.push({
-                      timestamp: +row.timestamp,
-                      value: +row.value
-                    });
-                  });
+      this.queue.queue(async() => {
 
-                  let cfg = $.monitorConfigMap[monitorKey];
-                  $.$set($.dataset, monitorKey, {
-                    data: buf,
-                    color: colorify(monitorKey),
-                    formatter: new NumberFormatter(cfg.format)
-                  });
+        for(let i = 0; i < newVal.length; i++) {
 
-                  resolve();
-                });
+          let monitorKey = newVal[i];
+
+          if($.dataset[monitorKey] === undefined) {
+
+            let format = $.monitorConfigMap[monitorKey].format;
+            let buf = [];
+            let csv = await $.$api.v1.getMonitorDataTable($.id, monitorKey);
+
+            d3.csvParse(csv, row => buf.push({
+              timestamp: +row.timestamp,
+              value: +row.value
+            }));
+
+            $.$set($.dataset, monitorKey, {
+              data: buf,
+              color: colorify(monitorKey),
+              formatter: (new NumberFormatter(format)).format
             });
-            await p;
-          }
-          activeDataset[monitorKey] = $.dataset[monitorKey];
-          ensure(++i);
-        })();
-      };
 
-      ensure();
+          }
+
+          activeDataset[monitorKey] = $.dataset[monitorKey];
+
+        }
+        
+        $.$refs.graph.plot(activeDataset);
+
+      });
+
     }
+
   },
   methods: {
     colorify,
     statusIconOf,
+    isConstant(monitorKey) {
+      let monitorConfig = this.monitorConfigMap[monitorKey];
+      return monitorConfig ? monitorConfig.constant : undefined;
+    },
     formatDuration(t) {
       if(t <= 60) return `${t}m`;
       else if(t <= 24 * 60) return Math.round(t / 60) + "h";

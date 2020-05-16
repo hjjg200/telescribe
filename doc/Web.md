@@ -111,3 +111,10 @@ Dataset is a **Monitor.Key** to data compound object map, and the the content of
 ### Hand
 
 When moving the hand, the nearest points of the active items become visible provided the value for that point is not NaN; when it is NaN, the point becomes invisible and it is excluded from the focused values. The focused timestamps are an array of two timestamps; the first timestamp is the minimum timestamp of the active points; and the second timestamp is the maximum of them.
+
+
+## Queue
+
+|Javascript|
+|-|
+|`queue`|

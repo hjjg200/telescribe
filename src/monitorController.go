@@ -51,10 +51,10 @@ func (datum MonitorDatum) Y() float64 { return datum.Value }
 // CONFIG ---
 
 type MonitorConfig struct {
-    FatalRange   Range  `json:"fatalRange,omitempty"`
-    WarningRange Range  `json:"warningRange,omitempty"`
-    Format       string `json:"format,omitempty"`
-    Constant     bool   `json:"constant,omitempty"`
+    FatalRange   Range  `json:"fatalRange"`
+    WarningRange Range  `json:"warningRange"`
+    Format       string `json:"format"`
+    Constant     bool   `json:"constant"`
 }
 type MonitorConfigMap map[string/* monitorKey */] MonitorConfig
 
