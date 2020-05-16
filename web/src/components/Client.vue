@@ -31,24 +31,11 @@
             <th>Item</th><th>Value</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>cpu-count</td><td>4 CPUs</td>
-          </tr>
-          <tr>
-            <td>memory-size-gb</td><td>7.83 GB</td>
-          </tr>
-          <tr>
-            <td>swap-size-gb</td><td>3.92 GB</td>
-          </tr>
-          <tr>
-            <td>disk-size-gb[xvda1]</td><td>49.71 GB</td>
-          </tr>
-          <tr>
-            <td>disk-size-gb[sda1]</td><td>9.66 GB</td>
-          </tr>
-          <tr>
-            <td>command(minecraft-users)</td><td>8 Online</td>
+        <tbody v-show="configMapReady">
+          <tr v-for="(itemStatus, monitorKey) in constantItemStatusMap"
+            :key="monitorKey">
+            <td>{{ monitorKey }}</td>
+            <td>{{ formatMonitorValue(monitorKey, itemStatus.value) }}</td>
           </tr>
         </tbody>
       </table>
@@ -120,17 +107,34 @@ export default {
     $.dataset = {};
     let boundaries = [];
 
+    let i = 0;
+
+    // Populate Config Map
+    for(let monitorKey in this.statusMap) {
+      this.queue.queue(async() => {
+        let j = i++;
+        console.log("start", j);
+        let rsp = await $.$api.v1.getMonitorConfig($.id, monitorKey);
+        let cfg = rsp.monitorConfig;
+        $.configMap[monitorKey] = cfg;
+        console.log("end", j);
+      });
+    }
+    this.queue.queue(async() => {
+      let j = i++;
+      console.log("start", j);
+      $.configMapReady = true;
+      console.log("end", j);
+    });
+
     // Get Monitor Data Boundaries
-    this.queue.queue(new Promise(resolve => {
-      $.$api.v1.getMonitorDataBoundaries($.id)
-        .then(function(csv) {
-          d3.csvParse(csv, row => {
-            boundaries.push(+row.timestamp);
-          });
-          $.boundaries = boundaries;
-          resolve();
-        });
-    }));
+    this.queue.queue(async() => {
+      let csv = await $.$api.v1.getMonitorDataBoundaries($.id);
+      d3.csvParse(csv, row => {
+        boundaries.push(+row.timestamp);
+      });
+      $.boundaries = boundaries;
+    });
 
   },
   mounted() {
@@ -148,6 +152,7 @@ export default {
       duration:   this.$root.webConfig.durations[0],
       dataset:    {},
       configMap:  {},
+      configMapReady: false, // TODO: this is temp var
       queue:      new Queue(),
       mounted:    false
     };
@@ -171,7 +176,13 @@ export default {
     },
 
     constantItemStatusMap() {
-
+      let ret = {};
+      for(let monitorKey in this.statusMap) {
+        let itemStatus = this.statusMap[monitorKey];
+        if(itemStatus.constant)
+          ret[monitorKey] = itemStatus;
+      }
+      return ret;
     }
 
   },
@@ -206,18 +217,14 @@ export default {
                     });
                   });
 
-                  $.$api.v1.getMonitorConfig($.id, mKey)
-                    .then(function(rsp) {
-                      let cfg = rsp.monitorConfig;
-                      $.configMap[mKey] = cfg;
-                      $.$set($.dataset, mKey, {
-                        data: buf,
-                        color: colorify(mKey),
-                        formatter: new NumberFormatter(cfg.format)
-                      });
+                  let cfg = $.configMap[mKey];
+                  $.$set($.dataset, mKey, {
+                    data: buf,
+                    color: colorify(mKey),
+                    formatter: new NumberFormatter(cfg.format)
+                  });
 
-                      resolve();
-                    });
+                  resolve();
                 });
             });
             await p;
@@ -247,6 +254,11 @@ export default {
         }
       }
       return "-";
+    },
+    formatMonitorValue(monitorKey, value) {
+      console.log(this.configMapReady);
+      let format = this.configMap[monitorKey].format;
+      return Number(value).format(format);
     }
   }
 }

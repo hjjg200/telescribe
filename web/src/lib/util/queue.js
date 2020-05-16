@@ -4,10 +4,10 @@ export default class {
     this.queued = [];
     this.running = false;
   }
-  queue(promise) {
+  queue(asyncFunc) {
     let $ = this;
     return new Promise(resolve => {
-      $.queued.push({promise, resolve});
+      $.queued.push({asyncFunc, resolve});
       if(!$.running) {
         $.running = true;
         $._run();
@@ -18,9 +18,12 @@ export default class {
     let queued = this.queued.slice(0);
     this.queued = [];
 
-    Promise.all(queued.map(
-      d => d.promise.then(d.resolve)
-    )).then(this._post.bind(this));
+    (async() => {
+      for(let i = 0; i < queued.length; i++) {
+        let q = queued[i];
+        await q.asyncFunc().then(q.resolve);
+      }
+    })().then(this._post.bind(this));
   }
   _post() {
     if(this.queued.length) {

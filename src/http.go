@@ -282,6 +282,7 @@ func(srv *Server) registerAPIV1() {
                 Timestamp: le.Timestamp,
                 Value:     le.Value,
                 Status:    mCfg.StatusOf(le.Value),
+                Constant:  mCfg.Constant,
             }
         }
 

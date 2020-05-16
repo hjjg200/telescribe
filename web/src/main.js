@@ -33,7 +33,7 @@ String.prototype.escapeQuote = function() {
 
 // MAIN
 (async function() {
-  let infoMap   = (await api.v1.getClientInfoMap()).infoMap;
+  let infoMap   = (await api.v1.getClientInfoMap()).clientInfoMap;
   let webConfig = (await api.v1.getWebConfig()).webConfig;
   let version   = (await api.v1.getVersion()).version;
 

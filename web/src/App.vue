@@ -14,17 +14,17 @@
           <MenuLabel>Favorites</MenuLabel>
           <MenuLabel>Clients</MenuLabel>
           <MenuItem
-            v-for="(info, clId) in clMap"
-            :key="clId"
-            @click="visibleClient = clId">
+            v-for="(clientInfo, clientId) in infoMap"
+            :key="clientId"
+            @click="visibleClient = clientId">
             <div class="client-menu-item">
               <div class="thumbnail">
-                <TextIcon :text="clId"/>
+                <TextIcon :text="clientId"/>
               </div>
-              <Icon :type="statusIconOf(itemStatusMap[clId], true)" />
+              <Icon :type="statusIconOf(itemStatusMap[clientId], true)" />
               <div class="text">
-                <div class="alias">{{ info.alias }}</div>
-                <div class="host">{{ info.host }}</div>
+                <div class="alias">{{ clientInfo.alias }}</div>
+                <div class="host">{{ clientInfo.host }}</div>
               </div>
             </div>
           </MenuItem>
@@ -39,11 +39,11 @@
         <Cover v-show="visibleClient === null">
           Select a Client
         </Cover>
-        <Client v-for="(clInfo, clId) in clMap"
-          :key="clId"
-          :info="clInfo"
-          :statusMap="itemStatusMap[clId]"
-          :class="{visible: (visibleClient === clId)}"></Client>
+        <Client v-for="(clientInfo, clientId) in infoMap"
+          :key="clientId"
+          :info="clientInfo"
+          :statusMap="itemStatusMap[clientId]"
+          :class="{visible: (visibleClient === clientId)}"></Client>
       </section>
     </main>
     <footer>
