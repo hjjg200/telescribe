@@ -7,32 +7,32 @@ This documentation contains the specifications of the HTTP-related elements.
 
 |Go|
 |-|
-|cache|
+|`cache`|
 
 ## Router
 
 |Go|
 |-|
-|hrt|
+|`hrt`|
 
 ## Request
 
 |Go|
 |-|
-|hreq|
+|`hreq`|
 
 ## Context
 
 |Go|
 |-|
-|hctx|
+|`hctx`|
 
 
 ## User
 
 |Go|Javascript|
 |-|-|
-|husr|httpUser|
+|`husr`|`httpUser`|
 
 A user is an individual account used for basic authentication of HTTP requests.
 
@@ -47,7 +47,7 @@ A user is an individual account used for basic authentication of HTTP requests.
 
 |Go|Javascript|
 |-|-|
-|pNode|permissionNode|
+|`pNode`|`permissionNode`|
 
 Permission is used to differentiate between privileged users and general users. Permission is expressed in the case-insensitive string form. When a node contains a dot, you must use double quotation marks to eliminate ambiguity.
 

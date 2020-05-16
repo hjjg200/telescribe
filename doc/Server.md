@@ -7,13 +7,13 @@ This documentation contains the specifications of elements of server.
 
 |Go|
 |-|
-|srv|
+|`srv`|
 
 ## Server Config
 
 |Go|Javascript|
 |-|-|
-|srvCfg|serverConfig|
+|`srvCfg`|`serverConfig`|
 
 By default, `serverConfig.json` contains the configuration of a server.
 
@@ -41,7 +41,7 @@ By default, `serverConfig.json` contains the configuration of a server.
 
 |Go|Javascript|HTML|
 |-|-|-|
-|clCfg|clientConfig|client-config|
+|`clCfg`|`clientConfig`|`client-config`|
 
 By default, `clientConfig.json` contains the client configurations.
 
@@ -55,4 +55,4 @@ By default, `clientConfig.json` contains the client configurations.
 
 |Go|
 |-|
-|webhook|
+|`webhook`|

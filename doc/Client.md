@@ -6,7 +6,7 @@ This documentaion contains the specifications for client-related elements.
 
 |Go|Javascript|HTML|
 |-|-|-|
-|clId|clientId|client-id|
+|`clId`|`clientId`|`client-id`|
 
 A client ID is typically key to a **Client.Info** object in maps, which must be unique to its own client.
 
@@ -15,7 +15,7 @@ A client ID is typically key to a **Client.Info** object in maps, which must be 
 
 |Go|Javascript|HTML|
 |-|-|-|
-|clInfo|clientInfo|client-info|
+|`clInfo`|`clientInfo`|`client-info`|
 
 |Item|Description|
 |-|-|
@@ -28,14 +28,14 @@ A client ID is typically key to a **Client.Info** object in maps, which must be 
 
 |Go|Javascript|HTML|
 |-|-|-|
-|infoMap|infoMap|info-map|
+|`infoMap`|`infoMap`|`info-map`|
 
 
 ## Rule
 
 |Go|Javascript|HTML|
 |-|-|-|
-|clRule|clientRule|client-rule|
+|`clRule`|`clientRule`|`client-rule`|
 
 A rule is a compound of monitoring configurations which is used to configure clients.
 
@@ -49,7 +49,7 @@ A rule is a compound of monitoring configurations which is used to configure cli
 
 |Go|Javascript|HTML|
 |-|-|-|
-|itemStat|itemStatus|item-status|
+|`itemStat`|`itemStatus`|`item-status`|
 
 A status object typically has the most recent status information about the client.
 
@@ -65,4 +65,4 @@ A status object typically has the most recent status information about the clien
 
 |Go|Javascript|HTML|
 |-|-|-|
-|itemStatMap|itemStatusMap|item-status-map|
+|`itemStatMap`|`itemStatusMap`|`item-status-map`|

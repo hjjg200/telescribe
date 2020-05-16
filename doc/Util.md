@@ -6,7 +6,7 @@ This documentation explains the specifications for the utility-purpose elements.
 
 |Go|Javascript|HTML|
 |-|-|-|
-|rng|range|range|
+|`rng`|`range`|`range`|
 
 A range represents a numeric range which is used to examine the status of monitored values. Commas are used to express multiple ranges in one string and colons are used to express ranges.
 

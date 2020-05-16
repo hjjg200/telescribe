@@ -10,7 +10,7 @@ In the web source, Javascript and HTML, when a variable, the name of which is sp
 
 |Go|Javascript|HTML|
 |-|-|-|
-|webCfg|webConfig|web-config|
+|`webCfg`|`webConfig`|`web-config`|
 
 |Item|Default|Description|
 |-|-|-|
@@ -25,7 +25,7 @@ In the web source, Javascript and HTML, when a variable, the name of which is sp
 
 |Go|Javascript|HTML|
 |-|-|-|
-|format|format|format|
+|`format`|`format`|`format`|
 
 A format is a string expression that is used to modify how monitored values look on the web UI.
 
@@ -89,7 +89,7 @@ import {NumberFormatter} from '@/lib/util/web.js';
 
 |Javascript|HTML|
 |-|-|
-|graph|graph|
+|`graph`|`graph`|
 
 A graph component is used to plot a line chart for provided dataset.
 
