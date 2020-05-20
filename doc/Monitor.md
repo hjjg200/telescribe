@@ -140,13 +140,31 @@ A value is defined as floating point value and expressed as `float64`.
 A value map can be expressed as `map[string] float64` in go. The keys are **Monitor.Key** and the values are **Monitor.Value**.
 
 
+## For
+
+|Go|Javascript|HTML|
+|`mFor`|`monitorFor`|`monitor-for`|
+
+A for value represents the duration, in seconds, for its relevant datum; for example, a cpu usage datum whose value is 50% and for is 60 seconds indicates the cpu was at 50% of usage for the last 60 seconds.
+
+This concept was adopted as sometimes, percent basis monitor items cannot fully reflect the resource usage, since you can change the monitor interval at any time and the data shown on the web get decimated for performance reasons.
+
+
 ## Datum
 
 |Go|Javascript|HTML|
 |-|-|-|
 |`mDatum`|`monitorDatum`|`monitor-datum`|
 
-A datum is a set of **Monitor.Timestamp** and **Monitor.Value**. Each represents a recorded value at a certain time.
+A datum is a set of **Monitor.Timestamp**, **Monitor.Value**, and **Monitor.For**. Each represents a recorded value at a certain time.
+
+```go
+type MonitorDatum struct {
+    Timestamp int64
+    Value float64
+    For int64
+}
+```
 
 
 ## Data
@@ -167,6 +185,7 @@ The compression for **Monitor.Data** is done in the following manner in gzip enc
 |1|gob|`string`|`"float64"` or `"nil"`|
 |2|gob|`[]int64`|An array of **Monitor.Timestamp**|
 |3|gob|`[]float64`|An array of **Monitor.Value**|
+|4|gob|`[]int64`|An array of **Monitor.For**|
 
 
 ## Data Map
@@ -196,3 +215,4 @@ A data map is a map of **Monitor.Data** whose keys are, typically, **Monitor.Key
 |Column|Description|
 |`timestamp`||
 |`value`||
+|`for`||
