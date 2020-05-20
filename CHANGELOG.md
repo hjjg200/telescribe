@@ -10,7 +10,7 @@ First version that complies with the documentation
 - [x] **Fixed:** `web` fixed queue functionality
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
-- [ ] **Changed:** `server` flush monitor data cache when exiting app
+- [x] **Changed:** `server` flush monitor data cache when exiting app
 
 #### Known Issues
 

@@ -120,6 +120,8 @@ func registerSignalHandler() {
     
     // Thread-related
     railSwitch = together.NewRailSwitch()
+    railSwitch.Queue(threadMain, 1) // Set the first rail
+    railSwitch.Proceed(threadMain)
 
     // Signal Catcher
     sig := make(chan os.Signal, 1)
@@ -127,11 +129,14 @@ func registerSignalHandler() {
     go func() {
         <- sig
         fmt.Println()
+
         EventLogger.Infoln("Waiting for tasks to finish...")
         railSwitch.Close()
-        EventLogger.Infoln("Bye bye")
+        
+        EventLogger.Infoln("Compressing logs")
         EventLogFile.Close()
         AccessLogFile.Close()
+        EventLogger.Infoln("Bye bye")
         os.Exit(0)
     }()
 

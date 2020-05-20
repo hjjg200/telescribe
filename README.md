@@ -53,28 +53,21 @@ The exterior-wise design is mainly done on the following Figma document:
 Note that, however, the above document is not a faithful representation of the web design; rather, it must be taken as a prototype for it.
 
 
-## Production(Stable Release) Checklist
+## Stable Release Checklist
 
-1. IPv6 support
-1. Client config mixins
 1. Project requirements satisfied
 1. Maintainable
 1. Scalable
 1. Well-documented
-1. Config validators
-1. Separate access log and event log
 
 
 ## TODO (beta)
 
-1. I/O wait monitoring
-1. Per-process monitoring
+1. IPv6 support
+1. Config validators
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
-1. Overall overhaul
-1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe)
-1. Log files like latest.log, 20191210.1.log.gz...
-1. Log file separation: access, events
 1. Web anchors(#) or queries for fullName, timestamp, and selected items
+1. Client config mixins
 
 
 ## TODO (alpha)
@@ -111,8 +104,14 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Various http users with different permissions~~
 1. ~~Prevent the server from being shutdown when it is flushing caches: use go-together and signal waiting~~
 1. ~~Web: Custom number format~~
+1. ~~Log files like latest.log, 20191210.1.log.gz...~~
+1. ~~Log file separation: access, events~~
 1. Protocol documentation
 1. Monitor documentation
+1. I/O wait monitoring
+1. Per-process monitoring
+1. Overall overhaul
+1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe) using LightSail
 
 ## External Libraries
 - Vue.js

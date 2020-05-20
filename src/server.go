@@ -315,6 +315,13 @@ func(srv *Server) Start() (err error) {
     Try(err)
     EventLogger.Infoln("Network is configured to listen at", addr)
 
+    // Schedule cleanups
+    railSwitch.OnEnd(threadMain, func() {
+        defer CatchFunc(nil, EventLogger.Warnln)
+        Try(srv.StoreClientMonitorDataMap())
+        EventLogger.Infoln("Stored client monitor data")
+    })
+
     // Data storing thread
     go func() {
         for {func() {
