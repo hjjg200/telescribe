@@ -49,6 +49,8 @@ const KeyMountSize = "mount-size"
 const KeyMountSizeMB = "mount-size-mb"
 const KeyMountSizeGB = "mount-size-gb"
 const KeyMountSizeTB = "mount-size-tb"
+const KeyDiskIOUsage = "disk-io-usage"
+const KeyMountIOUsage = "mount-io-usage"
 // Network
 const KeyNetworkIn = "network-in"
 const KeyNetworkInPackets = "network-inPackets"
@@ -92,6 +94,8 @@ var Wrappers = map[string] wrapper {
     KeyMountSizeMB: Wrap(GetMountSize, 1.0e-3),
     KeyMountSizeGB: Wrap(GetMountSize, 1.0e-6),
     KeyMountSizeTB: Wrap(GetMountSize, 1.0e-9),
+    KeyDiskIOUsage: Wrap(GetDiskIOUsage, 1.0),
+    KeyMountIOUsage: Wrap(GetMountIOUsage, 1.0),
     // Network
     KeyNetworkIn: Wrap(GetNetworkIn, 1.0),
     KeyNetworkInPackets: Wrap(GetNetworkInPackets, 1.0),

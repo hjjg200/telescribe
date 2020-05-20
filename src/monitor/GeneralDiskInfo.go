@@ -30,6 +30,7 @@ type diskStat struct {
     writes int64
     writeSectors int64
     writeTicks int64
+    ioTicks int64 // millisecond
 }
 
 var diskHierarchy = make(map[string] []string)
@@ -104,7 +105,7 @@ func getParentDisk(part string) string {
 
 func parseDiskStats() {
 
-    if(atomic.CompareAndSwapInt32(&diskStatParsingWait, 0, 1) == false) {
+    if atomic.CompareAndSwapInt32(&diskStatParsingWait, 0, 1) == false {
         // Already running
         return
     }
@@ -171,6 +172,7 @@ func parseDiskStats() {
         ds.writes = writes
         ds.writeSectors = writeSectors
         ds.writeTicks = writeTicks
+        ds.ioTicks = ioTicks
 
         // Assign
         pds[name] = ds
@@ -350,6 +352,62 @@ func GetMountSize(m string) (float64, error) {
     for _, ds := range pds {
         if ds.mount == m {
             return float64(ds.blocks), nil
+        }
+    }
+    return 0.0, fmt.Errorf("Not found")
+}
+
+// IO USAGE
+// https://serverfault.com/questions/862334/interpreting-read-write-and-total-io-time-in-proc-diskstats
+
+var prevDiskIOTicks = make(map[string] int64)
+var lastDiskIOTick  = time.Time{}
+func GetDiskIOUsage() map[string] float64 {
+    parseDiskStats()
+    pds := parsedDiskStats
+    ret := make(map[string] float64)
+
+    for name := range pds {
+
+        prev, _ := prevDiskIOTicks[name]
+        now     := time.Now()
+        past    := now.Sub(lastDiskIOTick) / time.Millisecond
+        lastDiskIOTick = now
+        prevDiskIOTicks[name] = pds[name].ioTicks
+
+        if lastDiskIOTick != (time.Time{}) {
+            ret[name] = float64(pds[name].ioTicks - prev) / float64(past) * 100.0
+        } else {
+            // First call is always zero
+            // TODO if possible, divide by total uptime
+            ret[name] = 0.0
+        }
+
+    }
+    return ret
+}
+
+var prevMountIOTicks = make(map[string] int64)
+var lastMountIOTick  = time.Time{}
+func GetMountIOUsage(m string) (float64, error) {
+    parseDiskStats()
+    pds := parsedDiskStats
+
+    for name, ds := range pds {
+        if ds.mount == m {
+            prev, _ := prevMountIOTicks[m]
+            now     := time.Now()
+            past    := now.Sub(lastMountIOTick) / time.Millisecond
+            lastMountIOTick = now
+            prevMountIOTicks[m] = pds[name].ioTicks
+
+            // First call is always zero
+            // TODO if possible, divide by total uptime
+            if lastMountIOTick == (time.Time{}) {
+                return 0.0, nil
+            }
+
+            return float64(pds[name].ioTicks - prev) / float64(past) * 100.0, nil
         }
     }
     return 0.0, fmt.Errorf("Not found")
