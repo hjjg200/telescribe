@@ -15,6 +15,7 @@ import (
     "time"
 
     . "github.com/hjjg200/go-act"
+    "github.com/hjjg200/go-together"
 )
 
 func (srv *Server) startHttpServer() error {
@@ -109,7 +110,7 @@ func(srv *Server) populateHttpRouter() {
         bytes []byte
     }
     staticCacheMap := make(map[string] staticCache)
-    cacheHolder    := together.NewHoldGroup()
+    cacheLocks     := together.NewLockerRoom()
     serveStatic    := func(hctx HttpContext) {
 
         defer func() {
@@ -125,8 +126,8 @@ func(srv *Server) populateHttpRouter() {
         if !ok {func() {
 
             // Mutex
-            cacheHolder.HoldAt(fp)
-            defer cacheHolder.UnholdAt(fp)
+            cacheLocks.Lock(fp)
+            defer cacheLocks.Unlock(fp)
 
             // Check again since a cache could have been created
             _, ok = staticCacheMap[fp]

@@ -113,14 +113,13 @@ func setFlags() (err error) {
 }
 
 const (
-    ThreadMain = iota
-    ThreadCleanUp
+    threadMain = iota
 )
-var HoldSwitch *together.HoldSwitch
+var railSwitch *together.RailSwitch
 func registerSignalHandler() {
     
     // Thread-related
-    HoldSwitch = together.NewHoldSwitch()
+    railSwitch = together.NewRailSwitch()
 
     // Signal Catcher
     sig := make(chan os.Signal, 1)
@@ -129,7 +128,7 @@ func registerSignalHandler() {
         <- sig
         fmt.Println()
         EventLogger.Infoln("Waiting for tasks to finish...")
-        HoldSwitch.Add(ThreadCleanUp, 1)
+        railSwitch.Close()
         EventLogger.Infoln("Bye bye")
         EventLogFile.Close()
         AccessLogFile.Close()

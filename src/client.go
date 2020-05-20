@@ -136,9 +136,9 @@ func (cl *Client) Start() error {
 
         // Config
         // + Monitor Interval Shorthand Func
-        mrif   := func() time.Duration { return time.Second * time.Duration(cl.rule.MonitorInterval) }
-        hri     = mrif()
-        passer := together.NewPasser(mrif())
+        mrif := func() time.Duration { return time.Second * time.Duration(cl.rule.MonitorInterval) }
+        hri   = mrif()
+        door := together.NewDoor(mrif())
 
         // Loop
         var conn net.Conn
@@ -146,7 +146,7 @@ func (cl *Client) Start() error {
         MonitorLoop:
         for {
 
-            passer.Pass()
+            door.Knock()
 
             // Close open connection
             if conn != nil {
@@ -213,8 +213,8 @@ func (cl *Client) Start() error {
                     EventLogger.Warnln(err)
                     break MonitorLoop
                 }
-                // Passer Interval
-                passer = together.NewPasser(mrif())
+                // Door Interval
+                door.Set(mrif())
                 EventLogger.Infoln("Reconfigured!")
             case "version-mismatch":
                 EventLogger.Warnln("Version mismatch! Attempting to auto-update...")

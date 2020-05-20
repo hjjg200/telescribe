@@ -325,12 +325,16 @@ func(srv *Server) Start() (err error) {
             time.Sleep(time.Minute * time.Duration(srv.config.DataStoreInterval))
 
             // Add task
-            HoldSwitch.Add(ThreadMain, 1)
-            Try(srv.StoreClientMonitorDataMap())
-            EventLogger.Infoln("Stored client monitor data")
+            if railSwitch.Queue(threadMain, 1) {
+                Try(srv.StoreClientMonitorDataMap())
+                EventLogger.Infoln("Stored client monitor data")
 
-            // Task done
-            HoldSwitch.Done(ThreadMain)
+                // Task done
+                railSwitch.Proceed(threadMain)
+            } else {
+                return
+            }
+
         }()}
     }()
     EventLogger.Infoln("Started monitor data caching thread")
@@ -340,7 +344,8 @@ func(srv *Server) Start() (err error) {
         ccp     := srv.config.ClientConfigPath
         st, _   := os.Stat(ccp)
         lastMod := st.ModTime()
-        for {func() {
+        running := true
+        for running {func() {
             // Catch
             defer CatchFunc(nil, EventLogger.Warnln)
 
@@ -348,31 +353,41 @@ func(srv *Server) Start() (err error) {
             time.Sleep(clientConfigWatchInterval)
 
             // Add task
-            HoldSwitch.Add(ThreadMain, 1)
+            if railSwitch.Queue(threadMain, 1) {
 
-            // Mod Time Check
-            st, err := os.Stat(ccp)
-            Try(err)
+                // Mod Time Check
+                st, err := os.Stat(ccp)
+                Try(err)
 
-            // Changed
-            if lastMod != st.ModTime() {
-                Try(srv.loadClientConfig())
-                EventLogger.Infoln("Reloaded client config")
-                lastMod = st.ModTime()
+                // Changed
+                if lastMod != st.ModTime() {
+                    Try(srv.loadClientConfig())
+                    EventLogger.Infoln("Reloaded client config")
+                    lastMod = st.ModTime()
+                }
+                railSwitch.Proceed(threadMain)
+
+            } else {
+                running = false
+                return
             }
-            HoldSwitch.Done(ThreadMain)
+
         }()}
     }()
     EventLogger.Infoln("Started client config reloading thread")
 
     // Chart-ready csv preparing thread
     go func() {
-        for {func() {
+        running := true
+        for running {func() {
 
             defer CatchFunc(nil, EventLogger.Warnln)
 
             // Add task
-            HoldSwitch.Add(ThreadMain, 1)
+            if railSwitch.Queue(threadMain, 1) == false {
+                running = false
+                return
+            }
 
             clMdtBox := make(map[string/* clId */] MonitorDataTableBox)
             gthSec   := int64(srv.config.GapThresholdTime * 60) // To seconds
@@ -455,7 +470,7 @@ func(srv *Server) Start() (err error) {
             EventLogger.Infoln("Chart-ready data prepared")
 
             // Task done
-            HoldSwitch.Done(ThreadMain)
+            railSwitch.Proceed(threadMain)
 
             // Sleep at end
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
