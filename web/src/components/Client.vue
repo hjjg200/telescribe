@@ -6,7 +6,7 @@
         <h2 class="name">{{ info.alias }}</h2>
         <div class="menu-wrap">
           <Button class="menu-button" @click="$refs.menu.toggle($event)">
-            <font-awesome icon="caret-down"/>
+            <font-awesome icon="ellipsis-v"/>
           </Button>
           <Menu ref="menu">
             <MenuItem>Add to Favorites</MenuItem><!-- TODO -->
@@ -91,9 +91,9 @@ import {colorify} from '@/lib/ui/util/util.js';
 import Queue from '@/lib/util/queue.js';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
-  faCaretDown
+  faEllipsisV
 } from '@fortawesome/free-solid-svg-icons';
-library.add(faCaretDown);
+library.add(faEllipsisV);
 
 export default {
   name: "Client",

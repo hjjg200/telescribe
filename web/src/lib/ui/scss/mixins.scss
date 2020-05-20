@@ -5,24 +5,15 @@
 
 @mixin themed-scrollbar {
     &::-webkit-scrollbar-track {
-        background: $cl-area-secondary;
+        background: $cl-5-secondary;
     }
     &::-webkit-scrollbar-thumb {
-        background: $cl-line-secondary;
+        background: $cl-4-secondary;
         border-radius: 0.2rem;
     }
     &::-webkit-scrollbar {
         height: 0.4rem;
         width: 0.4rem;
-    }
-}
-
-@mixin focusable($selector: '') {
-    &:focus, &.is-focused {
-        &#{$selector} {
-            box-shadow: none;
-            outline: none;
-        }
     }
 }
 
@@ -75,4 +66,18 @@
     &.is-disabled {
         cursor: not-allowed;
     }
+}
+
+@mixin focusable($selector: '') {
+    &:focus, &.is-focused {
+        &#{$selector} {
+            box-shadow: none;
+            outline: none;
+        }
+    }
+}
+
+@mixin shadow {
+    box-shadow: 0 .1rem .1rem rgba($cl-shadow, .08),
+        0 .2rem .3rem rgba($cl-shadow, .05);
 }

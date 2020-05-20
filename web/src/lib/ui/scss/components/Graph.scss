@@ -92,7 +92,7 @@ $colors: (
     .grid {
         position: relative;
         &, line {
-            stroke: $cl-line-secondary;
+            stroke: $cl-4-secondary;
             stroke-width: 1px;
             stroke-dasharray: 3px;
         }
@@ -101,7 +101,7 @@ $colors: (
         }
     }
     .hand {
-        stroke: $cl-line-secondary-dark;
+        stroke: $cl-2-secondary;
         stroke-width: 1px;
         stroke-dasharray: 3px;
     }
@@ -109,17 +109,17 @@ $colors: (
         font-family: inherit;
         font-size: 0.8rem;
         &, path, g, line {
-            fill: $cl-line-secondary;
-            stroke: $cl-line-secondary;
+            fill: $cl-4-secondary;
+            stroke: $cl-4-secondary;
             stroke-width: 1px;
         }
         text {
-            fill: $cl-text-secondary;
+            fill: $cl-3-secondary;
         }
     }
     .x-axis {
         .tick line {
-            stroke: $cl-line-secondary;
+            stroke: $cl-4-secondary;
         }
     }
     .y-axis-wrap {
@@ -140,16 +140,16 @@ $colors: (
         .tooltip {
             line-height: 1;
             .background {
-                stroke: $cl-line-secondary;
+                stroke: $cl-4-secondary;
                 fill: white;
             }
             .timestamp {
                 font-size: 12px;
-                fill: $cl-text-secondary;
+                fill: $cl-3-secondary;
             }
             .value {
                 font-size: 14px;
-                fill: $cl-text-secondary-dark;
+                fill: $cl-1-secondary;
             }
         }
     }

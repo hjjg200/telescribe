@@ -54,6 +54,7 @@ $select-caret-width: 2.5rem;
         z-index: 1000;
         min-width: calc(100% - 2px);
         @include themed-scrollbar;
+        @include shadow;
     }
     .ui-select-item {
         display: flex;

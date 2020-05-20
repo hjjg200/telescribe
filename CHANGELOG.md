@@ -11,15 +11,14 @@ First version that complies with the documentation
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app
+- [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
 
 #### Known Issues
 
 - [ ] No indicator for status and disabled status for clients not sending data
+- [ ] GapThresholdTime might have to be per-client, such as monitorInterval + 1 minute
 - [ ] `web` Tiny gaps are present in the graph; it is because segments do not have path that connects them to each other
-- [ ] `web` Quick selection changing may break functionality of web
-- [ ] GapThresholdTime might have to be per-client
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
-- [ ] Sometimes SIGTERM does not terminate server instance
 - [ ] `web` sometimes mousemove event takes much more time than usual
 
 
