@@ -21,9 +21,31 @@ const (
 
 
 // CPU and parent process
+// proc/[pid]/cmdline
+//          This read-only file holds the complete command line for the
+//          process, unless the process is a zombie.  In the latter case,
+//          there is nothing in this file: that is, a read on this file
+//          will return 0 characters.  The command-line arguments appear
+//          in this file as a set of strings separated by null bytes
+//          ('\0'), with a further null byte after the last string.
+//
+// /proc/[pid]/statm
+//          Provides information about memory usage, measured in pages.
+//          The columns are:
+//
+//              size       (1) total program size
+//                           (same as VmSize in /proc/[pid]/status)
+//              resident   (2) resident set size
+//                           (same as VmRSS in /proc/[pid]/status)
+//              shared     (3) number of resident shared pages (i.e., backed by a file)
+//                           (same as RssFile+RssShmem in /proc/[pid]/status)
+//              text       (4) text (code)
+//              lib        (5) library (unused since Linux 2.6; always 0)
+//              data       (6) data + stack
+//              dt         (7) dirty pages (unused since Linux 2.6; always 0)
+//
 // /proc/[pid]/stat
-
-//(3) state  %c
+// (3) state  %c
 //          One of the following characters, indicating process
 //            state:
 //

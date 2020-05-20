@@ -68,6 +68,9 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`network-out[<interfaceName>]`|Outgoing bytes of the specified interface|
 |`network-outPackets`|Outgoing packets of the entire interfaces|
 |`network-outPackets[<interfaceName>]`|Outgoing packets of the specified interface|
+|`process-cpu-usage(<pid|comm|arg0>)`|CPU usage of the specified processes in whole|
+|`process-memory-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
+|`process-io-usage(<pid|comm|arg0>)`|IO usage of the specified processes in whole|
 |`command(<string>)`|The output of the command|
 
 ## Config
