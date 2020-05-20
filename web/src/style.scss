@@ -102,12 +102,17 @@ footer {
         align-items: center;
         h2 {
             color: $cl-3-accent;
+            flex: 1 0 auto;
             font-weight: normal;
             font-size: 2rem;
             margin-right: .25rem;
         }
         .menu-wrap {
+            flex: 0 0 1rem;
             position: relative;
+            .ui-menu {
+                right: 0;
+            }
         }
         .menu-button {
             background: none;

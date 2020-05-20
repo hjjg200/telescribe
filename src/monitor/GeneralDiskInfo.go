@@ -369,19 +369,18 @@ func GetDiskIOUsage() map[string] float64 {
 
     for name := range pds {
 
+        if lastDiskIOTick == (time.Time{}) {
+            // First call is always divided by uptime
+            lastDiskIOTick = systemStartTime
+        }
+
         prev, _ := prevDiskIOTicks[name]
         now     := time.Now()
         past    := now.Sub(lastDiskIOTick) / time.Millisecond
         lastDiskIOTick = now
         prevDiskIOTicks[name] = pds[name].ioTicks
 
-        if lastDiskIOTick != (time.Time{}) {
-            ret[name] = float64(pds[name].ioTicks - prev) / float64(past) * 100.0
-        } else {
-            // First call is always zero
-            // TODO if possible, divide by total uptime
-            ret[name] = 0.0
-        }
+        ret[name] = float64(pds[name].ioTicks - prev) / float64(past) * 100.0
 
     }
     return ret
@@ -395,19 +394,20 @@ func GetMountIOUsage(m string) (float64, error) {
 
     for name, ds := range pds {
         if ds.mount == m {
+
+            if lastMountIOTick == (time.Time{}) {
+                // First call is always divided by uptime
+                lastMountIOTick = systemStartTime
+            }
+
             prev, _ := prevMountIOTicks[m]
             now     := time.Now()
             past    := now.Sub(lastMountIOTick) / time.Millisecond
             lastMountIOTick = now
             prevMountIOTicks[m] = pds[name].ioTicks
 
-            // First call is always zero
-            // TODO if possible, divide by total uptime
-            if lastMountIOTick == (time.Time{}) {
-                return 0.0, nil
-            }
-
             return float64(pds[name].ioTicks - prev) / float64(past) * 100.0, nil
+
         }
     }
     return 0.0, fmt.Errorf("Not found")

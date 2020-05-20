@@ -32,7 +32,7 @@ func init() {
 
 func parseNetworkStats() {
 
-    if(atomic.CompareAndSwapInt32(&netStatParsingWait, 0, 1) == false) {
+    if atomic.CompareAndSwapInt32(&netStatParsingWait, 0, 1) == false {
         // Already running
         return
     }

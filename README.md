@@ -106,9 +106,9 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. ~~Web: Custom number format~~
 1. ~~Log files like latest.log, 20191210.1.log.gz...~~
 1. ~~Log file separation: access, events~~
+1. ~~I/O wait monitoring~~
 1. Protocol documentation
 1. Monitor documentation
-1. I/O wait monitoring
 1. Per-process monitoring
 1. Overall overhaul
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe) using LightSail
