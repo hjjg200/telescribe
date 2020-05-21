@@ -3,6 +3,7 @@ package monitor
 import (
     "fmt"
     "path/filepath"
+    "strconv"
     "sync"
     "sync/atomic"
     "time"
@@ -28,8 +29,14 @@ const (
     processZombie   byte = 'Z'
 )
 
+type pidSmapsStruct struct {
+    uss  uint64 // Private_Clean + Private_Dirty
+    swap uint64 // Swap
+}
+
 var pidArg0s = make(map[int] string)
 var parsedPidStats = make(map[int] pidStatStruct)
+var parsedPidSmaps = make(map[int] pidSmapsStruct)
 var processMutex sync.RWMutex
 var processParsed int32
 const processParseMinimumWait = time.Second * 1
@@ -82,9 +89,23 @@ func parseProcesses() {
                 continue
             }
 
+            // /proc/[pid]/smaps
+            smaps, err := readFile("/proc/" + spid + "/smaps")
+            if err != nil {
+                ErrorCallback(err)
+                continue
+            }
+            ppidmp := pidSmapsStruct{}
+            err = ppidmp.Parse(smaps)
+            if err != nil {
+                ErrorCallback(err)
+                continue
+            }
+
             // Assign
             pidArg0s[pid] = arg0
             parsedPidStats[pid] = ppids
+            parsedPidSmaps[pid] = ppidmp
 
         }
 
@@ -202,10 +223,16 @@ func getProcessIds(key string) []int {
 // seconds = now - last eval time
 // usage = 100.0 * (total_time / _SC_CLK_TCK) / seconds
 
+// TODO Resolve bug:
+//"process-cpu-usage(code-server)": {
+//  "timestamp": 1590050069,
+//  "value": 45867.02127659575,
+//  "status": 0,
+//  "constant": false
+//},
 
 var prevCpuUsageArg0s = make(map[int] string)
 var prevCpuUsagePidStats = make(map[int] pidStatStruct)
-var prevCpuUsageCpuTime = make(map[int] int) // Entire cpu
 var prevCpuUsageGroupCpuTime = make(map[string] int) // Entire cpu time
 func GetProcessCpuUsage(key string) (float64, error) {
 
@@ -240,11 +267,12 @@ func GetProcessCpuUsage(key string) (float64, error) {
             prevArg0 != arg0: // pid owner changed
             // default to zero
         default: // was parsed before
-            prevPpids   = prevCpuUsagePidStats[pid]
+            prevPpids = prevCpuUsagePidStats[pid]
         }
 
         // Prev
-        prevCpuUsageArg0s[pid] = arg0
+        prevCpuUsageArg0s[pid]    = arg0
+        prevCpuUsagePidStats[pid] = ppids
 
         // Metrics
         ownTotal     := ppids.GetOwnTotal()
@@ -307,3 +335,165 @@ func(ppids *pidStatStruct) Parse(line string) error {
 
 // IO usage
 // /proc/[pid]/io
+
+
+// Memory usage
+// /proc/[pid]/smaps
+//
+// https://unix.stackexchange.com/questions/33381/getting-information-about-a-process-memory-usage-from-proc-pid-smaps
+
+// https://selenic.com/repo/smem/file/tip/smem
+// From smem's source code:
+//
+// uss=('USS', lambda n: pt[n]['private_clean']
+//      + pt[n]['private_dirty'], '% 8a', sum,
+//      'unique set size'),
+// rss=('RSS', lambda n: pt[n]['rss'], '% 8a', sum,
+//      'resident set size (ignoring sharing)'),
+// pss=('PSS', lambda n: pt[n]['pss'], '% 8a', sum,
+//      'proportional set size (including sharing)'),
+// vss=('VSS', lambda n: pt[n]['size'], '% 8a', sum,
+//      'virtual set size (total virtual address space mapped)'),
+//
+// USS = Private_Clean + Private_Dirty
+
+
+func GetProcessMemoryUsage(key string) (float64, error) {
+
+    parseProcesses()
+    processMutex.RLock()
+    defer processMutex.RUnlock()
+
+    pids := getProcessIds(key)
+    if len(pids) == 0 {
+        return 0.0, fmt.Errorf("Process not found")
+    }
+
+    total := uint64(0)
+    for _, pid := range pids {
+        ppidmp := parsedPidSmaps[pid]
+        total += ppidmp.uss
+    }
+
+    return float64(total) / GetMemoryTotal() * 100.0, nil
+
+}
+
+func GetProcessSwapUsage(key string) (float64, error) {
+
+    parseProcesses()
+    processMutex.RLock()
+    defer processMutex.RUnlock()
+
+    pids := getProcessIds(key)
+    if len(pids) == 0 {
+        return 0.0, fmt.Errorf("Process not found")
+    }
+
+    total := uint64(0)
+    for _, pid := range pids {
+        ppidmp := parsedPidSmaps[pid]
+        total += ppidmp.swap
+    }
+
+    return float64(total) / GetSwapTotal() * 100.0, nil
+
+}
+
+func(ppidmp pidSmapsStruct) GetUss() uint64 {
+    return ppidmp.uss
+}
+
+func(ppidmp *pidSmapsStruct) Parse(smaps string) error {
+
+    if len(smaps) == 0 {
+        return fmt.Errorf("Bad smaps")
+    }
+
+    *ppidmp = pidSmapsStruct{} // Reset
+
+    i := 0
+    ParseLoop:
+    for {
+
+        // Vars
+        name  := ""
+        vstr  := ""
+        value := uint64(0)
+        
+        // For parsing
+        kvrow        := false
+        reachedColon := false
+        inWhitespace := false
+        col := 1
+        
+        RowParse:
+        for {
+
+            // Check position
+            if i == len(smaps) {
+                break ParseLoop
+            }
+
+            // Token
+            token := smaps[i]
+            i += 1
+            switch token {
+            case ' ', '\t': // whitespaces
+                if !reachedColon { // not a key value row
+                    break RowParse
+                }
+                if !inWhitespace {
+                    inWhitespace = true
+                    if col == 2 { // value is read
+                        kvrow = true
+                        break RowParse
+                    }
+                }
+            case ':': // colon
+                if !reachedColon {
+                    reachedColon = true
+                }
+            case '\n': // line break
+                break RowParse
+            default:
+                if inWhitespace {
+                    col += 1
+                    inWhitespace = false
+                }
+
+                if col == 1 {
+                    name += string(token)
+                } else if col == 2 {
+                    vstr += string(token)
+                }
+            }
+
+        }
+
+        // Key-value row
+        if !kvrow {
+            continue
+        }
+
+        // Value
+        var err error
+        value, err = strconv.ParseUint(vstr, 10, 64)
+        if err != nil {
+            // string values
+            continue
+        }
+
+        // Name
+        switch name {
+        case "Private_Clean", "Private_Dirty":
+            ppidmp.uss += value
+        case "Swap":
+            ppidmp.swap += value
+        }
+
+    }
+
+    return nil
+
+}

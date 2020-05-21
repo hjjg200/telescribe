@@ -11,4 +11,7 @@ func main() {
     fmt.Println(
         C.sysconf(C._SC_CLK_TCK),
     )
+    fmt.Println(
+        C.sysconf(C._SC_PAGESIZE),
+    )
 }
