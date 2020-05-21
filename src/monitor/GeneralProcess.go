@@ -3,7 +3,6 @@ package monitor
 import (
     "fmt"
     "path/filepath"
-    "strings"
     "sync"
     "sync/atomic"
     "time"
@@ -61,30 +60,15 @@ func parseProcesses() {
             // string
             spid := fmt.Sprint(pid)
 
-            // /proc/[pid]/cmdline
-            cwd, err := filepath.EvalSymlinks("/proc/" + spid + "/cwd")
+            // /proc/[pid]/exe
+            // Under Linux 2.2 and later, this file is a symbolic link con‐
+            // taining the actual pathname of the executed command.
+            arg0, err := filepath.EvalSymlinks("/proc/" + spid + "/exe")
             if err != nil {
                 ErrorCallback(err)
                 continue
             }
-            cmdline, err := readFile("/proc/" + spid + "/cmdline")
-            if err != nil {
-                ErrorCallback(err)
-                continue
-            }
-            argv := strings.SplitN(cmdline, "\x00", 2) // split null char
-            arg0 := argv[0]
-            if filepath.IsAbs(arg0) == false {
-                // If path is relative the result of EvalSymlinks will be relative to the current directory
-                // So make it relative to cwd
-                arg0 = filepath.Join(cwd, arg0)
-            }
-            arg0, err = filepath.EvalSymlinks(arg0)
-            if err != nil {
-                ErrorCallback(err)
-                continue
-            }
-            
+
             // /proc/[pid]/stat
             stat, err := readFile("/proc/" + spid + "/stat")
             if err != nil {
@@ -219,9 +203,10 @@ func getProcessIds(key string) []int {
 // usage = 100.0 * (total_time / _SC_CLK_TCK) / seconds
 
 
-var lastCpuUsageParse = make(map[int] time.Time)
 var prevCpuUsageArg0s = make(map[int] string)
 var prevCpuUsagePidStats = make(map[int] pidStatStruct)
+var prevCpuUsageCpuTime = make(map[int] int) // Entire cpu
+var prevCpuUsageGroupCpuTime = make(map[string] int) // Entire cpu time
 func GetProcessCpuUsage(key string) (float64, error) {
 
     parseProcesses()
@@ -234,36 +219,39 @@ func GetProcessCpuUsage(key string) (float64, error) {
     }
 
     ret := 0.0
+
+    // CPU time is per group in order to prevent percentage reflecting wrong value
+    prevCpuTime, _ := prevCpuUsageGroupCpuTime[key] // defaults to 0 when key doesn't exist
+    cpuTime        := getProcStats()[0].GetTotal()
+    pastCpuTime    := cpuTime - prevCpuTime
+    
+    prevCpuUsageGroupCpuTime[key] = cpuTime
+
     for _, pid := range pids {
 
         ppids := parsedPidStats[pid]
 
-        // Parse time
-        var lastParse time.Time
-        var prevPpids pidStatStruct
+        // Parse
+        var prevPpids   pidStatStruct
         arg0         := pidArg0s[pid]
         prevArg0, ok := prevCpuUsageArg0s[pid]
         switch {
         case !ok,             // first parse
             prevArg0 != arg0: // pid owner changed
-            lastParse = systemStartTime.Add(clockTicksToSeconds(ppids.starttime))
+            // default to zero
         default: // was parsed before
-            prevPpids = prevCpuUsagePidStats[pid]
-            lastParse = lastCpuUsageParse[pid]
+            prevPpids   = prevCpuUsagePidStats[pid]
         }
-        past := time.Since(lastParse)
 
         // Prev
-        lastCpuUsageParse[pid]    = time.Now()
-        prevCpuUsageArg0s[pid]    = arg0
-        prevCpuUsagePidStats[pid] = ppids
+        prevCpuUsageArg0s[pid] = arg0
 
         // Metrics
         ownTotal     := ppids.GetOwnTotal()
         prevOwnTotal := prevPpids.GetOwnTotal()
-        totalDiff    := clockTicksToSeconds(ownTotal - prevOwnTotal)
+        totalDiff    := ownTotal - prevOwnTotal
 
-        ret += float64(totalDiff / past) * 100.0
+        ret += float64(totalDiff) / float64(pastCpuTime) * 100.0
 
     }
 

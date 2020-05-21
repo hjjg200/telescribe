@@ -95,37 +95,44 @@ func(pss *procStatStruct) Parse(line string) error {
 
 }
 
+func getProcStats() ([]procStatStruct) {
+    
+    cat, err := readFile("/proc/stat")
+    if err != nil {
+        panic(err)
+    }
+
+    cpup1 := int(GetCpuCount()) + 1
+    lines := strings.SplitN(cat, "\n", cpup1)
+    
+    currProcStat := make([]procStatStruct, cpup1)
+    for i := 0; i < cpup1; i++ {
+        currProcStat[i] = procStatStruct{}
+        err = currProcStat[i].Parse(lines[i])
+        if err != nil {
+            ErrorCallback(err)
+        }
+    }
+
+    return currProcStat
+
+}
+
 // GetCpuUsage returns the cpu usage during the duration from the last call of this function of the start of the current session
 // and to the current call of this function.
 
 func GetCpuUsage() ([]float64, error) {
 
-    cat, err := readFile("/proc/stat")
-    if err != nil {
-        return nil, err
-    }
-
-    cpup1 := int(GetCpuCount()) + 1
-    lines := strings.Split(cat, "\n")
-    lines = lines[:cpup1]
-
-    usage := make([]float64, cpup1)
-    currProcStat := make([]procStatStruct, cpup1)
-    for i := 0; i < len(lines); i++ {
-
-        // Get Current Values
-        currProcStat[i] = procStatStruct{}
-        err = currProcStat[i].Parse(lines[i])
-        if err != nil {
-            return nil, err
-        }
+    currProcStat := getProcStats()
+    usage := make([]float64, len(currProcStat))
+    for i := 0; i < len(currProcStat); i++ {
 
         // Get Difference
         dIdle := float64(currProcStat[i].GetIdle() - prevProcStat[i].GetIdle())
         dTotal := float64(currProcStat[i].GetTotal() - prevProcStat[i].GetTotal())
 
         // Get Usage
-        usage[i] = (dTotal - dIdle) / dTotal * 100
+        usage[i] = (dTotal - dIdle) / dTotal * 100.0
 
     }
 
