@@ -13,8 +13,8 @@ func init() {
         panic(err)
     }
 
-    systemStartTime = time.Now().Sub(
-        time.Duration(float64(time.Second) * ut),
+    systemStartTime = time.Now().Add(
+        time.Duration(float64(time.Second) * ut * -1.0),
     )
 }
 

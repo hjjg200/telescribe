@@ -368,7 +368,7 @@ func(srv *Server) Start() (err error) {
 
                 // Changed
                 if lastMod != st.ModTime() {
-                    Try(srv.loadClientConfig())
+                    Try(srv.loadClientConfig()) // TODO panic here causes SIGTERM to not work
                     EventLogger.Infoln("Reloaded client config")
                     lastMod = st.ModTime()
                 }
