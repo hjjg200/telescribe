@@ -3,6 +3,7 @@ package log
 import (
     "os"
     "testing"
+    "time"
 )
 
 func TestANSIColorer(t *testing.T) {
@@ -49,4 +50,43 @@ func TestDebugFilter(t *testing.T) {
     lgr.Infoln("Filter = .+3")
     repeat()
     
+}
+
+func TestDebugLineNumbers(t *testing.T) {
+
+    lgr := Logger{}
+    lgr.AddWriter(os.Stderr, ANSIColorer)
+    Debug = true
+    DebugFilter, _ = NewFilter(".*")
+    func() {
+        lgr.Debugln("inside A")
+        func() {
+            lgr.Debugln("inside B")
+            func() {
+                lgr.Warnln("inside C")
+            }()
+        }()
+    }()
+    lgr.Debugln("D")
+
+}
+
+func TestTimer(t *testing.T) {
+    
+    lgr := Logger{}
+    lgr.AddWriter(os.Stderr, ANSIColorer)
+    Debug = true
+    DebugFilter, _ = NewFilter(".*")
+
+    lgr.Infoln("TIME")
+    for i := 0; i < 10; i++ {
+        go func() {
+            tm2 := lgr.Timer("A")
+            time.Sleep(time.Millisecond * 100)
+            tm2.Stop()
+        }()
+    }
+    time.Sleep(time.Millisecond * 220)
+    lgr.Infoln("TIME")
+
 }

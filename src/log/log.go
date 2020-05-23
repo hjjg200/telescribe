@@ -9,96 +9,73 @@ import (
     "runtime"
 )
 
-type logEntry struct {
-    color int
-    val interface{}
-}
-
-type Logger struct {
-    writers []Writer
-}
-
-type Writer struct {
-    w io.Writer
-    clr Colorer
-}
-
-var (
-    prefixInfo  = Green(" INFO ")
-    prefixWarn  = Yellow(" WARN ")
-    prefixFatal = Red("FATAL!")
-    prefixPanic = Red("PANIC!")
-    prefixDebug = Magenta("+DEBUG")
-)
-
 var logStartTime time.Time
-var Debug = false
-var DebugFilter = &Filter{}
 
 func secondsFromStart() string {
-    var t time.Time
-    if logStartTime == t {
+    if logStartTime == (time.Time{}) {
         logStartTime = time.Now()
         return fmt.Sprintf("%11d", time.Now().Unix())
     }
     return fmt.Sprintf("%11.3f", float64(time.Now().Sub(logStartTime)) / float64(time.Second))
 }
 
-// Logger
+// LOGGER ---
+
+type Logger struct {
+    writers []Writer
+}
 
 func NewLogger() *Logger {
     return &Logger{}
 }
 
-func (lgr *Logger) AddWriter(w io.Writer, clr Colorer) {
+func(lgr *Logger) AddWriter(w io.Writer, clr Colorer) {
     lgr.writers = append(lgr.writers, Writer{ w, clr })
 }
 
-func (lgr *Logger) Infoln(args ...interface{}) {
+func(lgr *Logger) Infoln(args ...interface{}) {
     lgr.println(prefixInfo, args...)
 }
 
-func (lgr *Logger) Warnln(args ...interface{}) {
+func(lgr *Logger) Warnln(args ...interface{}) {
     if Debug {
-        args = append(lgr.callers(3), args...)
+        args = append(args, lgr.callers(3)...)
     }
     lgr.println(prefixWarn, args...)
 }
 
-func (lgr *Logger) Fatalln(args ...interface{}) {
+func(lgr *Logger) Fatalln(args ...interface{}) {
     if Debug {
-        args = append(lgr.callers(3), args...)
+        args = append(args, lgr.callers(3)...)
     }
     lgr.println(prefixFatal, args...)
     os.Exit(1)
 }
 
-func (lgr *Logger) Panicln(args ...interface{}) {
+func(lgr *Logger) Panicln(args ...interface{}) {
     lgr.print(prefixPanic, "")
     panic(fmt.Sprintln(args...))
 }
 
-func (lgr *Logger) Debugln(category string, args ...interface{}) {
-    if !(Debug && DebugFilter.Filter(category)) {
-        return
-    }
-    args = append(lgr.callers(3), args...)
-    args = append([]interface{}{Magenta(category)}, args...)
-    lgr.println(prefixDebug, args...)
-}
-
-func (lgr *Logger) println(prefix logEntry, args ...interface{}) {
+func(lgr *Logger) println(prefix logEntry, args ...interface{}) {
     args = append(args, "\n")
     lgr.print(prefix, args...)
 }
 
-func (lgr *Logger) print(prefix logEntry, args ...interface{}) {
+func(lgr *Logger) print(prefix logEntry, args ...interface{}) {
     for _, w := range lgr.writers {
         w.print(prefix, args...)
     }
 }
 
-func (w *Writer) print(prefix logEntry, args ...interface{}) {
+// WRITER ---
+
+type Writer struct {
+    w io.Writer
+    clr Colorer
+}
+
+func(w *Writer) print(prefix logEntry, args ...interface{}) {
 
     out := "[" + prefix.Colorify(w.clr) + "] "
     out += secondsFromStart()
@@ -120,20 +97,32 @@ func (w *Writer) print(prefix logEntry, args ...interface{}) {
 
 }
 
-func (lgr *Logger) callers(skip int) []interface{} {
-    pcs   := make([]uintptr, 128)
-    count := runtime.Callers(skip, pcs)
-    ret   := make([]interface{}, 0)
-    for i := count - 1; i >= 0; i-- {
-        pc   := pcs[i]
-        fn   := runtime.FuncForPC(pc)
-        f, l := fn.FileLine(pc)
+// TODO improve accuracy of line no
+func(lgr *Logger) callers(skip int) []interface{} {
 
+    pcs    := make([]uintptr, 128)
+    count  := runtime.Callers(skip, pcs)
+    frames := runtime.CallersFrames(pcs[0:count - 1])
+    ret    := make([]interface{}, 0)
+
+    for {
+
+        frame, more := frames.Next()
+        if !more {
+            break
+        }
+
+        f, l := frame.File, frame.Line
         dir  := filepath.Base(filepath.Dir(f))
         f     = dir + "/" + filepath.Base(f)
-        n    := filepath.Base(fn.Name())
+        n    := filepath.Base(frame.Func.Name())
 
-        ret   = append(ret, fmt.Sprintf("%s[%s:%d]\n  ", n, f, l))
+        ret   = append(
+            []interface{}{fmt.Sprintf("\n  %s[%s:%d]", n, f, l)}, ret...
+        )
+
     }
+
     return ret
+
 }

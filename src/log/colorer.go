@@ -18,6 +18,19 @@ const (
 
 // logEntry
 
+type logEntry struct {
+    color int
+    val interface{}
+}
+
+var (
+    prefixInfo  = Green(" INFO ")
+    prefixWarn  = Yellow(" WARN ")
+    prefixFatal = Red("FATAL!")
+    prefixPanic = Red("PANIC!")
+    prefixDebug = Magenta("+DEBUG")
+)
+
 func Red(v interface{}) logEntry {
     return logEntry{color: clRed, val: v}
 }
