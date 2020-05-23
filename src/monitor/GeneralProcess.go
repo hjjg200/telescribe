@@ -67,15 +67,6 @@ func parseProcesses() {
             // string
             spid := fmt.Sprint(pid)
 
-            // /proc/[pid]/exe
-            // Under Linux 2.2 and later, this file is a symbolic link con‐
-            // taining the actual pathname of the executed command.
-            arg0, err := filepath.EvalSymlinks("/proc/" + spid + "/exe")
-            if err != nil {
-                ErrorCallback(err)
-                continue
-            }
-
             // /proc/[pid]/stat
             stat, err := readFile("/proc/" + spid + "/stat")
             if err != nil {
@@ -87,6 +78,33 @@ func parseProcesses() {
             if err != nil {
                 ErrorCallback(err)
                 continue
+            }
+
+            // arg0 preference:
+            // 1. resolved link of /proc/[pid]/exe 
+            // 2. arg 0 of /proc/[pid]/cmdline
+            // 3. comm of /proc/[pid]/stat
+
+            // /proc/[pid]/exe
+            // Under Linux 2.2 and later, this file is a symbolic link con‐
+            // taining the actual pathname of the executed command.
+            arg0, err := filepath.EvalSymlinks("/proc/" + spid + "/exe")
+            if err != nil {
+                // On fail
+                // /proc/[pid]/cmdline
+                // Use arg0 of cmdline instead
+
+                cmdline, err := readFile("/proc/" + spid + "/cmdline")
+                if err != nil {
+                    ErrorCallback(err)
+                    continue
+                }
+
+                arg0 = strings.SplitN(cmdline, "\x00", 2)[0]
+                if len(arg0) == 0 {
+                    arg0 = ppids.GetComm()
+                }
+
             }
 
             // /proc/[pid]/smaps
