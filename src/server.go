@@ -324,165 +324,163 @@ func(srv *Server) Start() (err error) {
 
     // Data storing thread
     go func() {
-        for {func() {
-            // Function wrapping in order to use defer
-            defer CatchFunc(nil, EventLogger.Warnln)
 
-            // Sleep at beginning
-            time.Sleep(time.Minute * time.Duration(srv.config.DataStoreInterval))
+        itv := time.Minute * time.Duration(srv.config.DataStoreInterval)
 
-            // Add task
-            if railSwitch.Queue(threadMain, 1) {
-                Try(srv.StoreClientMonitorDataMap())
-                EventLogger.Infoln("Stored client monitor data")
+        for Sleep(itv) && railSwitch.Queue(threadMain, 1) {
 
-                // Task done
-                railSwitch.Proceed(threadMain)
-            } else {
-                return
+            timer := EventLogger.Timer("time:StoreClientMonitorDataMap")
+            err := srv.StoreClientMonitorDataMap()
+            timer.Stop()
+
+            // Task done
+            railSwitch.Proceed(threadMain)
+
+            if err != nil {
+                EventLogger.Warnln(err)
+                continue
             }
+            EventLogger.Infoln("Stored client monitor data")
 
-        }()}
+        }
+
     }()
     EventLogger.Infoln("Started monitor data caching thread")
 
     // Client Config Version Update
     go func() {
+
         ccp     := srv.config.ClientConfigPath
         st, _   := os.Stat(ccp)
         lastMod := st.ModTime()
-        running := true
-        for running {func() {
-            // Catch
-            defer CatchFunc(nil, EventLogger.Warnln)
 
-            // Sleep at beginning
-            time.Sleep(clientConfigWatchInterval)
+        for Sleep(clientConfigWatchInterval) && railSwitch.Queue(threadMain, 1) {
 
-            // Add task
-            if railSwitch.Queue(threadMain, 1) {
-
-                // Mod Time Check
-                st, err := os.Stat(ccp)
-                Try(err)
-
+            // Mod Time Check
+            st, err := os.Stat(ccp)
+            if err != nil {
+                EventLogger.Warnln(err)
+            } else if lastMod != st.ModTime() {
                 // Changed
-                if lastMod != st.ModTime() {
-                    Try(srv.loadClientConfig()) // TODO panic here causes SIGTERM to not work
+                err = srv.loadClientConfig()
+                if err != nil {
+                    EventLogger.Warnln(err)
+                } else {
                     EventLogger.Infoln("Reloaded client config")
                     lastMod = st.ModTime()
                 }
-                railSwitch.Proceed(threadMain)
-
-            } else {
-                running = false
-                return
             }
 
-        }()}
+            railSwitch.Proceed(threadMain)
+
+        }
+
     }()
     EventLogger.Infoln("Started client config reloading thread")
 
     // Chart-ready csv preparing thread
     go func() {
-        running := true
-        for running {func() {
+        
+        for railSwitch.Queue(threadMain, 1) {
+            
+            func() {
 
-            defer CatchFunc(nil, EventLogger.Warnln)
+                defer CatchFunc(nil, EventLogger.Warnln)
 
-            // Add task
-            if railSwitch.Queue(threadMain, 1) == false {
-                running = false
-                return
-            }
+                //
+                timer := EventLogger.Timer("time:DataPreparation")
 
-            clMdtBox := make(map[string/* clId */] MonitorDataTableBox)
-            gthSec   := int64(srv.config.GapThresholdTime * 60) // To seconds
+                clMdtBox := make(map[string/* clId */] MonitorDataTableBox)
+                gthSec   := int64(srv.config.GapThresholdTime * 60) // To seconds
 
-            for clId, mdMap := range srv.clientMonitorDataMap {
+                for clId, mdMap := range srv.clientMonitorDataMap {
 
-                // Maps
-                tsMap  := make(map[int64/* timestamp */] struct{})
-                mdtMap := make(map[string] []byte)
+                    // Maps
+                    tsMap  := make(map[int64/* timestamp */] struct{})
+                    mdtMap := make(map[string] []byte)
 
-                // Table-writing loop
-                for mKey, mData := range mdMap {
+                    // Table-writing loop
+                    for mKey, mData := range mdMap {
 
-                    // Decimate monitor data
-                    decimated := LttbMonitorData(
-                        mData, srv.config.DecimationThreshold,
-                    )
+                        // Decimate monitor data
+                        decimated := LttbMonitorData(
+                            mData, srv.config.DecimationThreshold,
+                        )
 
-                    // Write CSV(table)
-                    csv    := bytes.NewBuffer(nil)
-                    prevTs := decimated[0].Timestamp
-                    fmt.Fprint(csv, "timestamp,value\n")
+                        // Write CSV(table)
+                        csv    := bytes.NewBuffer(nil)
+                        prevTs := decimated[0].Timestamp
+                        fmt.Fprint(csv, "timestamp,value\n")
 
-                    // Write rows
-                    for _, each := range decimated {
+                        // Write rows
+                        for _, each := range decimated {
 
-                        ts := each.Timestamp
+                            ts := each.Timestamp
 
-                        // Check if there is gap
-                        if ts - prevTs > gthSec {
-                            // Put NaN which indicates a gap
-                            midTs        := (ts + prevTs) / 2
-                            tsMap[midTs]  = struct{}{}
-                            fmt.Fprintf(csv, "%d,NaN\n", midTs)
+                            // Check if there is gap
+                            if ts - prevTs > gthSec {
+                                // Put NaN which indicates a gap
+                                midTs        := (ts + prevTs) / 2
+                                tsMap[midTs]  = struct{}{}
+                                fmt.Fprintf(csv, "%d,NaN\n", midTs)
+                            }
+
+                            prevTs    = ts
+                            tsMap[ts] = struct{}{}
+                            fmt.Fprintf(csv, "%d,%f\n", ts, each.Value)
+
                         }
 
-                        prevTs    = ts
-                        tsMap[ts] = struct{}{}
-                        fmt.Fprintf(csv, "%d,%f\n", ts, each.Value)
+                        // Assign csv
+                        mdtMap[mKey] = csv.Bytes()
 
                     }
 
-                    // Assign csv
-                    mdtMap[mKey] = csv.Bytes()
-
-                }
-
-                // Timestamps slice
-                i, tss := 0, make([]int64, len(tsMap))
-                for t := range tsMap {
-                    tss[i] = t
-                    i++
-                }
-                sort.Sort(Int64Slice(tss)) // Sort
-
-                // Write boundaries table
-                bds := bytes.NewBuffer(nil)
-                fmt.Fprint(bds, "timestamp\n")
-                fmt.Fprintf(bds, "%d\n", tss[0])
-                for i := 1; i < len(tss); i++ {
-                    prev := tss[i-1]
-                    curr := tss[i]
-                    if curr - prev > gthSec {
-                        fmt.Fprintf(bds, "%d\n", prev)
-                        fmt.Fprintf(bds, "%d\n", curr)
+                    // Timestamps slice
+                    i, tss := 0, make([]int64, len(tsMap))
+                    for t := range tsMap {
+                        tss[i] = t
+                        i++
                     }
+                    sort.Sort(Int64Slice(tss)) // Sort
+
+                    // Write boundaries table
+                    bds := bytes.NewBuffer(nil)
+                    fmt.Fprint(bds, "timestamp\n")
+                    fmt.Fprintf(bds, "%d\n", tss[0])
+                    for i := 1; i < len(tss); i++ {
+                        prev := tss[i-1]
+                        curr := tss[i]
+                        if curr - prev > gthSec {
+                            fmt.Fprintf(bds, "%d\n", prev)
+                            fmt.Fprintf(bds, "%d\n", curr)
+                        }
+                    }
+                    fmt.Fprintf(bds, "%d\n", tss[len(tss)-1])
+
+                    // Assign
+                    clMdtBox[clId] = MonitorDataTableBox{
+                        Boundaries: bds.Bytes(),
+                        DataMap: mdtMap,
+                    }
+
                 }
-                fmt.Fprintf(bds, "%d\n", tss[len(tss)-1])
 
                 // Assign
-                clMdtBox[clId] = MonitorDataTableBox{
-                    Boundaries: bds.Bytes(),
-                    DataMap: mdtMap,
-                }
+                srv.clientMonitorDataTableBox = clMdtBox
+                EventLogger.Infoln("Chart-ready data prepared")
 
-            }
+                timer.Stop()
 
-            // Assign
-            srv.clientMonitorDataTableBox = clMdtBox
-            EventLogger.Infoln("Chart-ready data prepared")
+            }()
 
             // Task done
             railSwitch.Proceed(threadMain)
 
             // Sleep at end
             time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
-
-        }()}
+    
+        }
     }()
     EventLogger.Infoln("Started data decimation thread")
 

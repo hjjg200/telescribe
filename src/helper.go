@@ -8,6 +8,7 @@ import (
     "io"
     "net"
     "os"
+    "time"
     "regexp"
     "runtime/debug"
 
@@ -122,6 +123,13 @@ func CatchFunc(err *error, f func(...interface{}), prepend ...interface{}) {
         args = append(args, r)
         f(args...)
     }
+}
+
+// RAILSWITCH ---
+
+func Sleep(d time.Duration) bool {
+    time.Sleep(d)
+    return true
 }
 
 // IO ---

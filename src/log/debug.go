@@ -9,33 +9,19 @@ import (
 var Debug = false
 var DebugFilter = &Filter{}
 
-const (
-    debugPrefixInfo = "INFO"
-    debugPrefixTime = "TIME"
-)
-
-func(lgr *Logger) debug(category, prefix string, args ...interface{}) {
-
-    args = append(
-        []interface{}{Magenta(prefix + ": " + category)},
-        args...,
-    )
-
-    switch prefix {
-    case debugPrefixInfo:
-        args = append(args, lgr.callers(4)...)
-    }
-
-    lgr.println(prefixDebug, args...)
-
-}
-
 func(lgr *Logger) Debugln(category string, args ...interface{}) {
 
     if !(Debug && DebugFilter.Filter(category)) {
         return
     }
-    lgr.debug(category, debugPrefixInfo, args...)
+
+    args = append(
+        []interface{}{Magenta(category)},
+        args...
+    )
+    args = append(args, lgr.callers(3)...)
+
+    lgr.println(prefixDebug, args...)
 
 }
 
@@ -71,9 +57,11 @@ func(tm *Timer) Stop() {
     timeCategories[tm.category] = total
     timeLockers.Unlock(tm.category)
 
-    tm.lgr.debug(
-        tm.category, debugPrefixTime,
-        fmt.Sprintf("+%v", past), fmt.Sprintf("total: %v", total),
+    args := append(
+        []interface{}{Magenta(tm.category)},
+        fmt.Sprintf("+%v", past),
+        fmt.Sprintf("total: %v", total),
     )
+    tm.lgr.println(prefixDebug, args...)
 
 }
