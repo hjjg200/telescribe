@@ -109,6 +109,7 @@ func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 
 // RECOVER ---
 
+// TODO remove CatchFunc entirely
 func CatchFunc(err *error, f func(...interface{}), prepend ...interface{}) {
     r := recover()
     if r != nil {

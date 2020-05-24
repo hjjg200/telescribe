@@ -812,6 +812,11 @@ func (rp *Response) String(key string) (str string) {
     return
 }
 
+func (rp *Response) Int(key string) int {
+    v, _ := rp.args[key].(float64)
+    return int(v)
+}
+
 func (rp *Response) Int64(key string) int64 {
     // Json numbers are all float64
     v, _ := rp.args[key].(float64)

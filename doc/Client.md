@@ -57,8 +57,8 @@ A status object typically has the most recent status information about the clien
 |-|-|
 |`Timestamp`|Typically the most recent **Monitor.Timestamp**|
 |`Value`|Typically the most recent **Monitor.Value**|
+|`Per`|Typically the most recent **Monitor.Per**|
 |`Status`|Integer value as documented at **Monitor.Status**|
-|`Constant`|Whether it is constant as specified in the relevant **Monitor.Config**|
 
 
 ## ItemStatusMap

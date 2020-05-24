@@ -70,7 +70,7 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`network-outPackets[<interfaceName>]`|Outgoing packets of the specified interface|
 |`process-cpu-usage(<pid|comm|arg0>)`|CPU usage of the specified processes in whole|
 |`process-memory-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
-|`process-io-usage(<pid|comm|arg0>)`|IO usage of the specified processes in whole|
+|`process-swap-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
 |`command(<string>)`|The output of the command|
 
 ## Config
@@ -83,12 +83,12 @@ The monitor configuration contains information of fatal and warning ranges of va
 
 |Item|Description|
 |-|-|
-|`alias`||
-|`serveRaw`||
-|`range.fatal`|The **Util.Range** in which values are considered fatal|
-|`range.warning`|The **Util.Range** in which values are considered warning|
-|`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
+|`alias`|The name shown on the web instead of the key itself|
 |`constant`|Boolean for whether it is considered hardly changing and thus not stored for graph plotting|
+|`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
+|`fatalRange`|The **Util.Range** in which values are considered fatal|
+|`warningRange`|The **Util.Range** in which values are considered warning|
+|`relative`|Boolean for whether the data is time-dependent|
 
 
 ## Config Map
@@ -145,12 +145,12 @@ A value is defined as floating point value and expressed as `float64`.
 A value map can be expressed as `map[string] float64` in go. The keys are **Monitor.Key** and the values are **Monitor.Value**.
 
 
-## For
+## Per
 
 |Go|Javascript|HTML|
-|`mFor`|`monitorFor`|`monitor-for`|
+|`per`|`per`|`per`|
 
-A for value represents the duration, in seconds, for its relevant datum; for example, a cpu usage datum whose value is 50% and for is 60 seconds indicates the cpu was at 50% of usage for the last 60 seconds.
+A per value represents the duration, in seconds, for its relevant datum; for example, a cpu usage datum whose value is 50% and per is 60 seconds indicates the cpu was at 50% of usage for the last 60 seconds.
 
 This concept was adopted as sometimes, percent basis monitor items cannot fully reflect the resource usage, since you can change the monitor interval at any time and the data shown on the web get decimated for performance reasons.
 
@@ -161,13 +161,13 @@ This concept was adopted as sometimes, percent basis monitor items cannot fully 
 |-|-|-|
 |`mDatum`|`monitorDatum`|`monitor-datum`|
 
-A datum is a set of **Monitor.Timestamp**, **Monitor.Value**, and **Monitor.For**. Each represents a recorded value at a certain time.
+A datum is a set of **Monitor.Timestamp**, **Monitor.Value**, and **Monitor.Per**. Each represents a recorded value at a certain time.
 
 ```go
 type MonitorDatum struct {
     Timestamp int64
     Value float64
-    For int64
+    Per int
 }
 ```
 
@@ -190,7 +190,7 @@ The compression for **Monitor.Data** is done in the following manner in gzip enc
 |1|gob|`string`|`"float64"` or `"nil"`|
 |2|gob|`[]int64`|An array of **Monitor.Timestamp**|
 |3|gob|`[]float64`|An array of **Monitor.Value**|
-|4|gob|`[]int64`|An array of **Monitor.For**|
+|4|gob|`[]int`|An array of **Monitor.Per**|
 
 
 ## Data Map
@@ -220,4 +220,4 @@ A data map is a map of **Monitor.Data** whose keys are, typically, **Monitor.Key
 |Column|Description|
 |`timestamp`||
 |`value`||
-|`for`||
+|`per`||

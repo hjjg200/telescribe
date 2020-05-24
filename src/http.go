@@ -291,8 +291,8 @@ func(srv *Server) registerAPIV1() {
             ret[mKey] = ClientItemStatus{
                 Timestamp: le.Timestamp,
                 Value:     le.Value,
+                Per:       le.Per,
                 Status:    mCfg.StatusOf(le.Value),
-                Constant:  mCfg.Constant,
             }
         }
 

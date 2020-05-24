@@ -38,6 +38,7 @@ type MonitorData []MonitorDatum
 type MonitorDatum struct {
     Timestamp int64
     Value float64
+    Per int
 }
 
 // sort.Interface
@@ -51,10 +52,12 @@ func (datum MonitorDatum) Y() float64 { return datum.Value }
 // CONFIG ---
 
 type MonitorConfig struct {
+    Alias        string `json:"alias"`
+    Constant     bool   `json:"constant"`
+    Format       string `json:"format"`
     FatalRange   Range  `json:"fatalRange"`
     WarningRange Range  `json:"warningRange"`
-    Format       string `json:"format"`
-    Constant     bool   `json:"constant"`
+    Relative     bool   `json:"relative"`
 }
 type MonitorConfigMap map[string/* monitorKey */] MonitorConfig
 
@@ -110,13 +113,16 @@ func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
 
         timestamps := make([]int64, len(md))
         values     := make([]float64, len(md))
+        pers       := make([]int, len(md))
         for i := range md {
             timestamps[i] = md[i].Timestamp
-            values[i] = md[i].Value
+            values[i]     = md[i].Value
+            pers[i]       = md[i].Per
         }
 
         enc.Encode(timestamps)
         enc.Encode(values)
+        enc.Encode(pers)
 
     } else {
 
@@ -140,32 +146,32 @@ func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
     Try(err)
     dec      := gob.NewDecoder(gzr)
 
-    // Vars
-    var typ string
-    timestamps := make([]int64, 0)
-    put        := func(slice []float64) {
-        md = make(MonitorData, len(slice))
-        for i := 0; i < len(slice); i++ {
-            md[i] = MonitorDatum{
-                Timestamp: timestamps[i],
-                Value: slice[i],
-            }
-        }
-    }
-
     // Type
+    var typ string
     dec.Decode(&typ)
-
-    // Timestamp
-    dec.Decode(&timestamps)
 
     // Value
     switch typ {
     case "float64":
 
-        values := make([]float64, 0)
+        timestamps := make([]int64, 0)
+        values     := make([]float64, 0)
+        pers       := make([]int, 0)
+
+        // Timestamp
+        dec.Decode(&timestamps)
         dec.Decode(&values)
-        put(values)
+        dec.Decode(&pers)
+        
+        // Assign
+        md = make(MonitorData, len(timestamps))
+        for i := 0; i < len(timestamps); i++ {
+            md[i] = MonitorDatum{
+                Timestamp: timestamps[i],
+                Value:     values[i],
+                Per:       pers[i],
+            }
+        }
 
     case "nil":
 

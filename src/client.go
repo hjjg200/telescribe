@@ -183,17 +183,17 @@ func (cl *Client) Start() error {
 
             // Send to Server
             clRsp := NewResponse("monitor-record")
-            clRsp.Set("version", Version)
+            clRsp.Set("version",       Version)
             clRsp.Set("configVersion", cl.configVersion)
-            clRsp.Set("alias", flClientAlias)
-            clRsp.Set("timestamp", time.Now().Unix())
-            clRsp.Set("valueMap", valMap)
+            clRsp.Set("alias",         flClientAlias)
+            clRsp.Set("timestamp",     time.Now().Unix())
+            clRsp.Set("valueMap",      valMap)
+            clRsp.Set("per",           cl.rule.MonitorInterval)
             err = cl.s.WriteResponse(clRsp)
             if err != nil {
                 EventLogger.Warnln(err)
                 continue
             }
-            AccessLogger.Infoln("Sent")
 
             // Get response
             srvRsp, err := cl.s.NextResponse()
@@ -204,6 +204,7 @@ func (cl *Client) Start() error {
 
             switch srvRsp.Name() {
             case "ok":
+                AccessLogger.Infoln("Sent")
             case "reconfigure":
                 err = cl.configureRule(
                     srvRsp.String("configVersion"),
@@ -319,8 +320,8 @@ func(roleMap ClientRuleMap) Get(r string) ClientRule {
 type ClientItemStatus struct { // itemStat
     Timestamp int64   `json:"timestamp"`
     Value     float64 `json:"value"`
+    Per       int     `json:"per"`
     Status    int     `json:"status"`
-    Constant  bool    `json:"constant"`
 }
 
 type ClientItemStatusMap map[string/* mKey */] ClientItemStatus

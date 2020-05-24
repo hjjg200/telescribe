@@ -567,7 +567,7 @@ func(srv *Server) Start() (err error) {
     return
 
 }
-
+// TODO ignore constant items
 func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
@@ -615,7 +615,7 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
     return
 
 }
-
+// TODO ignore constant items
 func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
     defer CatchFunc(&err, EventLogger.Warnln)
@@ -651,7 +651,7 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
 }
 
-func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string] interface{}) {
+func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string] interface{}, per int) {
 
     // Ensure
     _, ok := srv.clientMonitorDataMap[clId]
@@ -681,6 +681,7 @@ func(srv *Server) RecordValueMap(clId string, timestamp int64, valMap map[string
             MonitorDatum{
                 Timestamp: timestamp,
                 Value:     val,
+                Per:       per,
             },
         )
 
@@ -874,10 +875,11 @@ func(srv *Server) HandleSession(s *Session) (err error) {
 
     case "monitor-record":
         
+        timestamp  := clRsp.Int64("timestamp")
         valMap, ok := clRsp.Args()["valueMap"].(map[string] interface{})
         Assert(ok, "Malformed value map")
-        timestamp := clRsp.Int64("timestamp")
-        srv.RecordValueMap(clId, timestamp, valMap)
+        per        := clRsp.Int("per")
+        srv.RecordValueMap(clId, timestamp, valMap, per)
 
     default:
         panic("Unknown response")
