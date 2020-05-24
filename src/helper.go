@@ -4,13 +4,11 @@ import (
     "bytes"
     "crypto/sha256"
     "crypto/rand"
-    "fmt"
     "io"
     "net"
     "os"
     "time"
     "regexp"
-    "runtime/debug"
 
     "./util"
 )
@@ -106,25 +104,6 @@ type Int64Slice []int64
 func (s Int64Slice) Len() int { return len(s) }
 func (s Int64Slice) Less(i, j int) bool { return s[i] < s[j] }
 func (s Int64Slice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-
-// RECOVER ---
-
-// TODO remove CatchFunc entirely
-func CatchFunc(err *error, f func(...interface{}), prepend ...interface{}) {
-    r := recover()
-    if r != nil {
-        if err != nil {
-            *err = fmt.Errorf("%v", r)
-        }
-        args := make([]interface{}, 0)
-        if flDebug {
-            args = append(args, string(debug.Stack()))
-        }
-        args = append(args, prepend...)
-        args = append(args, r)
-        f(args...)
-    }
-}
 
 // RAILSWITCH ---
 

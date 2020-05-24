@@ -242,14 +242,6 @@ func getProcessIds(key string) []int {
 // seconds = now - last eval time
 // usage = 100.0 * (total_time / _SC_CLK_TCK) / seconds
 
-// TODO Resolve bug:
-//"process-cpu-usage(code-server)": {
-//  "timestamp": 1590050069,
-//  "value": 45867.02127659575,
-//  "status": 0,
-//  "constant": false
-//},
-
 var prevCpuUsageArg0s = make(map[int] string)
 var prevCpuUsagePidStats = make(map[int] pidStatStruct)
 var prevCpuUsageGroupCpuTime = make(map[string] int) // Entire cpu time

@@ -97,7 +97,6 @@ func(w *Writer) print(prefix logEntry, args ...interface{}) {
 
 }
 
-// TODO improve accuracy of line no
 func(lgr *Logger) callers(skip int) []interface{} {
 
     pcs    := make([]uintptr, 128)

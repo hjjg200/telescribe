@@ -85,11 +85,12 @@ func setFlags() (err error) {
     flag.Parse()
 
     // Check wrong flags
-    defer CatchFunc(
-        &err, func(is ...interface{}) {
+    defer func() {
+        Catch(&err)
+        if err != nil {
             flag.PrintDefaults()
-        },
-    )
+        }
+    }()
 
     // Client
     if !flServer {
@@ -166,8 +167,14 @@ func registerLoggers() (err error) {
 
 func main() {
 
+    defer func() {
+        r := recover()
+        if r != nil {
+            EventLogger.Fatalln(r)
+        }
+    }()
+
     var err error
-    defer CatchFunc(&err, EventLogger.Fatalln)
 
     // Prepare
     Try(registerLoggers())
@@ -229,7 +236,7 @@ func main() {
         AccessLogger.AddWriter(AccessLogFile, nil)
 
         srv := NewServer()
-        srv.Start()
+        Try(srv.Start())
 
     }
 

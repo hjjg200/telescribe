@@ -213,7 +213,7 @@ func (srv *Server) LoadConfig(p string) (err error) {
 func(srv *Server) loadClientConfig() (err error) {
 
     // Catch
-    defer CatchFunc(&err, EventLogger.Warnln)
+    defer Catch(&err)
 
     // File path
     fn := srv.config.ClientConfigPath
@@ -284,7 +284,7 @@ func(srv *Server) Addr() string {
 
 func(srv *Server) Start() (err error) {
 
-    defer CatchFunc(&err, EventLogger.Panicln)
+    defer Catch(&err)
 
     // Config
     Try(srv.LoadConfig(flServerConfigPath))
@@ -317,9 +317,15 @@ func(srv *Server) Start() (err error) {
 
     // Schedule cleanups
     railSwitch.OnEnd(threadMain, func() {
-        defer CatchFunc(nil, EventLogger.Warnln)
+
+        defer func() {
+            if r := recover(); r != nil {
+                EventLogger.Warnln(r)
+            }
+        }()
         Try(srv.StoreClientMonitorDataMap())
         EventLogger.Infoln("Stored client monitor data")
+
     })
 
     // Data storing thread
@@ -385,7 +391,11 @@ func(srv *Server) Start() (err error) {
             
             func() {
 
-                defer CatchFunc(nil, EventLogger.Warnln)
+                defer func() {
+                    if r := recover(); r != nil {
+                        EventLogger.Warnln(r)
+                    }
+                }()
 
                 //
                 timer := EventLogger.Timer("time:DataPreparation")
@@ -505,7 +515,11 @@ func(srv *Server) Start() (err error) {
         go func() {
 
             host, _ := HostnameOf(conn)
-            defer CatchFunc(nil, EventLogger.Warnln, host)
+            defer func() {
+                if r := recover(); r != nil {
+                    EventLogger.Warnln(host, r)
+                }
+            }()
 
             rd := bufio.NewReader(conn)
 
@@ -567,7 +581,7 @@ func(srv *Server) Start() (err error) {
     return
 
 }
-// TODO ignore constant items
+
 func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
@@ -581,7 +595,11 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
     // Per file
     for _, match := range matches {func() {
 
-        defer CatchFunc(nil, EventLogger.Warnln, "Failed to read stored data: " + match)
+        defer func() {
+            if r := recover(); r != nil {
+                EventLogger.Warnln("Failed to read stored data:", match, r)
+            }
+        }()
 
         f, err2 := os.OpenFile(match, os.O_RDONLY, 0644)
         Try(err2)
@@ -599,12 +617,20 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
         Try(dec.Decode(&cmp))
         Try(f.Close())
 
+        // Check config
+        mCfg, ok := srv.getMonitorConfig(clId, mKey)
+        switch {
+        case mCfg.Constant, // Ignore constant items
+            !ok: // Ignore items with no config
+            return
+        }
+
         // Decompress
         mData, err2 := DecompressMonitorData(cmp)
         Try(err2)
 
         // Assign
-        _, ok := srv.clientMonitorDataMap[clId]
+        _, ok = srv.clientMonitorDataMap[clId]
         if !ok {
             srv.clientMonitorDataMap[clId] = make(MonitorDataMap)
         }
@@ -615,15 +641,28 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
     return
 
 }
-// TODO ignore constant items
+
 func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
-    defer CatchFunc(&err, EventLogger.Warnln)
+    defer Catch(&err)
 
     for clId, mdMap := range srv.clientMonitorDataMap {
         
         for mKey, mData := range mdMap {func() {
-            defer CatchFunc(nil, EventLogger.Warnln, "Failed to store:", clId, mKey)
+
+            defer func() {
+                if r := recover(); r != nil {
+                    EventLogger.Warnln("Failed to store:", clId, mKey, r)
+                }
+            }()
+
+            // Check config
+            mCfg, ok := srv.getMonitorConfig(clId, mKey)
+            switch {
+            case mCfg.Constant, // Ignore constant items
+                !ok: // Ignore items with no config
+                return
+            }
 
             // Compress
             cmp, err2 := CompressMonitorData(mData)
@@ -801,7 +840,7 @@ func(srv *Server) getMonitorConfig(clId string, mKey string) (MonitorConfig, boo
 func(srv *Server) HandleSession(s *Session) (err error) {
 
     logParams := make([]interface{}, 0)
-    defer CatchFunc(&err, EventLogger.Warnln, logParams...)
+    defer Catch(&err)
 
     // Get Address
     host, err := s.RemoteHost()
