@@ -211,7 +211,7 @@ export default {
               data: buf,
               color: colorify(monitorKey),
               formatters: {
-                y: d => `${formatNumber(format, d.value)}/${d.per}s`
+                y: d => `${formatNumber(format, d.value)} / ${d.per}s`
               }
             });
 

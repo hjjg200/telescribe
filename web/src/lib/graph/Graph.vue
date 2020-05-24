@@ -107,13 +107,13 @@ function addDebouncedAsyncEvent(elem, type, handler, interval) {
 }
 
 // D3
-import {event, select, mouse, customEvent} from "d3-selection";
+import {event, selectAll, select, mouse, customEvent} from "d3-selection";
 import {axisBottom, axisLeft} from "d3-axis";
 import {line} from "d3-shape";
 import {scaleLinear} from "d3-scale";
 import {extent, bisector} from "d3-array";
 
-const d3 = {get event() {return event;}, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent};
+const d3 = {get event() {return event;}, selectAll, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent};
 
 export default {
   name: "Graph",
@@ -138,10 +138,10 @@ export default {
   },
 
   watch: {
-    duration() {this._draw();},
+    duration()   {this._draw();},
     boundaries() {this._draw();},
-    dateset() {this._draw();},
-    options() {this._draw();}
+    dataset()    {this._draw();},
+    options()    {this._draw();}
   },
 
   computed: {
@@ -522,6 +522,7 @@ export default {
           var event      = d3.event;
           var target     = event.target;
           var onPoint    = target.classList.contains("point");
+          var onLine     = target.classList.contains("line");
           var mouse      = d3.mouse(projection.node());
           var [mX, mY]   = mouse;
           var x          = xScale.invert(mX);
@@ -530,13 +531,21 @@ export default {
           var scrollLeft = segmentsWrap.node().scrollLeft;
           var newModel   = {};
 
-          // Event Type Check
-          //if(!(isTouch || isMouseDown))
-            //return;
-
           // If mouse is on a point, show the tooltip
           if(onPoint) {
             overlay.selectAll(".tooltip").style("opacity", 1);
+          }
+
+          // Stroke width
+          let key = target.getAttribute("data-key");
+          
+          d3.selectAll(".line")
+            .attr("stroke-width", 1);
+          if(key) {
+            $._lines[key].forEach(
+              line => d3.select(line)
+                .attr("stroke-width", 2)
+            );
           }
 
           //
@@ -561,8 +570,6 @@ export default {
             let cX = xScale(elX);
             let cY = yScale(elY);
             d3.select($._points[key])
-              .attr("data-x", elX)
-              .attr("data-y", elY)
               .attr("cx", cX)
               .attr("cy", cY);
             
@@ -871,8 +878,10 @@ export default {
           .enter()
           .append("path")
             .each(function(d) {$._lines[d.key].push(this);})
-            .attr("stroke-width", 1)
+            .attr("class", "line")
+            .attr("data-key", d => d.key)
             .attr("stroke", d => $.dataset[d.key].color)
+            .attr("stroke-width", 1)
             .attr("fill", "none")
             .attr("d", d => d3.line()
               .defined(e => !isNaN($.asy(e)))

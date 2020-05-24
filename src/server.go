@@ -420,7 +420,7 @@ func(srv *Server) Start() (err error) {
                         // Write CSV(table)
                         csv    := bytes.NewBuffer(nil)
                         prevTs := decimated[0].Timestamp
-                        fmt.Fprint(csv, "timestamp,value\n")
+                        fmt.Fprint(csv, "timestamp,value,per\n")
 
                         // Write rows
                         for _, each := range decimated {
@@ -432,12 +432,12 @@ func(srv *Server) Start() (err error) {
                                 // Put NaN which indicates a gap
                                 midTs        := (ts + prevTs) / 2
                                 tsMap[midTs]  = struct{}{}
-                                fmt.Fprintf(csv, "%d,NaN\n", midTs)
+                                fmt.Fprintf(csv, "%d,NaN,NaN\n", midTs)
                             }
 
                             prevTs    = ts
                             tsMap[ts] = struct{}{}
-                            fmt.Fprintf(csv, "%d,%f\n", ts, each.Value)
+                            fmt.Fprintf(csv, "%d,%f,%d\n", ts, each.Value, each.Per)
 
                         }
 
@@ -454,6 +454,7 @@ func(srv *Server) Start() (err error) {
                     }
                     sort.Sort(Int64Slice(tss)) // Sort
 
+                    // TODO make this documented
                     // Write boundaries table
                     bds := bytes.NewBuffer(nil)
                     fmt.Fprint(bds, "timestamp\n")
