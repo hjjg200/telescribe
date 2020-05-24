@@ -12,6 +12,7 @@ First version that complies with the documentation
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app
 - [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
+- [ ] **Changed:** `web` made Graph component an independent component; made it use x and y instead of timestamp and value
 
 #### Known Issues
 

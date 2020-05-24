@@ -1,0 +1,39 @@
+
+.ui-graph {
+    .grid {
+        &, line {
+            stroke: $cl-4-secondary;
+        }
+    }
+    .hand {
+        stroke: $cl-2-secondary;
+    }
+    .axis {
+        &, path, g, line {
+            fill: $cl-4-secondary;
+            stroke: $cl-4-secondary;
+        }
+        text {
+            fill: $cl-3-secondary;
+        }
+    }
+    .x-axis {
+        .tick line {
+            stroke: $cl-4-secondary;
+        }
+    }
+    .overlay-wrap {
+        .tooltip {
+            .background {
+                stroke: $cl-4-secondary;
+                fill: white;
+            }
+            .x {
+                fill: $cl-3-secondary;
+            }
+            .y {
+                fill: $cl-1-secondary;
+            }
+        }
+    }
+}

@@ -58,10 +58,16 @@ TODO: make line stroke width 2 during mouse move
 
 // Const
 const defaultOptions = {
-  formatValue: "{.2f}",
-  formatYAxis: "{}",
-  formatDateLong: "Y-MM-DD[T]HH:mm:ssZ",
-  formatDateShort: "MMM DD HH:mm"
+  accessors: {
+    x: d => d.x,
+    y: d => d.y
+  },
+  formatters: {
+    xAxis: x => x,
+    yAxis: y => y,
+    x: d => d.x,
+    y: d => d.y
+  }
 };
 
 // Static functions
@@ -70,26 +76,35 @@ function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
 
-function keysEqual(a, b) {
-  if(a === b) return true;
-  if(a == null || b == null) return false;
-  if(a.length != b.length) return false;
-  a = a.slice(0).sort();
-  b = b.slice(0).sort();
-  for (var i = 0; i < a.length; ++i) {
-      if(a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
 // TODO: make this independent from external code
 //  + change timestamp to x
 //  + change value to y
 //  + format -- not as string but as function
 
 // Util
-import {addThrottledAsyncEvent, addDebouncedAsyncEvent} from '../../util/util.js';
-import {formatNumber} from '@/lib/util/web.js'; // TODO no external dependencies
+function addThrottledAsyncEvent(elem, type, handler, interval) {
+  var running = false;
+  var wrap = function(event) {
+    if(!running) {
+      running = true;
+      handler(event).then(function() {
+        setTimeout(function() {
+          running = false;
+        }, interval);
+      });
+    }
+  };
+  elem.addEventListener(type, wrap);
+}
+
+function addDebouncedAsyncEvent(elem, type, handler, interval) {
+  var timer;
+  var wrap = function(event) {
+    clearTimeout(timer);
+    timer = setTimeout(() => handler(event), interval);
+  }
+  elem.addEventListener(type, wrap);
+}
 
 // D3
 import {event, select, mouse, customEvent} from "d3-selection";
@@ -103,27 +118,38 @@ const d3 = {get event() {return event;}, select, axisBottom, axisLeft, extent, s
 export default {
   name: "Graph",
   props: {
+    boundaries: {
+      type: Array, default: []
+    },
+    dataset: {
+      type: Object, default: {}
+    },
     duration: Number,
-    boundaries: Array
+    model: {
+      type: Object, default: {}
+    },
+    options: {
+      type: Object, default: {}
+    }
   },
-  data() {
-    return {
-      dataset: {},
-      visibleBoundary: undefined,
-      focusedTimestamps: [],
-      focusedValues: {},
-      options: defaultOptions
-    };
+  model: {
+    prop: "model",
+    event: "change"
   },
 
   watch: {
     duration() {this._draw();},
-    boundaries() {this._draw();}
+    boundaries() {this._draw();},
+    dateset() {this._draw();},
+    options() {this._draw();}
   },
 
   computed: {
     keys() {
       return Object.keys(this.dataset);
+    },
+    computedOptions() {
+      return Object.assign({}, defaultOptions, this.options);
     }
   },
 
@@ -138,38 +164,20 @@ export default {
 
   methods: {
 
-    plot(dataset) {
-      this.dataset = dataset;
-      this._draw();
+    asx(d) {
+      return this.computedOptions.accessors.x(d);
     },
-
-    recolor(key, color) {
-      d3.select(this._points[key]).attr("fill", color);
-      this._lines[key].forEach(
-        line => d3.select(line).attr("stroke", color)
-      );
-    },
-
-    updateData(key, data) {
-      this.dataset[key].data = data;
-      this._draw();
-    },
-
-    setFormatter(key, fmt) {
-      this.dataset[key].formatter = fmt;
-    },
-
-    setOptions(opts) {
-      this.options = Object.assign({}, defaultOptions, opts);
+    asy(d) {
+      return this.computedOptions.accessors.y(d);
     },
 
     async _draw() {
 
       // Check vars
-      if(this.boundaries == undefined || this.duration == undefined)
+      if(this.boundaries == undefined || this.boundaries.length < 2)
         return;
 
-      if(this.boundaries.length < 2)
+      if(this.duration == undefined || this.duration == 0)
         return;
 
       // xScale and Boundaries
@@ -328,7 +336,7 @@ export default {
         .call(d3.axisBottom(xScale)
           .tickValues(xScale.ticks(xTicks).tickValues())
           .tickSizeOuter(0)
-          .tickFormat(timestamp => timestamp.date($.options.formatDateShort)))
+          .tickFormat($.computedOptions.formatters.xAxis))
             .attr("font-family", "")
             .attr("font-size",   "");
     
@@ -405,14 +413,14 @@ export default {
         .attr("width",  r2px(14/16))
         .attr("x",      r2px(6/16))
         .attr("y",      r2px(6/16));
-      var tooltipValue = tooltip.append("text")
-        .attr("class", "value")
+      var tooltipY = tooltip.append("text")
+        .attr("class", "y")
         .attr("text-anchor", "left")
         .attr("x",  r2px(26/16))
         .attr("y",  r2px(6/16))
         .attr("dy", r2px(12/16));
-      var tooltipTimestamp = tooltip.append("text")
-        .attr("class", "timestamp")
+      var tooltipX = tooltip.append("text")
+        .attr("class", "x")
         .attr("text-anchor", "left")
         .attr("x",  r2px(6/16))
         .attr("y",  r2px(24/16))
@@ -423,7 +431,9 @@ export default {
         var arr = [];
         for(let key in $.dataset) {
           var {data} = $.dataset[key];
-          data.forEach(i => arr.push(i.value));
+          data.forEach(i => arr.push(
+            $.asy(i)
+          ));
         }
         return arr;
       }());
@@ -449,9 +459,7 @@ export default {
                 .tickValues(yTickValues)
                 .tickSize(5)
                 .tickSizeOuter(0)
-                .tickFormat(function(value) {
-                  return formatNumber($.options.formatYAxis, value);
-                }))
+                .tickFormat($.computedOptions.formatters.yAxis))
                 .attr("font-family", "")
                 .attr("font-size", "");
 
@@ -497,15 +505,15 @@ export default {
         var isMouseDown = false;
         var isTouch     = false;
         // Bisect is used to get the nearest point to a timestamp
-        var bisect = function(slice, timestamp, accessor) {
+        var bisect = function(slice, x, accessor) {
           var bs = d3.bisector(accessor).left;
-          var i   = bs(slice, timestamp);
+          var i   = bs(slice, x);
           var d0  = slice[i-1];
           var d1  = slice[i];
           if(d0 === undefined && d1 === undefined) return undefined;
           else if(d0 === undefined) return d1;
           else if(d1 === undefined) return d0;
-          else return timestamp - accessor(d0) > accessor(d1) - timestamp ? d1 : d0;
+          else return x - accessor(d0) > accessor(d1) - x ? d1 : d0;
         };
 
         // Moving hand
@@ -516,10 +524,11 @@ export default {
           var onPoint    = target.classList.contains("point");
           var mouse      = d3.mouse(projection.node());
           var [mX, mY]   = mouse;
-          var timestamp  = xScale.invert(mX);
+          var x          = xScale.invert(mX);
           var dataset    = $.dataset;
           var yScale     = $._yScale;
           var scrollLeft = segmentsWrap.node().scrollLeft;
+          var newModel   = {};
 
           // Event Type Check
           //if(!(isTouch || isMouseDown))
@@ -534,51 +543,43 @@ export default {
           let handX;
     
           // Points
-          $.focusedTimestamps = [];
           for(let key in dataset) {
             let {data} = dataset[key];
-            let elem   = bisect(data, timestamp, d => d.timestamp);
-            let elTs   = elem.timestamp;
-            let elVal  = elem.value;
+            let elem   = bisect(data, x, $.asx);
+            let elX    = $.asx(elem);
+            let elY    = $.asy(elem);
 
             // No nearest found, return
-            if(elem === undefined || isNaN(elVal)) {
+            if(elem === undefined || isNaN(elY)) {
               // Blur Key
               d3.select($._points[key])
                 .attr("cx", -100);
-              $.focusedValues[key] = undefined;
               return;
             }
             
             // Focus Key
-            let cX = xScale(elTs);
-            let cY = yScale(elVal);
+            let cX = xScale(elX);
+            let cY = yScale(elY);
             d3.select($._points[key])
-              .attr("data-timestamp", elTs)
-              .attr("data-value",     elVal)
+              .attr("data-x", elX)
+              .attr("data-y", elY)
               .attr("cx", cX)
               .attr("cy", cY);
             
             // Set focused value
-            $.focusedValues[key] = elVal;
-
-            // Focused timestamps
-            $.focusedTimestamps.push(elTs);
+            newModel[key] = elem;
 
             // Hand X is nearest point to the mouse from all data
             if(handX === undefined) handX =  cX;
             else if(Math.abs(handX - mX) > Math.abs(cX - mX)) handX = cX;
           }
 
+          // Emit
+          $.$emit("change", newModel);
+
           // No nearest X found
           if(handX === undefined) return;
           
-          // Hand timestamp
-          let [fts0, fts1] = d3.extent($.focusedTimestamps);
-          $.focusedTimestamps = fts0 === fts1
-            ? [fts0]
-            : [fts0, fts1];
-
           // Move hand
           hand.attr("x1", handX).attr("x2", handX);
 
@@ -588,16 +589,14 @@ export default {
           var ty       = mY < th ? mY + 5 : mY - th - 5;
           tooltip.attr("transform", `translate(${tx},${ty})`);
           if(onPoint) {
-            let ttKey = target.getAttribute("data-key");
-            let ttVal = Number(target.getAttribute("data-value"));
-            let ttTs  = Number(target.getAttribute("data-timestamp"));
-            let ttCl  = $.dataset[ttKey].color;
-            let ttFmt = $.dataset[ttKey].formatter;
-            tooltipValue.text(ttFmt(ttVal));
-            tooltipTimestamp.text(
-              // TODO prototype functions are not part of library
-              ttTs.date($.options.formatDateLong)
-            );
+            let ttKey  = target.getAttribute("data-key");
+            let ttEl   = $.model[ttKey];
+            let ttCl   = $.dataset[ttKey].color;
+            let ttXfmt = $.dataset[ttKey].formatters.x || $.computedOptions.formatters.x;
+            let ttYfmt = $.dataset[ttKey].formatters.y || $.computedOptions.formatters.y;
+          
+            tooltipX.text(ttXfmt(ttEl));
+            tooltipY.text(ttYfmt(ttEl));
             tooltipIcon.style("fill", ttCl);
           }
         };
@@ -826,7 +825,7 @@ export default {
       var visibleDataset = {};
       for(let key in this.dataset) {
         visibleDataset[key] = this.dataset[key].data.filter(
-          i => visibleBoundary[0] <= i.timestamp && i.timestamp <= visibleBoundary[1]
+          i => visibleBoundary[0] <= $.asx(i) && $.asx(i) <= visibleBoundary[1]
         );
       }
 
@@ -854,7 +853,7 @@ export default {
         var segDataGroups = [];
         for(let key in visibleDataset) {
           let data = visibleDataset[key].filter(i => {
-            return start <= i.timestamp && i.timestamp <= end;
+            return start <= $.asx(i) && $.asx(i) <= end;
             // TODO include the neighboring point to the end in order to connect paths of segments together
           });
           if(data.length > 0) {
@@ -876,9 +875,9 @@ export default {
             .attr("stroke", d => $.dataset[d.key].color)
             .attr("fill", "none")
             .attr("d", d => d3.line()
-              .defined(e => !isNaN(e.value))
-              .x(e => xScale(e.timestamp))
-              .y(e => yScale(e.value))
+              .defined(e => !isNaN($.asy(e)))
+              .x(e => xScale($.asx(e)))
+              .y(e => yScale($.asy(e)))
               (d.data)
             );
 

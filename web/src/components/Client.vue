@@ -74,7 +74,12 @@
       </div>
 
       <div class="graph-wrap">
-        <Graph ref="graph" :duration="duration" :boundaries="boundaries"/>
+        <Graph ref="graph"
+          :dataset="activeDataset"
+          :duration="duration"
+          :boundaries="boundaries"
+          :options="graphOptions"
+          v-model="focusedDatumMap"/>
       </div>
 
     </div>
@@ -84,11 +89,14 @@
 
 <script>
 
+import moment from 'moment/src/moment';
 import {csvParse} from 'd3-dsv';
-const d3 = {csvParse};
+import {extent} from "d3-array";
+const d3 = {csvParse, extent};
 import {NumberFormatter, formatNumber, statusIconOf, splitWhitespace} from '@/lib/util/web.js';
 import {colorify} from '@/lib/ui/util/util.js';
 import Queue from '@/lib/util/queue.js';
+import Graph from '@/lib/graph';
 import {library} from '@fortawesome/fontawesome-svg-core';
 import {
   faEllipsisH
@@ -97,6 +105,7 @@ library.add(faEllipsisH);
 
 export default {
   name: "Client",
+  components: {Graph},
   created() {
     let $ = this;
 
@@ -127,11 +136,26 @@ export default {
     itemStatusMap: Object
   },
   data() {
+    var $ = this;
     return {
       activeKeys: [],
+      activeDataset: {},
       boundaries: [],
       duration:   this.$root.webConfig.durations[0],
+      focusedDatumMap: {},
       dataset:    {},
+      graphOptions: {
+        accessors: {
+          x: d => d.timestamp,
+          y: d => d.value
+        },
+        formatters: {
+          xAxis: x => moment.unix(x).format($.$root.webConfig["format.date.short"]),
+          yAxis: y => formatNumber($.$root.webConfig["format.yAxis"], y),
+          x: d => moment.unix(d.timestamp).format($.$root.webConfig["format.date.long"]),
+          y: d => formatNumber($.$root.webConfig["format.value"], d.value),
+        }
+      },
       monitorConfigMap:  {},
       queue:      new Queue()
     };
@@ -143,13 +167,15 @@ export default {
     
     focusedTime() {
       let fmt = this.$root.webConfig["format.date.long"];
-      if(this.graphReady) {
-        let graph = this.$refs.graph;
-        let arr;
-        if(graph.focusedTimestamps.length > 0) arr = graph.focusedTimestamps;
-        else if(graph.visibleBoundary)         arr = graph.visibleBoundary;
-
-        if(arr) return arr.map(d => d.date(fmt)).join(" – ");
+      let fdm = this.focusedDatumMap;
+      if(this.graphReady && Object.keys(fdm).length > 0) {
+        let arr = [];
+        for(let monitorKey in fdm) {
+          arr.push(fdm[monitorKey].timestamp);
+        }
+        return d3.extent(arr).map(
+          d => moment.unix(d).format(fmt)
+        ).join(" – ");
       }
       return "-";
     }
@@ -174,15 +200,19 @@ export default {
             let buf = [];
             let csv = await $.$api.v1.getMonitorDataTable($.id, monitorKey);
 
+            // Make this part of documentation
             d3.csvParse(csv, row => buf.push({
               timestamp: +row.timestamp,
-              value: +row.value
+              value: +row.value,
+              per: +row.per
             }));
 
             $.$set($.dataset, monitorKey, {
               data: buf,
               color: colorify(monitorKey),
-              formatter: new NumberFormatter(format)
+              formatters: {
+                y: d => `${formatNumber(format, d.value)}/${d.per}s`
+              }
             });
 
           }
@@ -191,7 +221,7 @@ export default {
 
         }
         
-        $.$refs.graph.plot(activeDataset);
+        $.activeDataset = activeDataset;
 
       });
 
@@ -217,10 +247,9 @@ export default {
     },
     focusedValue(monitorKey) {
       if(this.graphReady) {
-        let graph = this.$refs.graph;
-        let value = graph.focusedValues[monitorKey];
-        if(!(value === undefined)) {
-          return this.formatNumber(monitorKey, value);
+        let datum = this.focusedDatumMap[monitorKey];
+        if(!(datum === undefined)) {
+          return this.formatNumber(monitorKey, datum.value);
         }
       }
       return "-";

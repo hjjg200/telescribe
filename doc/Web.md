@@ -108,6 +108,18 @@ Dataset is a **Monitor.Key** to data compound object map, and the the content of
 * `formatter`: a function used to format numbers shown on tooltip
 
 
+### Options
+
+|Item|Description|
+|-|-|
+|`interpreters.x`|Used to extract x value from a given element|
+|`formatters.xAxis`|Used to format a figure on the x axis with a given element|
+|`formatters.x`|Used to format a value shown on the tooltip|
+|`interpreters.y`|Used to extract y value from a given element|
+|`formatters.yAxis`|Used to format a figure on the y axis with a given element|
+|`formatters.y`|Used to format a value shown on the tooltip|
+
+
 ### Hand
 
 When moving the hand, the nearest points of the active items become visible provided the value for that point is not NaN; when it is NaN, the point becomes invisible and it is excluded from the focused values. The focused timestamps are an array of two timestamps; the first timestamp is the minimum timestamp of the active points; and the second timestamp is the maximum of them.

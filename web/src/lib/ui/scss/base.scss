@@ -10,6 +10,8 @@
 
     margin: 0;
     padding: 0;
+    
+    @include themed-scrollbar;
 }
 
 html, body {
