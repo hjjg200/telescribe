@@ -9,9 +9,14 @@ import (
 var interfaceSlice []interface{}
 var interfaceType = reflect.TypeOf(interfaceSlice).Elem()
 
+type subParser struct {
+    def reflect.Value
+}
+
 type Parser struct {
     def reflect.Value
     typ reflect.Type
+    sub []*subParser
     vf  map[uintptr] reflect.Value
 }
 
@@ -19,30 +24,28 @@ type Parser struct {
 
 func NewParser(cfg interface{}) (*Parser, error) {
 
-    // Ensure cfg is pointer to struct
+    // Ensure cfg is struct
+    // cfg needs to be a pointer in order to be addressable value
     if isPtrToStruct(cfg) == false {
         return nil, fmt.Errorf("The given parameter is not a pointer to struct")
     }
 
     // Struct to interface struct
-    el     := reflect.ValueOf(cfg).Elem()
-    typ, _ := fieldsToInterface(el.Type())
+    def := reflect.ValueOf(cfg).Elem()
+    typ := fieldsToInterface(def.Type())
     
     // Return
     return &Parser{
-        def: el,
+        def: def,
         typ: typ,
+        sub: make([]*subParser, 0),
         vf: make(map[uintptr] reflect.Value),
     }, nil
 
 }
 
 // Make fiels whose zero value is not nil into interfaces
-func fieldsToInterface(typ reflect.Type) (reflect.Type, bool) {
-
-    if typ.Kind() != reflect.Struct {
-        return nil, false
-    }
+func fieldsToInterface(typ reflect.Type) reflect.Type {
 
     nf     := typ.NumField()
     fields := make([]reflect.StructField, nf)
@@ -55,14 +58,28 @@ func fieldsToInterface(typ reflect.Type) (reflect.Type, bool) {
             reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64,
             reflect.String:
             fields[i].Type = interfaceType
+        case reflect.Array:
+            // TODO
+        case reflect.Slice:
+            // Check for struct
+            if fields[i].Type.Elem().Kind() == reflect.Struct {
+                fields[i].Type = reflect.SliceOf(fieldsToInterface(fields[i].Type.Elem()))
+            }
+        case reflect.Map:
+            // Check for struct
+            if fields[i].Type.Elem().Kind() == reflect.Struct {
+                fields[i].Type = reflect.MapOf(
+                    fields[i].Type.Key(), fieldsToInterface(fields[i].Type.Elem()),
+                )
+            }
         case reflect.Struct:
             // Recursive
-            fields[i].Type, _ = fieldsToInterface(fields[i].Type)
+            fields[i].Type = fieldsToInterface(fields[i].Type)
         default:
         }
     }
 
-    return reflect.StructOf(fields), true
+    return reflect.StructOf(fields)
 
 }
 
@@ -147,6 +164,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                 case reflect.Bool:
                     b := av.Interface().(bool)
                     bv.SetBool(b)
+
                 case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
                     reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
                     reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
@@ -158,6 +176,54 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                 case reflect.String:
                     s := av.Interface().(string)
                     bv.SetString(s)
+
+                case reflect.Array, reflect.Slice, reflect.Map:
+
+                    bvElTyp := bv.Type().Elem()
+
+                    // Check for sub parser
+                    var sub *subParser
+                    for _, sp := range p.sub {
+                        // Compare element type
+                        if bvElTyp == sp.def.Type() {
+                            sub = sp
+                            break
+                        }
+                    }
+
+                    if sub == nil {
+                        bv.Set(av)
+                    } else {
+                        
+                        // Deep copy each element
+                        switch bv.Type().Kind() {
+                        case reflect.Array:
+                            // TODO support array
+                            bv.Set(av)
+                        case reflect.Slice:
+                            bv.Set(reflect.MakeSlice(bv.Type(), 0, 0))
+                            for k := 0; k < av.Len(); k++ {
+                                subAv  := av.Index(k)
+                                psubBv := reflect.New(bvElTyp)
+                                subBv  := psubBv.Elem()
+                                p.deepFillNil(sub.def, subAv, subBv)
+                                bv.Set(reflect.Append(bv, subBv))
+                            }
+                        case reflect.Map:
+                            bv.Set(reflect.MakeMap(bv.Type()))
+                            keys := av.MapKeys()
+                            for k := 0; k < len(keys); k++ {
+                                key    := keys[k]
+                                subAv  := av.MapIndex(key)
+                                psubBv := reflect.New(bvElTyp)
+                                subBv  := psubBv.Elem()
+                                p.deepFillNil(sub.def, subAv, subBv)
+                                bv.SetMapIndex(key, subBv)
+                            }
+                        }
+
+                    }
+
                 default:
                     bv.Set(av)
                 }
@@ -199,5 +265,29 @@ func(p *Parser) Validator(ptr, vf interface{}) {
 
     // Assign
     p.vf[rptr.Pointer()] = rvf
+
+}
+
+// Child parser
+func(p *Parser) SubParsers(cfgs ...interface{}) (err error) {
+
+    // Add parsers for structs inside array, map, or slice
+
+    for _, cfg := range cfgs {
+
+        // Ensure cfg is struct
+        if isPtrToStruct(cfg) == false {
+            return fmt.Errorf("One of the given parameters is not a pointer to struct")
+        }
+
+        // Struct to interface struct
+        def   := reflect.ValueOf(cfg).Elem()
+        p.sub  = append(p.sub, &subParser{
+            def: def,
+        })
+
+    }
+
+    return nil
 
 }

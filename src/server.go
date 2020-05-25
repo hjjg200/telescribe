@@ -16,6 +16,7 @@ import (
     "time"
 
     . "github.com/hjjg200/go-act"
+    "./config"
 )
 
 const (
@@ -170,6 +171,7 @@ type Server struct { // srv
     clientConfigVersion       map[string/* clId */] string
     clientMonitorDataTableBox map[string/* clId */] MonitorDataTableBox
     clientMonitorDataMap      map[string/* clId */] MonitorDataMap
+    configParser              *config.Parser
 }
 
 func NewServer() *Server {
@@ -179,13 +181,34 @@ func NewServer() *Server {
     return srv
 }
 
+func (srv *Server) setConfigValidators() {
+
+    cp := srv.configParser
+
+    vAboveZero := func(v int) bool {return v > 0}
+
+    cp.Validator(&DefaultServerConfig.DataStoreInterval, vAboveZero)
+    cp.Validator(&DefaultServerConfig.MaxDataLength, vAboveZero)
+    cp.Validator(&DefaultServerConfig.GapThresholdTime, vAboveZero)
+    cp.Validator(&DefaultServerConfig.DecimationThreshold, vAboveZero)
+    cp.Validator(&DefaultServerConfig.DecimationInterval, vAboveZero)
+    cp.Validator(&DefaultServerConfig.Port, func(v int) bool {
+        return v >= 0 && v <= 65535
+    })
+    cp.Validator(&DefaultServerConfig.Tickrate, vAboveZero)
+    cp.Validator(&DefaultServerConfig.Web.Durations, func(v []int) bool {
+        for _, d := range v {
+            if d <= 0 {return false}
+        }
+        return true
+    })
+
+}
+
 func (srv *Server) LoadConfig(p string) (err error) {
 
     // Catch
     defer Catch(&err)
-
-    // Load default first
-    srv.config = DefaultServerConfig
 
     // Open the config file
     f, err := os.OpenFile(p, os.O_RDONLY, 0644)
@@ -194,8 +217,9 @@ func (srv *Server) LoadConfig(p string) (err error) {
         panic(err)
     } else if err == nil {
         // File exists
-        dec := json.NewDecoder(f)
-        Try(dec.Decode(&srv.config))
+        buf := bytes.NewBuffer(nil)
+        io.Copy(buf, f)
+        Try(srv.configParser.Parse(buf.Bytes(), &srv.config))
         Try(f.Close())
     }
 
@@ -287,6 +311,10 @@ func(srv *Server) Start() (err error) {
     defer Catch(&err)
 
     // Config
+    configParser, err := config.NewParser(&DefaultServerConfig)
+    Try(err)
+    srv.configParser = configParser
+    srv.setConfigValidators()
     Try(srv.LoadConfig(flServerConfigPath))
     EventLogger.Infoln("Loaded server config")
     Try(srv.loadClientConfig())
@@ -313,7 +341,7 @@ func(srv *Server) Start() (err error) {
     addr    := srv.Addr()
     ln, err := net.Listen("tcp", addr)
     Try(err)
-    EventLogger.Infoln("Network is configured to listen at", addr)
+    EventLogger.Infoln("Network is configured to listen at", ln.Addr())
 
     // Schedule cleanups
     railSwitch.OnEnd(threadMain, func() {

@@ -40,23 +40,32 @@ func TestDeepFill(t *testing.T) {
     type BCfg struct {
         Work string `json:"work"`
         Money float64 `json:"money"`
+        Map map[int] string `json:"map"`
     }
     type ACfg struct {
         Name string `json:"name"`
         Age int `json:"age"`
+        Map map[int] bool `json:"map"`
         B BCfg `json:"b"`
     }
     
     def := ACfg{
         Name: "John Doe",
         Age: 22,
+        Map: map[int] bool{
+            0: true, 1: false,
+        },
         B: BCfg{
             Work: "Artist",
             Money: 77.5,
+            Map: map[int] string{
+                4: "abc", 5: "def",
+            },
         },
     }
     data := `{
     "name": "abc",
+    "map": {"4": false},
     "b": {
         "money": 13.5
     }
@@ -79,16 +88,19 @@ func TestValidator(t *testing.T) {
     type ACfg struct {
         Age int `json:"age"`
         Evens []int `json:"evens"`
+        Map map[int] int `json:"map"`
     }
     def := ACfg{
         Age: 12,
         Evens: []int{2, 4, 6, 8, 10},
+        Map: map[int] int{1: 1, 2: 2, 3:3},
     }
 
     parser, err := NewParser(&def)
     if err != nil {
         t.Error(err)
     }
+    cfg := ACfg{}
 
     parser.Validator(&def.Age, func(age int) bool {
         return age > 0 && age < 200
@@ -101,15 +113,88 @@ func TestValidator(t *testing.T) {
         }
         return true
     })
+    parser.Validator(&def.Map, func(m map[int] int) bool {
+        for k, v := range m {
+            if k != v {
+                return false
+            }
+        }
+        return true
+    })
 
+    // Parse
     data := `{
         "age": 4,
-        "evens": [2, 4, 7]
+        "evens": [2, 4, 6],
+        "map": {"1": 1, "2": 2}
+    }`
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+    
+    data = `{
+        "age": -1
+    }`
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+
+    data = `{
+        "evens": [2, 3, 6]
+    }`
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+
+    data = `{
+        "map": {"1": 3, "2": 2}
+    }`
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+
+}
+
+func TestSubParsers(t *testing.T) {
+
+    type BCfg struct {
+        Stars int
+    }
+    type ACfg struct {
+        Slice []BCfg
+        Map map[string] BCfg
+    }
+
+    def := ACfg{
+        Slice: []BCfg{
+            {11}, {22}, {33},
+        },
+        Map: map[string] BCfg{},
+    }
+
+    bdef := BCfg{7}
+
+    parser, err := NewParser(&def)
+    if err != nil {
+        t.Error(err)
+    }
+    err = parser.SubParsers(&bdef)
+    if err != nil {
+        t.Error(err)
+    }
+
+    parser.Validator(&bdef.Stars, func(i int) bool {
+        return i > 0
+    })
+
+    data := `{
+        "Slice": [
+            {"Stars": 12}, {}, {"Stars": 55}
+        ],
+        "Map": {
+            "a": {},
+            "b": {"Stars": -2}
+        }
     }`
 
     cfg := ACfg{}
     err = parser.Parse([]byte(data), &cfg)
+    if err != nil {
+        t.Error(err)
+    }
 
-    fmt.Println(err)
+    fmt.Println(cfg)
 
 }
