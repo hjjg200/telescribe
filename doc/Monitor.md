@@ -83,12 +83,12 @@ The monitor configuration contains information of fatal and warning ranges of va
 
 |Item|Description|
 |-|-|
+|`absolute`|Boolean for whether the data is time-independent|
 |`alias`|The name shown on the web instead of the key itself|
 |`constant`|Boolean for whether it is considered hardly changing and thus not stored for graph plotting|
 |`format`|The **Web.Format** in which values are expressed; the actual value is not affected by this|
 |`fatalRange`|The **Util.Range** in which values are considered fatal|
 |`warningRange`|The **Util.Range** in which values are considered warning|
-|`relative`|Boolean for whether the data is time-dependent|
 
 
 ## Config Map

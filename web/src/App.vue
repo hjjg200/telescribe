@@ -12,23 +12,29 @@
         </Button>
 
         <Menu ref="menu" class="menu-content">
-          <MenuLabel>Favorites</MenuLabel>
-          <MenuLabel>Clients</MenuLabel>
-          <MenuItem
-            v-for="(clientInfo, clientId) in clientInfoMap"
-            :key="clientId"
-            @click="visibleClient = clientId">
-            <div class="client-menu-item">
-              <div class="thumbnail">
-                <TextIcon :text="clientId"/>
+          
+          <template v-for="tp in [['Favorites', true], ['Clients', false]]">
+
+            <MenuLabel>{{ tp[0] }}</MenuLabel>
+            <MenuItem
+              v-for="(clientInfo, clientId) in clientInfoMap"
+              :key="clientId"
+              v-if="isFavorite(clientId) === tp[1]"
+              @click="visibleClient = clientId">
+              <div class="client-menu-item">
+                <div class="thumbnail">
+                  <TextIcon :text="clientId"/>
+                </div>
+                <Icon :type="statusIconOf(itemStatusMap[clientId], true)" />
+                <div class="text">
+                  <div class="alias">{{ clientInfo.alias }}</div>
+                  <div class="host">{{ clientInfo.host }}</div>
+                </div>
               </div>
-              <Icon :type="statusIconOf(itemStatusMap[clientId], true)" />
-              <div class="text">
-                <div class="alias">{{ clientInfo.alias }}</div>
-                <div class="host">{{ clientInfo.host }}</div>
-              </div>
-            </div>
-          </MenuItem>
+            </MenuItem>
+            
+          </template>
+
         </Menu>
 
       </div>
@@ -88,16 +94,36 @@ export default {
     this.itemStatusMap = itemStatusMap;
     this.clientInfoMap = clientInfoMap;
 
+    // Check for storage
+    if(typeof(Storage) !== "undefined") {
+      // Favorites are stored in JSON array form
+      let favorites = localStorage.getItem("telescribe.favorites") || "[]";
+      favorites = JSON.parse(favorites);
+      this.favorites = favorites;
+    }
+
   },
   data() {
     return {
       clientInfoMap: {},
       itemStatusMap: {},
+      favorites:     [],
       visibleClient: null
     };
   },
   methods: {
-    statusIconOf
+    statusIconOf,
+    isFavorite(clientId) {
+      return this.favorites.indexOf(clientId) !== -1;
+    },
+    toggleFavorite(clientId) {
+      let i = this.favorites.indexOf(clientId);
+      i !== -1 ? this.favorites.splice(i, 1) : this.favorites.push(clientId);
+
+      if(typeof(Storage) !== "undefined") {
+        localStorage.setItem("telescribe.favorites", JSON.stringify(this.favorites));
+      }
+    }
   }
 }
 </script>

@@ -9,7 +9,8 @@
             <font-awesome icon="ellipsis-h"/>
           </Button>
           <Menu ref="menu">
-            <MenuItem>Add to Favorites</MenuItem><!-- TODO -->
+            <MenuItem v-if="!isFavorite" @click="toggleFavorite">Add to Favorites</MenuItem>
+            <MenuItem v-else @click="toggleFavorite">Cancel Favorite</MenuItem>
             <MenuItem @click="$refs.constantsModal.open = true">Constants</MenuItem>
           </Menu>
         </div>
@@ -26,7 +27,7 @@
 
     <Modal class="constants-modal" ref="constantsModal">
       <h4>Constants</h4>
-      <table class="constants-table"><!-- TODO -->
+      <table class="constants-table">
         <tbody>
           <tr v-for="(itemStatus, monitorKey) in itemStatusMap"
             :key="monitorKey" v-if="isConstant(monitorKey)">
@@ -55,7 +56,7 @@
         <div class="option option--duration">
           <ButtonGroup>
             <Button v-for="d in webConfig.durations"
-              :variant="d === duration ? 'accent' : ''"
+              :variant="d === duration ? 'success' : ''"
               :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
           </ButtonGroup>
         </div>
@@ -152,6 +153,8 @@ export default {
 
   computed: {
 
+    isFavorite() {return this.$parent.isFavorite(this.id)},
+
     id()         {return this.$vnode.key},
     tags()       {return splitWhitespace(this.info.tags)},
     graphReady() {return this.boundaries.length > 0},
@@ -180,8 +183,7 @@ export default {
           arr.push(fdm[monitorKey].timestamp);
         }
         arr = d3.extent(arr);
-        if(arr[0] === arr[1])
-          arr = [arr[0]];
+        arr = arr[0] === arr[1] ? [arr[0]] : arr;
         
         return arr.map(
           d => moment.unix(d).format(fmt)
@@ -254,7 +256,7 @@ export default {
       let monitorConfig = this.monitorConfigMap[monitorKey];
       let format = monitorConfig ? monitorConfig.format : "";
       let ret = formatNumber(format, datum.value);
-      if(monitorConfig.relative)
+      if(monitorConfig.absolute === false)
         ret += `∕${datum.per}s`;
       return ret;
     },
@@ -266,6 +268,9 @@ export default {
         }
       }
       return "-";
+    },
+    toggleFavorite() {
+      this.$parent.toggleFavorite(this.id);
     }
   }
 }
