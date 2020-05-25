@@ -118,7 +118,7 @@ footer {
         .menu-button {
             background: none;
             font-size: 1rem;
-            padding: 0 .5rem;
+            padding: 0 1.25rem;
             padding-top: .6rem;
             line-height: 1;
         }
@@ -178,6 +178,20 @@ footer {
         opacity: 0;
         height: 0;
         overflow: hidden;
+    }
+
+    .constants-modal {
+        .constants-table {
+            margin-top: .8rem;
+            td:nth-child(1) {
+                color: $cl-3-secondary;
+                padding-right: 1rem;
+            }
+            td:nth-child(2) {
+                color: $cl-3-success;
+                text-align: right;
+            }
+        }
     }
 
     .graph-options {

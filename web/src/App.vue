@@ -10,11 +10,12 @@
         <Button class="menu-button" @click="$refs.menu.toggle($event)">
           <font-awesome icon="bars"/>
         </Button>
+
         <Menu ref="menu" class="menu-content">
           <MenuLabel>Favorites</MenuLabel>
           <MenuLabel>Clients</MenuLabel>
           <MenuItem
-            v-for="(clientInfo, clientId) in infoMap"
+            v-for="(clientInfo, clientId) in clientInfoMap"
             :key="clientId"
             @click="visibleClient = clientId">
             <div class="client-menu-item">
@@ -36,24 +37,28 @@
 
     <main>
       <section>
+
         <Cover v-show="visibleClient === null">
           Select a Client
         </Cover>
-        <Client v-for="(clientInfo, clientId) in infoMap"
+        <Client v-for="(clientInfo, clientId) in clientInfoMap"
           :key="clientId"
           :info="clientInfo"
           :itemStatusMap="itemStatusMap[clientId]"
           :class="{visible: (visibleClient === clientId)}"></Client>
+
       </section>
     </main>
     <footer>
+
       <Rule type="hr"/>
       <section>
-        <div class="version">{{ $root.version }}</div>
+        <div class="version">{{ version }}</div>
         <div class="github">
           <a href="https://github.com/hjjg200/telescribe">https://github.com/hjjg200/telescribe</a>
         </div>
       </section>
+
     </footer>
   </div>
 </template>
@@ -68,10 +73,26 @@ import Client from '@/components/Client.vue';
 export default {
   name: "App",
   components: {Client, Logo},
+  async created() {
+
+    let {clientInfoMap} = await this.$api.v1.getClientInfoMap();
+    let itemStatusMap = {};
+    for(let clientId in clientInfoMap) {
+      try {
+        itemStatusMap[clientId] = (await this.$api.v1.getClientItemStatus(clientId)).clientItemStatus;
+      } catch(ex) {
+        continue;
+      }
+    }
+
+    this.itemStatusMap = itemStatusMap;
+    this.clientInfoMap = clientInfoMap;
+
+  },
   data() {
-    let {infoMap, itemStatusMap, webConfig, version} = this.$root;
     return {
-      infoMap, itemStatusMap, webConfig, version,
+      clientInfoMap: {},
+      itemStatusMap: {},
       visibleClient: null
     };
   },

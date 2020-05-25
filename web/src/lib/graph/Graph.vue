@@ -180,18 +180,13 @@ export default {
       if(this.duration == undefined || this.duration == 0)
         return;
 
-      // xScale and Boundaries
-      this._xBoundary   = d3.extent(this.boundaries);
-      this._priorXScale = this._xScale;
-      this._xScale      = this._scale();
-
       // Accessing Purposes
       var $ = this;
       
-    // Vars
+      // Vars
       var graph         = d3.select(this.$el);
       var graphNode     = graph.node();
-      var graphDuration = this.duration * 60; // Into seconds
+      var graphDuration = this.duration;
       var graphMargin   = {
         top: remToPx(0.5),
         left: remToPx(3),
@@ -201,12 +196,22 @@ export default {
         width: graphNode.offsetWidth - graphMargin.left,
         height: graphNode.offsetHeight - graphMargin.top - graphMargin.bottom
       };
-      var xScale    = this._xScale;
-      var xBoundary = this._xBoundary;
+
+      // Scale and boundaries
+      this._xBoundary   = d3.extent(this.boundaries);
+      var xBoundary     = this._xBoundary;
+      this._priorXScale = this._xScale;
+      this._xScale      = this._scale();
+      var xScale        = this._xScale;
+
       // Total x-axis duration
       var xDuration = xScale.totalDuration;
+
       // Prevent duration being longer than actual data
       graphDuration  = Math.min(graphDuration, xDuration);
+      this._xDuration     = xDuration;
+      this._graphDuration = graphDuration;
+
       // Total width needed for data plotting
       var dataWidth  = graphRect.width * xDuration / graphDuration;
       // Plotted data height
@@ -218,17 +223,13 @@ export default {
       var xTicks     = Math.round(dw_cw * 4);
       // Y-axis ticks count
       var yTicks     = 4;
-      this._dataWidth     = dataWidth;
-      this._dataHeight    = dataHeight;
-      this._width         = graphRect.width;
-      this._height        = graphRect.height;
-      this._margin        = graphMargin;
-      this._xDuration     = xDuration;
-      this._xTicks        = xTicks;
-      this._yTicks        = yTicks;
-      this._graphDuration = graphDuration;
-      // Prior: Reset at draw
-      this._priorKeys     = null;
+      this._dataWidth  = dataWidth;
+      this._dataHeight = dataHeight;
+      this._width      = graphRect.width;
+      this._height     = graphRect.height;
+      this._margin     = graphMargin;
+      this._xTicks     = xTicks;
+      this._yTicks     = yTicks;
     
     // Element Var
       // Scroll left is max(0, total width minus graph width)
@@ -522,7 +523,7 @@ export default {
           var event      = d3.event;
           var target     = event.target;
           var onPoint    = target.classList.contains("point");
-          var onLine     = target.classList.contains("line");
+          // No onLine events as paths trigger mouse events in a rectangle shape.
           var mouse      = d3.mouse(projection.node());
           var [mX, mY]   = mouse;
           var x          = xScale.invert(mX);
@@ -531,17 +532,19 @@ export default {
           var scrollLeft = segmentsWrap.node().scrollLeft;
           var newModel   = {};
 
-          // If mouse is on a point, show the tooltip
-          if(onPoint) {
-            overlay.selectAll(".tooltip").style("opacity", 1);
-          }
-
-          // Stroke width
-          let key = target.getAttribute("data-key");
-          
+          // Reset stroke width
           d3.selectAll(".line")
             .attr("stroke-width", 1);
-          if(key) {
+
+          // If mouse is on a point
+          if(onPoint) {
+            // Key
+            let key = target.getAttribute("data-key");
+
+            // Show the tooltip
+            overlay.selectAll(".tooltip").style("opacity", 1);
+
+            // Thicken
             $._lines[key].forEach(
               line => d3.select(line)
                 .attr("stroke-width", 2)
@@ -677,7 +680,7 @@ export default {
 
       // |     total duration      |
       // | duration | gap duration |
-      let gapEachDuration = (this.duration * 60) / 9; // To seconds
+      let gapEachDuration = Math.min(duration, this.duration) / 9;
       let totalDuration   = gapEachDuration * gapNo + duration;
       let steps           = [];
       let lefts           = [];
@@ -794,7 +797,6 @@ export default {
 
       // Graph
       var graph         = d3.select(this.$el);
-      var priorKeys     = this._priorKeys;
       var xDuration     = this._xDuration;
       var xBoundary     = this._xBoundary;
       var yBoundary     = this._yBoundary;
@@ -810,9 +812,6 @@ export default {
       var xScale        = this._xScale;
       var yScale        = this._yScale;
       var projection    = this._projection;
-
-      // Info Set
-      this._priorKeys = this.keys.slice(0);
 
       // Segments
       var segmentsWrap = graph.select(".segments-wrap");

@@ -10,7 +10,7 @@
           </Button>
           <Menu ref="menu">
             <MenuItem>Add to Favorites</MenuItem><!-- TODO -->
-            <MenuItem @click="$refs.modal.open = true">Constants</MenuItem>
+            <MenuItem @click="$refs.constantsModal.open = true">Constants</MenuItem>
           </Menu>
         </div>
       </div>
@@ -24,14 +24,14 @@
       <Rule type="hr" variant="dark"/>
     </div>
 
-    <Modal ref="modal">
-      <h3>Constants</h3>
-      <table><!-- TODO -->
+    <Modal class="constants-modal" ref="constantsModal">
+      <h4>Constants</h4>
+      <table class="constants-table"><!-- TODO -->
         <tbody>
           <tr v-for="(itemStatus, monitorKey) in itemStatusMap"
             :key="monitorKey" v-if="isConstant(monitorKey)">
             <td>{{ monitorKey }}</td>
-            <td>{{ formatNumber(monitorKey, itemStatus.value) }}</td>
+            <td>{{ formatDatum(monitorKey, itemStatus) }}</td>
           </tr>
         </tbody>
       </table>
@@ -54,7 +54,7 @@
         </div>
         <div class="option option--duration">
           <ButtonGroup>
-            <Button v-for="d in $root.webConfig.durations"
+            <Button v-for="d in webConfig.durations"
               :variant="d === duration ? 'accent' : ''"
               :key="d" @click="duration = d">{{ formatDuration(d) }}</Button>
           </ButtonGroup>
@@ -76,7 +76,7 @@
       <div class="graph-wrap">
         <Graph ref="graph"
           :dataset="activeDataset"
-          :duration="duration"
+          :duration="duration * 60"
           :boundaries="boundaries"
           :options="graphOptions"
           v-model="focusedDatumMap"/>
@@ -106,19 +106,25 @@ library.add(faEllipsisH);
 export default {
   name: "Client",
   components: {Graph},
-  created() {
-    let $ = this;
 
-    // Clean up first
-    $.dataset = {};
+  props: {
+    info: Object,
+    itemStatusMap: Object
+  },
+
+  created() {
+
+    let $ = this;
     let boundaries = [];
+    
+    // Vars
+    this.duration = this.webConfig.durations[0];
 
     // Populate Config Map
     for(let monitorKey in this.itemStatusMap) {
       this.queue.queue(async() => {
-        let rsp = await $.$api.v1.getMonitorConfig($.id, monitorKey);
-        let cfg = rsp.monitorConfig;
-        $.monitorConfigMap[monitorKey] = cfg;
+        let {monitorConfig} = await $.$api.v1.getMonitorConfig($.id, monitorKey);
+        $.monitorConfigMap[monitorKey] = monitorConfig;
       });
     }
 
@@ -131,39 +137,39 @@ export default {
 
   },
 
-  props: {
-    info: Object,
-    itemStatusMap: Object
-  },
   data() {
-    var $ = this;
     return {
-      activeKeys: [],
-      activeDataset: {},
-      boundaries: [],
-      duration:   this.$root.webConfig.durations[0],
-      focusedDatumMap: {},
-      dataset:    {},
-      graphOptions: {
+      activeKeys:       [],
+      activeDataset:    {},
+      boundaries:       [],
+      duration:         undefined,
+      focusedDatumMap:  {},
+      dataset:          {},
+      monitorConfigMap: {},
+      queue: new Queue()
+    };
+  },
+
+  computed: {
+
+    id()         {return this.$vnode.key},
+    tags()       {return splitWhitespace(this.info.tags)},
+    graphReady() {return this.boundaries.length > 0},
+    graphOptions() {
+      var $ = this;
+      return {
         accessors: {
           x: d => d.timestamp,
           y: d => d.value
         },
         formatters: {
-          xAxis: x => moment.unix(x).format($.$root.webConfig["format.date.short"]),
-          yAxis: y => formatNumber($.$root.webConfig["format.yAxis"], y),
-          x: d => moment.unix(d.timestamp).format($.$root.webConfig["format.date.long"]),
-          y: d => formatNumber($.$root.webConfig["format.value"], d.value),
+          xAxis: x => moment.unix(x).format($.webConfig["format.date.short"]),
+          yAxis: y => formatNumber($.webConfig["format.yAxis"], y),
+          x:     d => moment.unix(d.timestamp).format($.webConfig["format.date.long"]),
+          y:     d => formatNumber($.webConfig["format.value"], d.value)
         }
-      },
-      monitorConfigMap:  {},
-      queue:      new Queue()
-    };
-  },
-  computed: {
-    id() {return this.$vnode.key;},
-    tags() {return splitWhitespace(this.info.tags);},
-    graphReady() {return this.boundaries.length > 0},
+      };
+    },
     
     focusedTime() {
       let fmt = this.$root.webConfig["format.date.long"];
@@ -173,7 +179,11 @@ export default {
         for(let monitorKey in fdm) {
           arr.push(fdm[monitorKey].timestamp);
         }
-        return d3.extent(arr).map(
+        arr = d3.extent(arr);
+        if(arr[0] === arr[1])
+          arr = [arr[0]];
+        
+        return arr.map(
           d => moment.unix(d).format(fmt)
         ).join(" – ");
       }
@@ -211,7 +221,7 @@ export default {
               data: buf,
               color: colorify(monitorKey),
               formatters: {
-                y: d => `${formatNumber(format, d.value)} / ${d.per}s`
+                y: d => `${$.formatDatum(monitorKey, d)}`
               }
             });
 
@@ -240,16 +250,19 @@ export default {
       else if(t <= 24 * 60) return Math.round(t / 60) + "h";
       else return Math.round(t / 1440) + "d";
     },
-    formatNumber(monitorKey, value) {
+    formatDatum(monitorKey, datum) {
       let monitorConfig = this.monitorConfigMap[monitorKey];
       let format = monitorConfig ? monitorConfig.format : "";
-      return formatNumber(format, value);
+      let ret = formatNumber(format, datum.value);
+      if(monitorConfig.relative)
+        ret += `∕${datum.per}s`;
+      return ret;
     },
     focusedValue(monitorKey) {
       if(this.graphReady) {
         let datum = this.focusedDatumMap[monitorKey];
         if(!(datum === undefined)) {
-          return this.formatNumber(monitorKey, datum.value);
+          return this.formatDatum(monitorKey, datum);
         }
       }
       return "-";

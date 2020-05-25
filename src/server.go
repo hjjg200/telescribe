@@ -619,10 +619,10 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
         Try(f.Close())
 
         // Check config
-        mCfg, ok := srv.getMonitorConfig(clId, mKey)
+        _, ok := srv.getMonitorConfig(clId, mKey)
         switch {
-        case mCfg.Constant, // Ignore constant items
-            !ok: // Ignore items with no config
+        case !ok: // Ignore items with no config
+            //mCfg.Constant, // Ignore constant items
             return
         }
 
@@ -658,10 +658,10 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
             }()
 
             // Check config
-            mCfg, ok := srv.getMonitorConfig(clId, mKey)
+            _, ok := srv.getMonitorConfig(clId, mKey)
             switch {
-            case mCfg.Constant, // Ignore constant items
-                !ok: // Ignore items with no config
+            case !ok: // Ignore items with no config
+                //mCfg.Constant: // Ignore constant items
                 return
             }
 

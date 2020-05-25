@@ -1,48 +1,40 @@
 
-import moment from 'moment/src/moment';
-
 import Vue from 'vue';
 import App from './App.vue';
 
-// Personal Lib
+// UI Lib
 import UI from '@/lib/ui';
 Vue.use(UI);
 
 // API
 import * as api from '@/lib/api';
-
-// Prototype
 Vue.prototype.$api = api;
 
 // Utils
 import {NumberFormatter} from '@/lib/util/web.js';
 
-
 // MAIN
 (async function() {
-  let infoMap   = (await api.v1.getClientInfoMap()).clientInfoMap;
-  let webConfig = (await api.v1.getWebConfig()).webConfig;
-  let version   = (await api.v1.getVersion()).version;
+
+  let {webConfig} = await api.v1.getWebConfig();
+  let {version}   = await api.v1.getVersion();
 
   // Set the default format
   NumberFormatter.defaultFormat(webConfig['format.value']);
 
-  let itemStatusMap = {};
-  for(let id in infoMap) {
-    try {
-      itemStatusMap[id] = (await api.v1.getClientItemStatus(id)).clientItemStatus;
-    } catch(ex) {
-      continue;
+  // Global variables
+  Vue.mixin({
+    data() {
+      return {webConfig, version};
     }
-  }
+  });
 
+  // Create
   new Vue({
-    data: {
-      infoMap, itemStatusMap, webConfig, version
-    },
     created() {
       document.title = "Telescribe";
     },
     render: h => h(App)
   }).$mount("#app");
+
 })();

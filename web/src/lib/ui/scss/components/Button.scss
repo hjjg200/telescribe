@@ -1,5 +1,6 @@
 .ui-button {
     @include control;
+    @include focusable;
     @include border-radius;
     @include box-style;
     @include font-regular;
@@ -11,7 +12,6 @@
 }
 
 .ui-button-group {
-    @include themed-scrollbar;
     .ui-button {
         padding: 0 1em;
     }

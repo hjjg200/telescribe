@@ -40,11 +40,11 @@ $select-caret-width: 2.5rem;
         line-height: 1;
         position: absolute;
         text-align: center;
-        height: 100%;
+        height: 50%;
         width: $select-caret-width;
-        top: -0.5rem;
+        top: -50%;
         right: 0;
-        transform: translateY(50%);
+        transform: translateY(150%);
     }
     .items {
         overflow: auto;
@@ -68,6 +68,9 @@ $select-caret-width: 2.5rem;
         }
         .text {
             white-space: nowrap;
+        }
+        .checkbox {
+            pointer-events: none;
         }
     }
 
