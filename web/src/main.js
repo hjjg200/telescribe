@@ -17,11 +17,6 @@ Vue.prototype.$api = api;
 // Utils
 import {NumberFormatter} from '@/lib/util/web.js';
 
-Number.prototype.date = function(str) {
-  if(str === undefined) str = "MMM DD HH:mm";
-  return moment.unix(this).format(str);
-};
-
 
 // MAIN
 (async function() {
