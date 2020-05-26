@@ -44,33 +44,44 @@ func NewParser(cfg interface{}) (*Parser, error) {
 func fieldsToInterface(typ reflect.Type) reflect.Type {
 
     nf     := typ.NumField()
-    fields := make([]reflect.StructField, nf)
+    fields := make([]reflect.StructField, 0)
     
     for i := 0; i < nf; i++ {
-        fields[i] = typ.Field(i)
-        switch fields[i].Type.Kind() {
+
+        field := typ.Field(i)
+
+        // Check if exported
+        first := field.Name[0]
+        if first < 'A' || first > 'Z' {
+            continue
+        }
+
+        switch field.Type.Kind() {
         case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
             reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
             reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64,
             reflect.String:
-            fields[i].Type = interfaceType
+            field.Type = interfaceType
         case reflect.Slice:
             // Check for struct
-            if fields[i].Type.Elem().Kind() == reflect.Struct {
-                fields[i].Type = reflect.SliceOf(fieldsToInterface(fields[i].Type.Elem()))
+            if field.Type.Elem().Kind() == reflect.Struct {
+                field.Type = reflect.SliceOf(fieldsToInterface(field.Type.Elem()))
             }
         case reflect.Map:
             // Check for struct
-            if fields[i].Type.Elem().Kind() == reflect.Struct {
-                fields[i].Type = reflect.MapOf(
-                    fields[i].Type.Key(), fieldsToInterface(fields[i].Type.Elem()),
+            if field.Type.Elem().Kind() == reflect.Struct {
+                field.Type = reflect.MapOf(
+                    field.Type.Key(), fieldsToInterface(field.Type.Elem()),
                 )
             }
         case reflect.Struct:
             // Recursive
-            fields[i].Type = fieldsToInterface(fields[i].Type)
+            field.Type = fieldsToInterface(field.Type)
         default:
         }
+
+        fields = append(fields, field)
+
     }
 
     return reflect.StructOf(fields)
@@ -132,6 +143,12 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
         dv := def.Field(i)
         av := a.Field(i)
         bv := b.Field(i)
+
+        // Check if exported
+        first := b.Type().Field(i).Name[0]
+        if first < 'A' || first > 'Z' {
+            continue
+        }
 
         if bv.Type().Kind() == reflect.Struct {
             p.deepFillNil(dv, av, bv)

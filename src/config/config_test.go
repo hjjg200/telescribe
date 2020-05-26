@@ -233,3 +233,37 @@ func t_PrettyPrint(s interface{}) {
     d, _ := json.MarshalIndent(s, "", "  ")
     fmt.Println(string(d))
 }
+
+// UNEXPORTED field test
+func TestUnexportedStruct(t *testing.T) {
+
+    type BCfg struct {
+        B1 int
+    }
+    type ACfg struct {
+        A1 int
+        A2 int
+        a3 int
+        b BCfg
+    }
+
+    def := ACfg{
+        A1: 1,
+        A2: 3,
+    }
+
+    parser, err := NewParser(&def)
+    if err != nil {
+        t.Error(err)
+    }
+
+    data := `{
+        "A1": 51
+    }`
+
+    cfg := ACfg{}
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+
+    t_PrettyPrint(cfg)
+
+}

@@ -93,6 +93,21 @@ type ClientConfig struct { // clCfg
     RuleMap ClientRuleMap `json:"ruleMap"`
 }
 
+var DefaultClientInfo = ClientInfo{
+    Host: "127.0.0.1",
+    Alias: "Undefined",
+    Tags: "basic",
+}
+
+var DefaultMonitorConfig = MonitorConfig{
+    Absolute: false,
+    Alias: "",
+    Constant: false,
+    Format: "",
+    FatalRange: "",
+    WarningRange: "",
+}
+
 var DefaultClientConfig = ClientConfig{
     
     InfoMap: ClientInfoMap{
@@ -172,6 +187,7 @@ type Server struct { // srv
     clientMonitorDataTableBox map[string/* clId */] MonitorDataTableBox
     clientMonitorDataMap      map[string/* clId */] MonitorDataMap
     configParser              *config.Parser
+    clientConfigParser        *config.Parser
 }
 
 func NewServer() *Server {
@@ -183,7 +199,7 @@ func NewServer() *Server {
 
 func (srv *Server) setConfigValidators() (err error) {
 
-    defer Catach(&err)
+    defer Catch(&err)
 
     cp := srv.configParser
 
@@ -238,6 +254,14 @@ func (srv *Server) LoadConfig(p string) (err error) {
 
 }
 
+func(srv *Server) setClientConfigValidators() (err error) {
+
+    defer Catch(&err)
+
+    return nil
+
+}
+
 func(srv *Server) loadClientConfig() (err error) {
 
     // Catch
@@ -263,11 +287,14 @@ func(srv *Server) loadClientConfig() (err error) {
         Try(f2.Close())
 
     default: // Exists
-        dec := json.NewDecoder(f)
-        cc  := ClientConfig{}
-        Try(dec.Decode(&cc))
-        srv.clientConfig = cc
-    
+
+        buf := bytes.NewBuffer(nil)
+        io.Copy(buf, f)
+        Try(f.Close())
+        Try(srv.clientConfigParser.Parse(buf.Bytes(), &srv.clientConfig))
+        tmp, _ := json.MarshalIndent(srv.clientConfig, "", "  ")
+        EventLogger.Debugln("config", string(tmp))
+        
     }
 
     // Version
@@ -321,6 +348,11 @@ func(srv *Server) Start() (err error) {
     Try(srv.setConfigValidators())
     Try(srv.LoadConfig(flServerConfigPath))
     EventLogger.Infoln("Loaded server config")
+    clientConfigParser, err := config.NewParser(&DefaultClientConfig)
+    Try(err)
+    Try(clientConfigParser.SubParsers(&DefaultClientInfo, &DefaultMonitorConfig))
+    srv.clientConfigParser = clientConfigParser
+    Try(srv.setClientConfigValidators())
     Try(srv.loadClientConfig())
     EventLogger.Infoln("Loaded client config")
 
