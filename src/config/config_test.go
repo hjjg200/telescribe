@@ -102,6 +102,7 @@ func TestValidator(t *testing.T) {
     }
     cfg := ACfg{}
 
+    // Valid validators
     parser.Validator(&def.Age, func(age int) bool {
         return age > 0 && age < 200
     })
@@ -121,6 +122,11 @@ func TestValidator(t *testing.T) {
         }
         return true
     })
+
+    // Invalid validators
+    fmt.Println(parser.Validator(&def.Age, func(age string) bool {
+        return age == "age"
+    }))
 
     // Parse
     data := `{

@@ -181,27 +181,31 @@ func NewServer() *Server {
     return srv
 }
 
-func (srv *Server) setConfigValidators() {
+func (srv *Server) setConfigValidators() (err error) {
+
+    defer Catach(&err)
 
     cp := srv.configParser
 
     vAboveZero := func(v int) bool {return v > 0}
 
-    cp.Validator(&DefaultServerConfig.DataStoreInterval, vAboveZero)
-    cp.Validator(&DefaultServerConfig.MaxDataLength, vAboveZero)
-    cp.Validator(&DefaultServerConfig.GapThresholdTime, vAboveZero)
-    cp.Validator(&DefaultServerConfig.DecimationThreshold, vAboveZero)
-    cp.Validator(&DefaultServerConfig.DecimationInterval, vAboveZero)
-    cp.Validator(&DefaultServerConfig.Port, func(v int) bool {
+    Try(cp.Validator(&DefaultServerConfig.DataStoreInterval, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.MaxDataLength, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.GapThresholdTime, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.DecimationThreshold, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.DecimationInterval, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.Port, func(v int) bool {
         return v >= 0 && v <= 65535
-    })
-    cp.Validator(&DefaultServerConfig.Tickrate, vAboveZero)
-    cp.Validator(&DefaultServerConfig.Web.Durations, func(v []int) bool {
+    }))
+    Try(cp.Validator(&DefaultServerConfig.Tickrate, vAboveZero))
+    Try(cp.Validator(&DefaultServerConfig.Web.Durations, func(v []int) bool {
         for _, d := range v {
             if d <= 0 {return false}
         }
         return true
-    })
+    }))
+
+    return nil
 
 }
 
@@ -314,7 +318,7 @@ func(srv *Server) Start() (err error) {
     configParser, err := config.NewParser(&DefaultServerConfig)
     Try(err)
     srv.configParser = configParser
-    srv.setConfigValidators()
+    Try(srv.setConfigValidators())
     Try(srv.LoadConfig(flServerConfigPath))
     EventLogger.Infoln("Loaded server config")
     Try(srv.loadClientConfig())

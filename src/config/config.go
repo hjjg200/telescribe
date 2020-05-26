@@ -15,7 +15,7 @@ type subParser struct {
 
 type Parser struct {
     def reflect.Value
-    typ reflect.Type
+    typ reflect.Type // Struct that has its types converted to interfaces
     sub []*subParser
     vf  map[uintptr] reflect.Value
 }
@@ -58,8 +58,6 @@ func fieldsToInterface(typ reflect.Type) reflect.Type {
             reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64,
             reflect.String:
             fields[i].Type = interfaceType
-        case reflect.Array:
-            // TODO
         case reflect.Slice:
             // Check for struct
             if fields[i].Type.Elem().Kind() == reflect.Struct {
@@ -177,7 +175,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                     s := av.Interface().(string)
                     bv.SetString(s)
 
-                case reflect.Array, reflect.Slice, reflect.Map:
+                case reflect.Slice, reflect.Map:
 
                     bvElTyp := bv.Type().Elem()
 
@@ -197,9 +195,6 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                         
                         // Deep copy each element
                         switch bv.Type().Kind() {
-                        case reflect.Array:
-                            // TODO support array
-                            bv.Set(av)
                         case reflect.Slice:
                             bv.Set(reflect.MakeSlice(bv.Type(), 0, 0))
                             for k := 0; k < av.Len(); k++ {
@@ -249,22 +244,30 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
 }
 
-func(p *Parser) Validator(ptr, vf interface{}) {
+func(p *Parser) Validator(ptr, vf interface{}) error {
 
     rptr := reflect.ValueOf(ptr)
     rel  := rptr.Elem()
     rvf  := reflect.ValueOf(vf)
 
     // Ensure function is func(type) bool
-    if rvf.Type().NumIn() != 1 || rvf.Type().In(0) != rel.Type() {
-        panic("Wrong parameter type for validator function")
+    if rvf.Type().NumIn() != 1 {
+        return fmt.Errorf("Given function has invalid parameter count")
+    }
+    if rvf.Type().In(0) != rel.Type() {
+        return fmt.Errorf(
+            "Wrong parameter type, %v, for validator function for %v",
+            rvf.Type().In(0), rel.Type(),
+        )
     }
     if rvf.Type().NumOut() != 1 || rvf.Type().Out(0).Kind() != reflect.Bool {
-        panic("Wrong return type for validator function")
+        return fmt.Errorf("Wrong return type for validator function")
     }
 
     // Assign
     p.vf[rptr.Pointer()] = rvf
+
+    return nil
 
 }
 
