@@ -9,14 +9,10 @@ import (
 var interfaceSlice []interface{}
 var interfaceType = reflect.TypeOf(interfaceSlice).Elem()
 
-type subParser struct {
-    def reflect.Value
-}
-
 type Parser struct {
     def reflect.Value
     typ reflect.Type // Struct that has its types converted to interfaces
-    sub []*subParser
+    sub []reflect.Value
     vf  map[uintptr] reflect.Value
 }
 
@@ -38,7 +34,7 @@ func NewParser(cfg interface{}) (*Parser, error) {
     return &Parser{
         def: def,
         typ: typ,
-        sub: make([]*subParser, 0),
+        sub: make([]reflect.Value, 0),
         vf: make(map[uintptr] reflect.Value),
     }, nil
 
@@ -144,34 +140,27 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
             if av.IsNil() {
 
                 // Default values
-                switch bv.Type().Kind() {
-                case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
-                    reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
-                    reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
-                    // Convert numbers
-                    bv.Set(dv.Convert(bv.Type()))
-                // case reflect.Bool: passthrough
-                // case reflect.String: passthrough
-                default:
-                    bv.Set(dv)
-                }
+                bv.Set(dv)
 
             } else {
                 
+                // Convert interfaces
                 switch bv.Type().Kind() {
                 case reflect.Bool:
-                    b := av.Interface().(bool)
-                    bv.SetBool(b)
-
+            
+                    v := av.Interface().(bool)
+                    bv.SetBool(v)
+            
                 case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
                     reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
                     reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
-
-                    // All numbers in elNew is float64 as json decoded it
+            
+                    // All numbers in a is float64 as json decoded it
                     rf64 := reflect.ValueOf(av.Interface().(float64))
                     bv.Set(rf64.Convert(bv.Type()))
-
+            
                 case reflect.String:
+            
                     s := av.Interface().(string)
                     bv.SetString(s)
 
@@ -179,43 +168,43 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
                     bvElTyp := bv.Type().Elem()
 
-                    // Check for sub parser
-                    var sub *subParser
-                    for _, sp := range p.sub {
-                        // Compare element type
-                        if bvElTyp == sp.def.Type() {
-                            sub = sp
-                            break
-                        }
-                    }
+                    if bvElTyp.Kind() == reflect.Struct {
 
-                    if sub == nil {
-                        bv.Set(av)
-                    } else {
-                        
+                        // Check for sub def
+                        // Zero value for bv elem type is fallback in case of no sub default
+                        sub := reflect.New(bvElTyp).Elem()
+                        for _, each := range p.sub {
+                            // Compare element type
+                            if bvElTyp == each.Type() {
+                                sub = each
+                                break
+                            }
+                        }
+
                         // Deep copy each element
                         switch bv.Type().Kind() {
                         case reflect.Slice:
                             bv.Set(reflect.MakeSlice(bv.Type(), 0, 0))
                             for k := 0; k < av.Len(); k++ {
-                                subAv  := av.Index(k)
-                                psubBv := reflect.New(bvElTyp)
-                                subBv  := psubBv.Elem()
-                                p.deepFillNil(sub.def, subAv, subBv)
+                                subAv := av.Index(k)
+                                subBv := reflect.New(bvElTyp).Elem()
+                                p.deepFillNil(sub, subAv, subBv)
                                 bv.Set(reflect.Append(bv, subBv))
                             }
                         case reflect.Map:
                             bv.Set(reflect.MakeMap(bv.Type()))
                             keys := av.MapKeys()
-                            for k := 0; k < len(keys); k++ {
-                                key    := keys[k]
-                                subAv  := av.MapIndex(key)
-                                psubBv := reflect.New(bvElTyp)
-                                subBv  := psubBv.Elem()
-                                p.deepFillNil(sub.def, subAv, subBv)
+                            for _, key := range keys {
+                                subAv := av.MapIndex(key)
+                                subBv := reflect.New(bvElTyp).Elem()
+                                p.deepFillNil(sub, subAv, subBv)
                                 bv.SetMapIndex(key, subBv)
                             }
                         }
+
+                    } else {
+
+                        bv.Set(av)
 
                     }
 
@@ -243,6 +232,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
     }
 
 }
+
 
 func(p *Parser) Validator(ptr, vf interface{}) error {
 
@@ -285,9 +275,7 @@ func(p *Parser) SubParsers(cfgs ...interface{}) (err error) {
 
         // Struct to interface struct
         def   := reflect.ValueOf(cfg).Elem()
-        p.sub  = append(p.sub, &subParser{
-            def: def,
-        })
+        p.sub  = append(p.sub, def)
 
     }
 

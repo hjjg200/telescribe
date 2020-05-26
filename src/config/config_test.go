@@ -1,6 +1,7 @@
 package config
 
 import (
+    "encoding/json"
     "fmt"
     "testing"
 )
@@ -79,7 +80,7 @@ func TestDeepFill(t *testing.T) {
     cfg := ACfg{}
     parser.Parse([]byte(data), &cfg)
 
-    fmt.Println(cfg)
+    t_PrettyPrint(cfg)
 
 }
 
@@ -155,12 +156,17 @@ func TestValidator(t *testing.T) {
 
 func TestSubParsers(t *testing.T) {
 
+    type CCfg struct {
+        Apples int
+        Bananas int
+    }
     type BCfg struct {
         Stars int
     }
     type ACfg struct {
         Slice []BCfg
         Map map[string] BCfg
+        SliceC []CCfg
     }
 
     def := ACfg{
@@ -168,6 +174,9 @@ func TestSubParsers(t *testing.T) {
             {11}, {22}, {33},
         },
         Map: map[string] BCfg{},
+        SliceC: []CCfg{
+            {2, 5}, {6, 6},
+        },
     }
 
     bdef := BCfg{7}
@@ -185,6 +194,9 @@ func TestSubParsers(t *testing.T) {
         return i > 0
     })
 
+    cfg := ACfg{}
+
+    // Invalid data
     data := `{
         "Slice": [
             {"Stars": 12}, {}, {"Stars": 55}
@@ -195,12 +207,29 @@ func TestSubParsers(t *testing.T) {
         }
     }`
 
-    cfg := ACfg{}
-    err = parser.Parse([]byte(data), &cfg)
-    if err != nil {
-        t.Error(err)
-    }
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+    t_PrettyPrint(cfg)
+    
+    // Valid data
+    data = `{
+        "Slice": [
+            {"Stars": 21}, {}, {"Stars": 3}
+        ],
+        "Map": {
+            "a": {},
+            "b": {"Stars": 6}
+        },
+        "SliceC": [
+            {"Apples": 5}
+        ]
+    }`
 
-    fmt.Println(cfg)
+    fmt.Println(parser.Parse([]byte(data), &cfg))
+    t_PrettyPrint(cfg)
 
+}
+
+func t_PrettyPrint(s interface{}) {
+    d, _ := json.MarshalIndent(s, "", "  ")
+    fmt.Println(string(d))
 }
