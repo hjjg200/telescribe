@@ -154,7 +154,7 @@ func TestValidator(t *testing.T) {
 
 }
 
-func TestSubParsers(t *testing.T) {
+func TestChildDefaults(t *testing.T) {
 
     type CCfg struct {
         Apples int
@@ -185,7 +185,7 @@ func TestSubParsers(t *testing.T) {
     if err != nil {
         t.Error(err)
     }
-    err = parser.SubParsers(&bdef)
+    err = parser.ChildDefaults(&bdef)
     if err != nil {
         t.Error(err)
     }

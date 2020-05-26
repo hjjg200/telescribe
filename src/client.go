@@ -191,6 +191,7 @@ func (cl *Client) Start() error {
             clRsp.Set("per",           cl.rule.MonitorInterval)
             err = cl.s.WriteResponse(clRsp)
             if err != nil {
+                EventLogger.Debugln("may27:valueMap", valMap)
                 EventLogger.Warnln(err)
                 continue
             }

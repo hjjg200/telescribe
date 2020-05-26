@@ -99,6 +99,11 @@ var DefaultClientInfo = ClientInfo{
     Tags: "basic",
 }
 
+var DefaultClientRule = ClientRule{
+    MonitorConfigMap: MonitorConfigMap{},
+    MonitorInterval: 60,
+}
+
 var DefaultMonitorConfig = MonitorConfig{
     Absolute: false,
     Alias: "",
@@ -122,7 +127,7 @@ var DefaultClientConfig = ClientConfig{
     
     RuleMap: ClientRuleMap{
 
-        "basic": {
+        "basic": ClientRule{
 
             MonitorConfigMap: MonitorConfigMap{
                 "cpu-count": MonitorConfig{
@@ -146,7 +151,7 @@ var DefaultClientConfig = ClientConfig{
 
         },
 
-        "example": {
+        "example": ClientRule{
 
             MonitorConfigMap: MonitorConfigMap{
                 "cpu-usage": MonitorConfig{
@@ -258,6 +263,18 @@ func(srv *Server) setClientConfigValidators() (err error) {
 
     defer Catch(&err)
 
+    cp := srv.clientConfigParser
+
+    Try(cp.Validator(&DefaultClientConfig.InfoMap, func(m ClientInfoMap) bool {
+        for k := range m {
+            if k == "" {return false}
+        }
+        return true
+    }))
+    Try(cp.Validator(&DefaultClientRule.MonitorInterval, func(i int) bool {
+        return i > 0
+    }))
+
     return nil
 
 }
@@ -341,16 +358,20 @@ func(srv *Server) Start() (err error) {
 
     defer Catch(&err)
 
-    // Config
+    // Server config
     configParser, err := config.NewParser(&DefaultServerConfig)
     Try(err)
     srv.configParser = configParser
     Try(srv.setConfigValidators())
     Try(srv.LoadConfig(flServerConfigPath))
     EventLogger.Infoln("Loaded server config")
+
+    // Client config
     clientConfigParser, err := config.NewParser(&DefaultClientConfig)
     Try(err)
-    Try(clientConfigParser.SubParsers(&DefaultClientInfo, &DefaultMonitorConfig))
+    Try(clientConfigParser.ChildDefaults(
+        &DefaultClientInfo, &DefaultClientRule, &DefaultMonitorConfig,
+    ))
     srv.clientConfigParser = clientConfigParser
     Try(srv.setClientConfigValidators())
     Try(srv.loadClientConfig())

@@ -367,17 +367,18 @@ func GetDiskIOUsage() map[string] float64 {
     pds := parsedDiskStats
     ret := make(map[string] float64)
 
+    if lastDiskIOTick == (time.Time{}) {
+        // First call is always divided by uptime
+        lastDiskIOTick = systemStartTime
+    }
+
+    now  := time.Now()
+    past := now.Sub(lastDiskIOTick) / time.Millisecond
+    lastDiskIOTick = now
+
     for name := range pds {
 
-        if lastDiskIOTick == (time.Time{}) {
-            // First call is always divided by uptime
-            lastDiskIOTick = systemStartTime
-        }
-
         prev, _ := prevDiskIOTicks[name]
-        now     := time.Now()
-        past    := now.Sub(lastDiskIOTick) / time.Millisecond
-        lastDiskIOTick = now
         prevDiskIOTicks[name] = pds[name].ioTicks
 
         ret[name] = float64(pds[name].ioTicks - prev) / float64(past) * 100.0
@@ -387,7 +388,7 @@ func GetDiskIOUsage() map[string] float64 {
 }
 
 var prevMountIOTicks = make(map[string] int64)
-var lastMountIOTick  = time.Time{}
+var lastMountIOTick  = make(map[string] time.Time)
 func GetMountIOUsage(m string) (float64, error) {
     parseDiskStats()
     pds := parsedDiskStats
@@ -395,15 +396,15 @@ func GetMountIOUsage(m string) (float64, error) {
     for name, ds := range pds {
         if ds.mount == m {
 
-            if lastMountIOTick == (time.Time{}) {
+            if lastMountIOTick[m] == (time.Time{}) {
                 // First call is always divided by uptime
-                lastMountIOTick = systemStartTime
+                lastMountIOTick[m] = systemStartTime
             }
 
             prev, _ := prevMountIOTicks[m]
             now     := time.Now()
-            past    := now.Sub(lastMountIOTick) / time.Millisecond
-            lastMountIOTick = now
+            past    := now.Sub(lastMountIOTick[m]) / time.Millisecond
+            lastMountIOTick[m] = now
             prevMountIOTicks[m] = pds[name].ioTicks
 
             return float64(pds[name].ioTicks - prev) / float64(past) * 100.0, nil

@@ -138,28 +138,33 @@ func(p *Parser) Parse(data []byte, pstr interface{}) (err error) {
 
 func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
-    for i := 0; i < a.NumField(); i++ {
+    for i := 0; i < def.NumField(); i++ { // def is standards
 
-        dv := def.Field(i)
-        av := a.Field(i)
-        bv := b.Field(i)
+        name := def.Type().Field(i).Name
 
         // Check if exported
-        first := b.Type().Field(i).Name[0]
+        first := name[0]
         if first < 'A' || first > 'Z' {
             continue
         }
 
+        dv := def.Field(i)
+        av := a.FieldByName(name) // as av has fewer fields, find fields by name
+        bv := b.Field(i)
+
+        // Recursive
         if bv.Type().Kind() == reflect.Struct {
+
             p.deepFillNil(dv, av, bv)
+
         } else {
 
-            if av.IsNil() {
+            if av.IsNil() { // nil interface value
 
                 // Default values
                 bv.Set(dv)
 
-            } else {
+            } else { // av has value
                 
                 // Convert interfaces
                 switch bv.Type().Kind() {
@@ -279,7 +284,7 @@ func(p *Parser) Validator(ptr, vf interface{}) error {
 }
 
 // Child parser
-func(p *Parser) SubParsers(cfgs ...interface{}) (err error) {
+func(p *Parser) ChildDefaults(cfgs ...interface{}) (err error) {
 
     // Add parsers for structs inside array, map, or slice
 

@@ -71,13 +71,13 @@ func parseProcesses() {
             // /proc/[pid]/stat
             stat, err := readFile("/proc/" + spid + "/stat")
             if err != nil {
-                ErrorCallback(err)
+                //ErrorCallback(err)
                 continue
             }
             ppids := pidStatStruct{}
             err = ppids.Parse(stat)
             if err != nil {
-                ErrorCallback(err)
+                //ErrorCallback(err)
                 continue
             }
 
@@ -97,7 +97,7 @@ func parseProcesses() {
 
                 cmdline, err := readFile("/proc/" + spid + "/cmdline")
                 if err != nil {
-                    ErrorCallback(err)
+                    //ErrorCallback(err)
                     continue
                 }
 
@@ -111,13 +111,13 @@ func parseProcesses() {
             // /proc/[pid]/smaps
             smaps, err := readFile("/proc/" + spid + "/smaps")
             if err != nil {
-                ErrorCallback(err)
+                //ErrorCallback(err)
                 continue
             }
             ppidmp := pidSmapsStruct{}
             err = ppidmp.Parse(smaps)
             if err != nil {
-                ErrorCallback(err)
+                //ErrorCallback(err)
                 continue
             }
 
