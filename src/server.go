@@ -334,13 +334,16 @@ func(srv *Server) cacheExecutable() (err error) {
 
     // Read the executable file
     f, err := os.OpenFile(executablePath, os.O_RDONLY, 0644)
+    EventLogger.Debugln("may27:executablePath", executablePath)
     Try(err)
-    defer Try(f.Close())
 
-    buf := bytes.NewBuffer(nil)
-    io.Copy(buf, f)
+    buf    := bytes.NewBuffer(nil)
+    _, err  = io.Copy(buf, f)
+    Try(err)
+    Try(f.Close())
 
     srv.cachedExecutable = buf.Bytes()
+    EventLogger.Debugln("may27:executableSize", len(srv.cachedExecutable))
     return
 
 }
