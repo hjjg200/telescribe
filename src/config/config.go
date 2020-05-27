@@ -239,7 +239,15 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
             // Validate
             rvf, ok := p.vf[dv.Addr().Pointer()]
             if ok {
-                out   := rvf.Call([]reflect.Value{bv})[0]
+
+                ins := make([]reflect.Value, 1)
+                bvt := bv.Type()
+                switch rvf.Type().In(0) {
+                case reflect.PtrTo(bvt): ins[0] = bv.Addr()
+                case bvt:                ins[0] = bv
+                }
+
+                out   := rvf.Call(ins)[0]
                 valid := out.Interface().(bool)
                 if !valid {
                     panic(fmt.Errorf(
@@ -248,6 +256,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                         bv,
                     ))
                 }
+                
             }
 
         }
@@ -266,7 +275,9 @@ func(p *Parser) Validator(ptr, vf interface{}) error {
     if rvf.Type().NumIn() != 1 {
         return fmt.Errorf("Given function has invalid parameter count")
     }
-    if rvf.Type().In(0) != rel.Type() {
+    switch rvf.Type().In(0) {
+    case rel.Type(), rptr.Type():
+    default:
         return fmt.Errorf(
             "Wrong parameter type, %v, for validator function for %v",
             rvf.Type().In(0), rel.Type(),

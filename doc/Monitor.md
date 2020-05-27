@@ -71,6 +71,8 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`process-cpu-usage(<pid|comm|arg0>)`|CPU usage of the specified processes in whole|
 |`process-memory-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
 |`process-swap-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
+|`process-read-bytes(<pid|comm|arg0>)`|Bytes read by the speicifed processes in whole|
+|`process-write-bytes(<pid|comm|arg0>)`|Bytes written by the speicifed processes in whole|
 |`command(<string>)`|The output of the command|
 
 ## Config

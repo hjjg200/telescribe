@@ -92,7 +92,7 @@ func TestValidator(t *testing.T) {
         Map map[int] int `json:"map"`
     }
     def := ACfg{
-        Age: 12,
+        Age: 15,
         Evens: []int{2, 4, 6, 8, 10},
         Map: map[int] int{1: 1, 2: 2, 3:3},
     }
@@ -104,8 +104,11 @@ func TestValidator(t *testing.T) {
     cfg := ACfg{}
 
     // Valid validators
-    parser.Validator(&def.Age, func(age int) bool {
-        return age > 0 && age < 200
+    parser.Validator(&def.Age, func(age *int) bool {
+        if *age == 24 {
+            *age = 27
+        }
+        return *age > 0 && *age < 200
     })
     parser.Validator(&def.Evens, func(evens []int) bool {
         for _, e := range evens {
@@ -131,7 +134,7 @@ func TestValidator(t *testing.T) {
 
     // Parse
     data := `{
-        "age": 4,
+        "age": 24,
         "evens": [2, 4, 6],
         "map": {"1": 1, "2": 2}
     }`
@@ -151,6 +154,8 @@ func TestValidator(t *testing.T) {
         "map": {"1": 3, "2": 2}
     }`
     fmt.Println(parser.Parse([]byte(data), &cfg))
+
+    t_PrettyPrint(cfg)
 
 }
 

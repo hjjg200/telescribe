@@ -60,6 +60,8 @@ const KeyNetworkOutPackets = "network-outPackets"
 const KeyProcessCpuUsage = "process-cpu-usage"
 const KeyProcessMemoryUsage = "process-memory-usage"
 const KeyProcessSwapUsage = "process-swap-usage"
+const KeyProcessReadBytes = "process-read-bytes"
+const KeyProcessWriteBytes = "process-write-bytes"
 // Misc
 const KeyCustomCommand = "command"
 
@@ -109,6 +111,8 @@ var Wrappers = map[string] wrapper {
     KeyProcessCpuUsage: Wrap(GetProcessCpuUsage, 1.0),
     KeyProcessMemoryUsage: Wrap(GetProcessMemoryUsage, 1.0),
     KeyProcessSwapUsage: Wrap(GetProcessSwapUsage, 1.0),
+    KeyProcessReadBytes: Wrap(GetProcessReadBytes, 1.0),
+    KeyProcessWriteBytes: Wrap(GetProcessWriteBytes, 1.0),
     // Misc
     KeyCustomCommand: Wrap(CustomCommand, 1.0),
 }
