@@ -75,6 +75,7 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`process-write-bytes(<pid/comm/arg0>)`|Bytes written by the speicifed processes in whole|
 |`command(<string>)`|The output of the command|
 
+
 ### CPU
 
 ***#** `cpu-count`*
@@ -84,6 +85,12 @@ CPU count is evaluated from `/proc/stat` by counting the lines that can be expre
 ***#** `cpu-usage`*
 
 CPU usage is evaluated from `/proc/stat` by exmaining the ratio of non-idle(idle and iowait) cpu time since the last evaluation of CPU usage.
+
+This is **indexed metrics** and its indexes are:
+
+* `[0]`: The usage of the entire CPUs.
+* `[<n>]`: The usage of the nth CPU.
+
 
 ### Memory
 
@@ -106,7 +113,33 @@ Swap usage is evaluated from `/proc/memstat` by examining the ratio of used swap
 
 ### Load Average
 
+***#** `load`*
+
+Load average is evaluated from `/proc/loadavg` by taking its first three elements.
+
+This is **indexed metrics** and its indexes are:
+
+* `[1m]`: Load average for 1 minute
+* `[5m]`: Load average for 5 minutes
+* `[15m]`: Load average for 15 minutes
+
+***#** `load-perCpu`*
+
+Load average per cpu is evaluated by dividing the load average by the number of CPUs as specified by `cpu-count`.
+
+This is **indexed metrics** and its indexes are the same as `load`
+
+
 ### Disk
+
+***#** `disk-usage`*
+
+Disk usage is evaluated from the command output of `df -kP` which uses the POSIX output format, by dividing the used blocks by the total blocks. 
+
+This is **indexed metrics** and its indexes are:
+
+* `[<device_name>]`: Disk usage for the disk of the specified name
+
 
 ### Network
 
