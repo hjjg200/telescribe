@@ -111,7 +111,6 @@ Telescribe is currently at alpha stage. When all of the followings get done, it 
 1. Protocol documentation
 1. Monitor documentation
 1. Per-process monitoring
-1. Overall overhaul
 1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe) using LightSail
 
 ## External Libraries

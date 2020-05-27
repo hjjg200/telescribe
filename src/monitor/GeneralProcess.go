@@ -2,6 +2,7 @@ package monitor
 
 import (
     "fmt"
+    "os"
     "path/filepath"
     "strconv"
     "strings"
@@ -30,6 +31,11 @@ const (
     processZombie   byte = 'Z'
 )
 
+type pidIoStruct struct {
+    readBytes  uint64
+    writeBytes uint64
+}
+
 type pidSmapsStruct struct {
     uss  uint64 // Private_Clean + Private_Dirty
     swap uint64 // Swap
@@ -37,6 +43,7 @@ type pidSmapsStruct struct {
 
 var pidArg0s = make(map[int] string)
 var parsedPidStats = make(map[int] pidStatStruct)
+var parsedPidIos   = make(map[int] pidIoStruct)
 var parsedPidSmaps = make(map[int] pidSmapsStruct)
 var processMutex sync.RWMutex
 var processParsed int32
@@ -56,7 +63,14 @@ func parseProcesses() {
         if err != nil {
             panic(err)
         }
+        
+        // Cleanup
+        pidArg0s = make(map[int] string)
+        parsedPidStats = make(map[int] pidStatStruct)
+        parsedPidIos   = make(map[int] pidIoStruct)
+        parsedPidSmaps = make(map[int] pidSmapsStruct)
 
+        EachProcess:
         for _, match := range matches {
 
             var pid int
@@ -70,14 +84,17 @@ func parseProcesses() {
 
             // /proc/[pid]/stat
             stat, err := readFile("/proc/" + spid + "/stat")
-            if err != nil {
-                //ErrorCallback(err)
-                continue
+            switch {
+            case err == os.ErrPermission: // Ignore unaccessible processes
+                continue EachProcess
+            case err != nil:
+                ErrorCallback(err)
+                continue EachProcess
             }
             ppids := pidStatStruct{}
             err = ppids.Parse(stat)
             if err != nil {
-                //ErrorCallback(err)
+                ErrorCallback(err)
                 continue
             }
 
@@ -96,9 +113,12 @@ func parseProcesses() {
                 // Use arg0 of cmdline instead
 
                 cmdline, err := readFile("/proc/" + spid + "/cmdline")
-                if err != nil {
-                    //ErrorCallback(err)
-                    continue
+                switch {
+                case err == os.ErrPermission: // Ignore unaccessible processes
+                    continue EachProcess
+                case err != nil:
+                    ErrorCallback(err)
+                    continue EachProcess
                 }
 
                 arg0 = strings.SplitN(cmdline, "\x00", 2)[0]
@@ -108,22 +128,43 @@ func parseProcesses() {
 
             }
 
+            // /proc/[pid]/io
+            io, err := readFile("/proc/" + spid + "/io")
+            switch {
+            case err == os.ErrPermission: // Ignore unaccessible processes
+                continue EachProcess
+            case err != nil:
+                ErrorCallback(err)
+                continue EachProcess
+            }
+
+            ppidio := pidIoStruct{}
+            err = ppidio.Parse(io)
+            if err != nil {
+                ErrorCallback(err)
+                continue
+            }
+
             // /proc/[pid]/smaps
             smaps, err := readFile("/proc/" + spid + "/smaps")
-            if err != nil {
-                //ErrorCallback(err)
-                continue
+            switch {
+            case err == os.ErrPermission: // Ignore unaccessible processes
+                continue EachProcess
+            case err != nil:
+                ErrorCallback(err)
+                continue EachProcess
             }
             ppidmp := pidSmapsStruct{}
             err = ppidmp.Parse(smaps)
             if err != nil {
-                //ErrorCallback(err)
+                ErrorCallback(err)
                 continue
             }
 
             // Assign
             pidArg0s[pid] = arg0
             parsedPidStats[pid] = ppids
+            parsedPidIos[pid]   = ppidio
             parsedPidSmaps[pid] = ppidmp
 
         }
@@ -270,7 +311,7 @@ func GetProcessCpuUsage(key string) (float64, error) {
         ppids := parsedPidStats[pid]
 
         // Parse
-        var prevPpids   pidStatStruct
+        var prevPpids pidStatStruct
         arg0         := pidArg0s[pid]
         prevArg0, ok := prevCpuUsageArg0s[pid]
         switch {
@@ -347,6 +388,123 @@ func(ppids *pidStatStruct) Parse(line string) error {
 // IO usage
 // /proc/[pid]/io
 
+// https://unix.stackexchange.com/questions/335809/do-the-figures-on-proc-pid-io-include-paging-and-swapping-i-o
+
+// rchar and wchar may be not accurate as, for rchar as example,
+// "It includes things such as terminal I/O and is
+// unaffected by whether or not actual physical disk I/O
+// was required (the read might have been satisfied from
+// pagecache)."
+
+var prevReadBytesArg0s = make(map[int] string)
+var prevReadBytesPidIos = make(map[int] pidIoStruct)
+func GetProcessReadBytes(key string) (float64, error) {
+
+    parseProcesses()
+    processMutex.RLock()
+    defer processMutex.RUnlock()
+
+    pids := getProcessIds(key)
+    if len(pids) == 0 {
+        return 0.0, fmt.Errorf("Process not found")
+    }
+
+    ret := 0.0
+    for _, pid := range pids {
+        
+        ppidio := parsedPidIos[pid]
+
+        // Parse
+        var prevPpidIo pidIoStruct
+        arg0         := pidArg0s[pid]
+        prevArg0, ok := prevReadBytesArg0s[pid]
+        switch {
+        case !ok,             // first parse
+            prevArg0 != arg0: // pid owner changed
+            // default to zero
+        default: // was parsed before
+            prevPpidIo = prevReadBytesPidIos[pid]
+        }
+
+        // Prev
+        prevReadBytesArg0s[pid]  = arg0
+        prevReadBytesPidIos[pid] = ppidio
+
+        ret += float64(ppidio.readBytes - prevPpidIo.readBytes)
+
+    }
+
+    return ret, nil
+
+}
+
+var prevWriteBytesArg0s = make(map[int] string)
+var prevWriteBytesPidIos = make(map[int] pidIoStruct)
+func GetProcessWriteBytes(key string) (float64, error) {
+
+    parseProcesses()
+    processMutex.RLock()
+    defer processMutex.RUnlock()
+
+    pids := getProcessIds(key)
+    if len(pids) == 0 {
+        return 0.0, fmt.Errorf("Process not found")
+    }
+
+    ret := 0.0
+    for _, pid := range pids {
+        
+        ppidio := parsedPidIos[pid]
+
+        // Parse
+        var prevPpidIo pidIoStruct
+        arg0         := pidArg0s[pid]
+        prevArg0, ok := prevWriteBytesArg0s[pid]
+        switch {
+        case !ok,             // first parse
+            prevArg0 != arg0: // pid owner changed
+            // default to zero
+        default: // was parsed before
+            prevPpidIo = prevWriteBytesPidIos[pid]
+        }
+
+        // Prev
+        prevWriteBytesArg0s[pid]  = arg0
+        prevWriteBytesPidIos[pid] = ppidio
+
+        ret += float64(ppidio.writeBytes - prevPpidIo.writeBytes)
+
+    }
+
+    return ret, nil
+    
+}
+
+func(ppidio *pidIoStruct) Parse(io string) error {
+
+    For:
+    for _, line := range strings.Split(io, "\n") {
+
+        var ptr interface{}
+        splits := splitWhitespace(line)
+
+        switch splits[0] {
+        case "read_bytes:":  ptr = &ppidio.readBytes
+        case "write_bytes:": ptr = &ppidio.writeBytes
+        default:
+            continue For
+        }
+
+        n, err := fmt.Sscanf(splits[1], "%d", ptr)
+        if n != 1 || err != nil {
+            return fmt.Errorf("Bad proc/[pid]/io: %s", err.Error())
+        }
+
+    }
+
+    return nil
+
+}
 
 // Memory usage
 // /proc/[pid]/smaps

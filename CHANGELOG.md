@@ -5,7 +5,7 @@ First version that complies with the documentation
 - [x] **Added:** `web` added `constant` entry to **Monitor.Config** and list constant monitored items in a seperate table
 - [x] **Added:** `go` added log files and separated logs into access log and event log
 - [x] **Added:** `go` add `Colorer` to log package
-- [ ] **Fixed:** `go` fixed auto update feature
+- [x] **Fixed:** `go` fixed auto update feature
 - [x] **Fixed:** `client` made moniter interval change is immediately effective
 - [x] **Fixed:** `web` fixed queue functionality
 - [x] **Changed:** `go` make signal handler accessible for both client and server
