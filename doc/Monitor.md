@@ -68,20 +68,41 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`network-out[<interfaceName>]`|Outgoing bytes of the specified interface|
 |`network-outPackets`|Outgoing packets of the entire interfaces|
 |`network-outPackets[<interfaceName>]`|Outgoing packets of the specified interface|
-|`process-cpu-usage(<pid|comm|arg0>)`|CPU usage of the specified processes in whole|
-|`process-memory-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
-|`process-swap-usage(<pid|comm|arg0>)`|Memory usage of the speicifed processes in whole|
-|`process-read-bytes(<pid|comm|arg0>)`|Bytes read by the speicifed processes in whole|
-|`process-write-bytes(<pid|comm|arg0>)`|Bytes written by the speicifed processes in whole|
+|`process-cpu-usage(<pid/comm/arg0>)`|CPU usage of the specified processes in whole|
+|`process-memory-usage(<pid/comm/arg0>)`|Memory usage of the speicifed processes in whole|
+|`process-swap-usage(<pid/comm/arg0>)`|Memory usage of the speicifed processes in whole|
+|`process-read-bytes(<pid/comm/arg0>)`|Bytes read by the speicifed processes in whole|
+|`process-write-bytes(<pid/comm/arg0>)`|Bytes written by the speicifed processes in whole|
 |`command(<string>)`|The output of the command|
 
 ### CPU
 
-***# `cpu-count`*
+***#** `cpu-count`*
 
+CPU count is evaluated from `/proc/stat` by counting the lines that can be expressed as `/^cpu\d+`
 
+***#** `cpu-usage`*
+
+CPU usage is evaluated from `/proc/stat` by exmaining the ratio of non-idle(idle and iowait) cpu time since the last evaluation of CPU usage.
 
 ### Memory
+
+***#** `memory-size`*
+
+Memory size is evaluated from `/proc/memstat`'s MemTotal entry which is expressed in kB.
+
+***#** `memory-usage`*
+
+Memory usage is evaluated from `/proc/memstat` by examining the ratio of used memory(non-buffer, non-cached, and non-free) size.
+
+***#** `swap-size`*
+
+Swap size is evaluated from `/proc/memstat`'s SwapTotal entry which is expressed in kB.
+
+***#** `swap-usage`*
+
+Swap usage is evaluated from `/proc/memstat` by examining the ratio of used swap(non-cached and non-free) size.)
+
 
 ### Load Average
 
