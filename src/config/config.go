@@ -16,8 +16,6 @@ type Parser struct {
     vf  map[uintptr] reflect.Value
 }
 
-// Validators
-
 func NewParser(cfg interface{}) (*Parser, error) {
 
     // Ensure cfg is struct
@@ -65,7 +63,9 @@ func fieldsToInterface(typ reflect.Type) reflect.Type {
         case reflect.Slice:
             // Check for struct
             if field.Type.Elem().Kind() == reflect.Struct {
-                field.Type = reflect.SliceOf(fieldsToInterface(field.Type.Elem()))
+                field.Type = reflect.SliceOf(
+                    fieldsToInterface(field.Type.Elem()),
+                )
             }
         case reflect.Map:
             // Check for struct
@@ -88,7 +88,7 @@ func fieldsToInterface(typ reflect.Type) reflect.Type {
 
 }
 
-func isPtrToStruct(pstr interface{}) bool {
+func isPtrToStruct(pstr interface{}) (b bool) {
     rv := reflect.ValueOf(pstr)
     return rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct
 }
@@ -114,7 +114,8 @@ func(p *Parser) Parse(data []byte, pstr interface{}) (err error) {
         return fmt.Errorf("The given struct is not the same type as the default configuration")
     }
 
-    // Make new struct
+    // Make new interface-fied struct
+    // and unmarshal json content into it
     pa  := reflect.New(p.typ)
     a   := pa.Elem()
     err  = json.Unmarshal(data, pa.Interface())
@@ -122,7 +123,7 @@ func(p *Parser) Parse(data []byte, pstr interface{}) (err error) {
         return err
     }
 
-    // Default
+    // Destination struct which is the same type as the default struct
     pb := reflect.New(p.def.Type())
     b  := pb.Elem()
 
@@ -136,6 +137,8 @@ func(p *Parser) Parse(data []byte, pstr interface{}) (err error) {
 
 }
 
+// Put a's contents into b filling nils with default values as defined in def
+// a must be struct that has contents unmarshaled by json package
 func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
     for i := 0; i < def.NumField(); i++ { // def is standards
@@ -161,7 +164,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
             if av.IsNil() { // nil interface value
 
-                // Default values
+                // Put default value
                 bv.Set(dv)
 
             } else { // av has value
@@ -192,7 +195,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
 
                     if bvElTyp.Kind() == reflect.Struct {
 
-                        // Check for sub def
+                        // Check for sub defaults
                         // Zero value for bv elem type is fallback in case of no sub default
                         sub := reflect.New(bvElTyp).Elem()
                         for _, each := range p.sub {
@@ -225,9 +228,7 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                         }
 
                     } else {
-
                         bv.Set(av)
-
                     }
 
                 default:
@@ -248,15 +249,14 @@ func(p *Parser) deepFillNil(def, a, b reflect.Value) { // a => b
                 }
 
                 out   := rvf.Call(ins)[0]
-                valid := out.Interface().(bool)
+                valid := out.Bool()
                 if !valid {
                     panic(fmt.Errorf(
                         "%s.%s has an invalid value of %v",
-                        b.Type().Name(), b.Type().Field(i).Name,
-                        bv,
+                        b.Type().Name(), b.Type().Field(i).Name, bv,
                     ))
                 }
-                
+
             }
 
         }
@@ -271,7 +271,7 @@ func(p *Parser) Validator(ptr, vf interface{}) error {
     rel  := rptr.Elem()
     rvf  := reflect.ValueOf(vf)
 
-    // Ensure function is func(type) bool
+    // Ensure function is func(type) bool or func(*type) bool
     if rvf.Type().NumIn() != 1 {
         return fmt.Errorf("Given function has invalid parameter count")
     }
@@ -308,7 +308,9 @@ func(p *Parser) ChildDefaults(cfgs ...interface{}) (err error) {
 
         // Struct to interface struct
         def   := reflect.ValueOf(cfg).Elem()
-        p.sub  = append(p.sub, def)
+
+        // Prepend
+        p.sub  = append([]reflect.Value{def}, p.sub...)
 
     }
 

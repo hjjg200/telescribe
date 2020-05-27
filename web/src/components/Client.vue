@@ -31,7 +31,7 @@
         <tbody>
           <tr v-for="(itemStatus, monitorKey) in itemStatusMap"
             :key="monitorKey" v-if="isConstant(monitorKey)">
-            <td>{{ monitorKey }}</td>
+            <td>{{ monitorKeyAlias(monitorKey) }}</td>
             <td>{{ formatDatum(monitorKey, itemStatus) }}</td>
           </tr>
         </tbody>
@@ -69,7 +69,7 @@
             v-for="monitorKey in activeKeys" 
             :key="monitorKey"
             :style="{color: colorify(monitorKey)}">
-            {{ monitorKey }}: {{ focusedValue(monitorKey) }}
+            {{ monitorKeyAlias(monitorKey) }}: {{ focusedValue(monitorKey) }}
           </div>
         </div>
       </div>
@@ -251,6 +251,11 @@ export default {
       if(t <= 60) return `${t}m`;
       else if(t <= 24 * 60) return Math.round(t / 60) + "h";
       else return Math.round(t / 1440) + "d";
+    },
+    monitorKeyAlias(monitorKey) {
+      let {alias} = this.monitorConfigMap[monitorKey];
+      if(alias && alias !== "") return alias;
+      return monitorKey;
     },
     formatDatum(monitorKey, datum) {
       let monitorConfig = this.monitorConfigMap[monitorKey];

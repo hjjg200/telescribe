@@ -75,6 +75,24 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`process-write-bytes(<pid|comm|arg0>)`|Bytes written by the speicifed processes in whole|
 |`command(<string>)`|The output of the command|
 
+### CPU
+
+***# `cpu-count`*
+
+
+
+### Memory
+
+### Load Average
+
+### Disk
+
+### Network
+
+### Process
+
+### Command
+
 ## Config
 
 |Go|Javascript|HTML|
