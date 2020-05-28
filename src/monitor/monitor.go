@@ -31,26 +31,16 @@ const KeySwapUsage = "swap-usage"
 const KeyLoadAverage = "load"
 const KeyLoadAveragePerCpu = "load-perCpu"
 // Disk
-const KeyDiskWrites = "disk-writes"
-const KeyMountWrites = "mount-writes"
-const KeyDiskReads = "disk-reads"
-const KeyMountReads  = "mount-reads"
-const KeyDiskWriteBytes = "disk-writeBytes"
-const KeyMountWriteBytes = "mount-writeBytes"
-const KeyDiskReadBytes = "disk-readBytes"
-const KeyMountReadBytes = "mount-readBytes"
-const KeyDiskUsage = "disk-usage"
-const KeyMountUsage  = "mount-usage"
-const KeyDiskSize = "disk-size"
-const KeyDiskSizeMB = "disk-size-mb"
-const KeyDiskSizeGB = "disk-size-gb"
-const KeyDiskSizeTB = "disk-size-tb"
-const KeyMountSize = "mount-size"
-const KeyMountSizeMB = "mount-size-mb"
-const KeyMountSizeGB = "mount-size-gb"
-const KeyMountSizeTB = "mount-size-tb"
-const KeyDiskIOUsage = "disk-io-usage"
-const KeyMountIOUsage = "mount-io-usage"
+const KeyDevWrites = "dev-writes"
+const KeyDevReads = "dev-reads"
+const KeyDevWriteBytes = "dev-writeBytes"
+const KeyDevReadBytes = "dev-readBytes"
+const KeyDevUsage = "dev-usage"
+const KeyDevSize = "dev-size"
+const KeyDevSizeMB = "dev-size-mb"
+const KeyDevSizeGB = "dev-size-gb"
+const KeyDevSizeTB = "dev-size-tb"
+const KeyDevIOUsage = "dev-io-usage"
 // Network
 const KeyNetworkIn = "network-in"
 const KeyNetworkInPackets = "network-inPackets"
@@ -82,26 +72,16 @@ var Wrappers = map[string] wrapper {
     KeyLoadAverage: Wrap(GetLoadAverage, 1.0),
     KeyLoadAveragePerCpu: Wrap(GetLoadAveragePerCpu, 1.0),
     // Disk
-    KeyDiskWrites: Wrap(GetDiskWrites, 1.0),
-    KeyMountWrites: Wrap(GetMountWrites, 1.0),
-    KeyDiskReads: Wrap(GetDiskReads, 1.0),
-    KeyMountReads: Wrap(GetMountReads, 1.0),
-    KeyDiskWriteBytes: Wrap(GetDiskWriteBytes, 1.0),
-    KeyMountWriteBytes: Wrap(GetMountWriteBytes, 1.0),
-    KeyDiskReadBytes: Wrap(GetDiskReadBytes, 1.0),
-    KeyMountReadBytes: Wrap(GetMountReadBytes, 1.0),
-    KeyDiskUsage: Wrap(GetDiskUsage, 1.0),
-    KeyMountUsage: Wrap(GetMountUsage, 1.0),
-    KeyDiskSize: Wrap(GetDiskSize, 1.0),
-    KeyDiskSizeMB: Wrap(GetDiskSize, 1.0e-3),
-    KeyDiskSizeGB: Wrap(GetDiskSize, 1.0e-6),
-    KeyDiskSizeTB: Wrap(GetDiskSize, 1.0e-9),
-    KeyMountSize: Wrap(GetMountSize, 1.0),
-    KeyMountSizeMB: Wrap(GetMountSize, 1.0e-3),
-    KeyMountSizeGB: Wrap(GetMountSize, 1.0e-6),
-    KeyMountSizeTB: Wrap(GetMountSize, 1.0e-9),
-    KeyDiskIOUsage: Wrap(GetDiskIOUsage, 1.0),
-    KeyMountIOUsage: Wrap(GetMountIOUsage, 1.0),
+    KeyDevWrites: Wrap(GetDevWrites, 1.0),
+    KeyDevReads: Wrap(GetDevReads, 1.0),
+    KeyDevWriteBytes: Wrap(GetDevWriteBytes, 1.0),
+    KeyDevReadBytes: Wrap(GetDevReadBytes, 1.0),
+    KeyDevUsage: Wrap(GetDevUsage, 1.0),
+    KeyDevSize: Wrap(GetDevSize, 1.0),
+    KeyDevSizeMB: Wrap(GetDevSize, 1.0e-3),
+    KeyDevSizeGB: Wrap(GetDevSize, 1.0e-6),
+    KeyDevSizeTB: Wrap(GetDevSize, 1.0e-9),
+    KeyDevIOUsage: Wrap(GetDevIoUsage, 1.0),
     // Network
     KeyNetworkIn: Wrap(GetNetworkIn, 1.0),
     KeyNetworkInPackets: Wrap(GetNetworkInPackets, 1.0),

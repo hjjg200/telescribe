@@ -1,22 +1,51 @@
 package monitor
 
 import (
+    "encoding/json"
     "fmt"
+    "os"
+    "syscall"
     "testing"
     "time"
 )
 
 
+func TestStatfs(t *testing.T) {
+
+    statfs := func(path string) (syscall.Statfs_t, error) {
+        fsbuf := &syscall.Statfs_t{}
+        err := syscall.Statfs(path, fsbuf)
+        return *fsbuf, err
+    }
+
+    fmt.Print("/"); fmt.Println(statfs("/"))
+    for {
+
+        for disk, parts := range devHierarchy {
+            dev := "/dev/" + disk
+            fmt.Print(dev + ": "); fmt.Println(statfs(dev))
+            for _, part := range parts {
+                dev := "/dev/" + part
+                fmt.Print(dev + ": "); fmt.Println(statfs(dev))
+            }
+        }
+
+        time.Sleep(3 * time.Second)
+
+    }
+
+}
+
 func TestDiskIOTicks(t *testing.T) {
 
     // Test if io ticks = read ticks + write ticks
-    parseDiskStats()
-    prev := parsedDiskStats
+    parseDevStats()
+    prev := parsedDevStats
     for {
         time.Sleep(1 * time.Second)
 
-        parseDiskStats()
-        pds := parsedDiskStats
+        parseDevStats()
+        pds := parsedDevStats
 
         for name := range pds {
             p0 := prev[name]
@@ -48,5 +77,22 @@ func TestDiskIOTicks(t *testing.T) {
 // xvda1: (rticks + wticks) / ioticks = NaN
 // xvda1: (rticks + wticks) / ioticks = 0.875
 // xvda1: (rticks + wticks) / ioticks = NaN
+
+}
+
+func TestAllDevices(t *testing.T) {
+
+    enc := json.NewEncoder(os.Stderr)
+    enc.SetIndent("", "  ")
+
+    for {
+
+        enc.Encode(GetDevUsage("*"))
+        enc.Encode(GetDevSize("*"))
+        fmt.Println("")
+
+        time.Sleep(3 * time.Second)
+
+    }
 
 }

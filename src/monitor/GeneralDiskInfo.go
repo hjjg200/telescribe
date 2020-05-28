@@ -11,58 +11,190 @@ package monitor
 // https://unix.stackexchange.com/questions/4561/how-do-i-find-out-what-hard-disks-are-in-the-system
 // https://stackoverflow.com/questions/37248948/how-to-get-disk-read-write-bytes-per-second-from-proc-in-programming-on-linux
 
+// https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-block
+
+
+// Reference source codes:
+// https://github.com/coreutils/coreutils/blob/master/src/df.c
+// https://github.com/coreutils/gnulib/blob/master/lib/mountlist.c
+// https://code.woboq.org/userspace/glibc/sysdeps/unix/sysv/linux/statvfs.c.html#39
+// https://github.com/coreutils/gnulib/blob/e93bdf684a7ed2c9229c0f113e33dc639f1050d7/lib/mountlist.c#L444
+
+// statfs
+// https://www.man7.org/linux/man-pages/man2/statfs.2.html
+
+// Use /proc/self/mountinfo to get mounted disks
+
+// df uses statfs syscall to get disk informations and
+// for path parameter, it uses target and disk in order of preference to get info
+// and the target and disk info is acquired from /proc/self/mountinfo
+
+// lsblk
+// https://github.com/karelzak/util-linux/blob/master/misc-utils/lsblk.c
+// lsblk checks device types by sysfs device/type
+// https://github.com/karelzak/util-linux/blob/498f910eeb0167c75b0421a9a12974e6bb0afb04/lib/blkdev.c#L325
+// and it states a device is partition if its sysfs has no children
+
+
+// OVERVIEW ---
+// Get all entries from /proc/partitions
+// those entries will be in /sys/block
+// check if they are mounted by /proc/self/mountinfo
+// statfs with the mount point
+// e.g., disk-usage(<devname/uuid/label/id/mount point>) => statfs
+// e.g., disk-io-usage... => /sys/block
+
 import (
     "fmt"
-    "path"
+    "path/filepath"
     "strings"
+    "sync"
     "sync/atomic"
+    "syscall"
     "time"
+
+    . "github.com/hjjg200/go-act"
 )
 
-type diskStat struct {
-    filesystem string
-    mount string
-    blocks int64 // 1024-block
-    used int64 // 1024-block
-    reads int64
-    readSectors int64 // 1 sector is 512 bytes
-    readTicks int64 // millisecond
-    writes int64
+type devStatStruct struct {
+    reads        int64
+    readSectors  int64 // 1 sector is 512 bytes
+    readTicks    int64 // millisecond
+    writes       int64
     writeSectors int64
-    writeTicks int64
-    ioTicks int64 // millisecond
+    writeTicks   int64
+    ioTicks      int64 // millisecond
 }
 
-var diskHierarchy = make(map[string] []string)
-var parsedDiskStats map[string] diskStat
-const diskStatParsingMinimumWait = time.Millisecond * 10
-var diskStatParsingWait int32
+type statfsStruct struct {
+    blocksize uint64
+    blocks    uint64
+    free      uint64
+}
+
+type mountInfoStruct struct {
+    mountId int // 1
+    parentId int // 2
+    majorMinor string // 3
+    root string // 4
+    target string // 5
+    fsType string // 9
+    source string // 10
+}
+
+const devParseMinimumWait = time.Millisecond * 10
+var devMutex sync.RWMutex
+var devParsed int32
+
+var devHierarchy map[string] []string
+var devAliases map[string] []string
+var devTargets map[string] []string
+var devMajorMinors map[string] string
+
+var parsedDevStats   map[string] devStatStruct
+var parsedStatfs     map[string] statfsStruct
+var parsedMountInfos []mountInfoStruct
 
 func init() {
-    parseDiskHierarchy()
-    parseDiskStats()
-
-    // Initialize
-    GetDiskWrites()
-    GetDiskReads()
-    GetDiskReadBytes()
-    GetDiskWriteBytes()
-    for _, ds := range parsedDiskStats {
-        GetMountWrites(ds.mount)
-        GetMountReads(ds.mount)
-        GetMountWriteBytes(ds.mount)
-        GetMountReadBytes(ds.mount)
-    }
+    parseDevStats()
 }
 
-func parseDiskHierarchy() {
+func parseDevHierarchy() {
 
+    // Partitions
     pt, err := readFile("/proc/partitions")
     if err != nil {
-        emitError(err)
+        ErrorCallback(err)
+        return
     }
 
+    // Cleanup
+    devAliases = make(map[string] []string)
+
+    // Aliases
+    byDirs, err := filepath.Glob("/dev/by-*")
+    if err == nil {
+        for _, byDir := range byDirs {
+            
+            entries, err := filepath.Glob(byDir + "/*")
+            if err != nil {
+                continue
+            }
+
+            for _, entry := range entries {
+
+                eval, err := filepath.EvalSymlinks(entry)
+                if err != nil {
+                    continue
+                }
+
+                dev := filepath.Base(eval)
+                if _, ok := devAliases[dev]; !ok {
+                    devAliases[dev] = []string{}
+                }
+                devAliases[dev] = append(
+                    devAliases[dev], filepath.Base(entry),
+                )
+
+            }
+
+        }
+
+    }
+
+    // Mountinfo
+    // https://github.com/coreutils/gnulib/blob/a2080f6506701d8d9ca5111d628607a6a8013f61/lib/mountlist.c#L469
+    parsedMountInfos  = make([]mountInfoStruct, 0)
+    procmi, err      := readFile("/proc/self/mountinfo")
+    if err != nil {
+        ErrorCallback(err)
+        return
+    }
+    for _, line := range strings.Split(procmi, "\n") {func() {
+        
+        defer func() {
+            if r := recover(); r != nil {
+                ErrorCallback(fmt.Errorf("%v", r))
+            }
+        }()
+
+        next := func(f string, term string, ptr interface{}) error {
+
+            i := strings.Index(line, term)
+            if i == -1 {return nil}
+            sub  := line
+            line  = line[i + len(term):]
+
+            if ptr == nil {return nil}
+            n, err := fmt.Sscanf(sub, f, ptr)
+            if n != 1     {return fmt.Errorf("Failed sscanf")}
+            if err != nil {return err}
+
+            return nil
+
+        }
+
+        mi := mountInfoStruct{}
+        Try(next("%d", " ", &mi.mountId))
+        Try(next("%d", " ", &mi.parentId))
+        Try(next("%s", " ", &mi.majorMinor))
+        Try(next("%s", " ", &mi.root))
+        Try(next("%s", " ", &mi.target))
+        Try(next("", " ",   nil)) // ignore options
+        Try(next("", "- ", nil)) // ignore optional fields
+        Try(next("%s", " ", &mi.fsType))
+        Try(next("%s", " ", &mi.source))
+
+        parsedMountInfos = append(parsedMountInfos, mi)
+
+    }()}
+
+    // Device hierarchy
+    devHierarchy   = make(map[string] []string)
+    devTargets     = make(map[string] []string)
+    devMajorMinors = make(map[string] string)
     for _, line := range strings.Split(pt, "\n") {
+
         var (
             major, minor, blocks int64
             name string
@@ -72,19 +204,34 @@ func parseDiskHierarchy() {
             continue
         }
 
-        diskHierarchy[name] = make([]string, 0)
+        if name[:2] == "md"   {continue}
+        if name[:4] == "loop" {continue}
+
+        devHierarchy[name]   = make([]string, 0)
+        devMajorMinors[name] = fmt.Sprintf("%d:%d", major, minor)
+
+        // Check mounted
+        for _, mi := range parsedMountInfos {
+            if mi.source == "/dev/" + name {
+                if _, ok := devTargets[name]; !ok {devTargets[name] = []string{}}
+                devTargets[name] = append(devTargets[name], mi.target)
+            }
+        }
+
     }
 
     // Check partitions
     PartitionParseLoop:
-    for name := range diskHierarchy {
-        for name2 := range diskHierarchy {
-            if name == name2 { continue }
+    for dev := range devHierarchy {
+        for dev2 := range devHierarchy {
+            if dev == dev2 { continue }
 
-            if strings.HasPrefix(name, name2) { // name is partition
-                delete(diskHierarchy, name)
+            if strings.HasPrefix(dev, dev2) {
+                // dev is partition of dev2
+                // remove partition from disk lists
+                delete(devHierarchy, dev)
                 // Add partition
-                diskHierarchy[name2] = append(diskHierarchy[name2], name)
+                devHierarchy[dev2] = append(devHierarchy[dev2], dev)
                 continue PartitionParseLoop
             }
         }
@@ -92,8 +239,44 @@ func parseDiskHierarchy() {
 
 }
 
+func getDev(key string) string {
+
+    allDevs := []string{}
+    for disk, parts := range devHierarchy {
+        allDevs = append(allDevs, disk)
+        allDevs = append(allDevs, parts...)
+    }
+
+    for _, dev := range allDevs {
+        if dev == key {return dev}
+    }
+
+    for dev, aliases := range devAliases {
+        if dev == key {
+            return dev
+        }
+        for _, alias := range aliases {
+            if alias == key {
+                return dev
+            }
+        }
+    }
+
+    for dev, targets := range devTargets {
+        for _, target := range targets {
+            if target == key {
+                return dev
+            }
+        }
+    }
+
+    return ""
+
+}
+
 func getParentDisk(part string) string {
-    for disk, parts := range diskHierarchy {
+
+    for disk, parts := range devHierarchy {
         for _, part2 := range parts {
             if part == part2 {
                 return disk
@@ -101,315 +284,275 @@ func getParentDisk(part string) string {
         }
     }
     return ""
+
 }
 
-func parseDiskStats() {
+func parseDevStats() {
 
-    if atomic.CompareAndSwapInt32(&diskStatParsingWait, 0, 1) == false {
-        // Already running
-        return
-    }
+    devMutex.Lock()
+    defer devMutex.Unlock()
 
-    // Parse
-    pds := make(map[string] diskStat)
+    if atomic.CompareAndSwapInt32(&devParsed, 0, 1) {
 
-    // 
-    df, err := commandOutput("df -kP | grep ^/dev/")
-    if err != nil {
-        emitError(err)
-    }
+        // Prepare
+        parseDevHierarchy()
+        parsedStatfs = make(map[string] statfsStruct)
 
-    for _, line := range strings.Split(df, "\n") {
-        var (
-            filesystem string
-            blocks int64
-            used int64
-            available int64
-            capacity string
-            mount string
-        )
+        // Statfs
+        for dev, targets := range devTargets {
 
-        n, err := fmt.Sscanf(line, "%s %d %d %d %s %s", &filesystem, &blocks, &used, &available, &capacity, &mount)
-        if err != nil || n != 6 {
-            continue
+            var ok bool
+            var statfs syscall.Statfs_t
+            for _, target := range targets {
+                var buf syscall.Statfs_t
+                err := syscall.Statfs(target, &buf)
+                if err == nil {
+                    statfs = buf
+                    ok = true
+                    break
+                }
+            }
+            if !ok {
+                continue
+            }
+
+            // Many space usage primitives use all 1 bits to denote a value that is
+            // not applicable or unknown.
+            var blocksize uint64
+            if ^statfs.Frsize == 0 || statfs.Frsize == 0 {
+                if ^statfs.Bsize == 0 {continue}
+                blocksize = uint64(statfs.Bsize)
+            } else {
+                blocksize = uint64(statfs.Frsize)
+            }
+
+            // Assign
+            parsedStatfs[dev] = statfsStruct{
+                blocksize: blocksize,
+                blocks: statfs.Blocks,
+                free: statfs.Bfree,
+            }
+
         }
 
-        name := path.Base(filesystem)
-        pds[name] = diskStat{
-            filesystem: filesystem,
-            mount: mount,
-            blocks: blocks,
-            used: used,
+        // Per device
+        allDevs := make([]string, 0)
+        for parent, children := range devHierarchy {
+            allDevs = append(allDevs, parent)
+            allDevs = append(allDevs, children...)
         }
-    }
+        parsedDevStats = make(map[string] devStatStruct)
+        for _, dev := range allDevs {
 
-    // Per device
-    for name, ds := range pds {
-        var (
-            reads, readMerges, readSectors, readTicks int64
-            writes, writeMerges, writeSectors, writeTicks int64
-            inFlight, ioTicks, timeInQueue int64
-        )
-        disk := getParentDisk(name)
-        st, err := readFile(fmt.Sprintf("/sys/block/%s/%s/stat", disk, name))
-        if err != nil {
-            continue
+            var (
+                reads, readMerges, readSectors, readTicks int64
+                writes, writeMerges, writeSectors, writeTicks int64
+                inFlight, ioTicks, timeInQueue int64
+            )
+            
+            majorMinor := devMajorMinors[dev]
+            st, err    := readFile(fmt.Sprintf("/sys/dev/block/%s/stat", majorMinor))
+            if err != nil {
+                continue
+            }
+
+            n, err := fmt.Sscanf(
+                st, "%d %d %d %d %d %d %d %d %d %d %d",
+                &reads, &readMerges, &readSectors, &readTicks,
+                &writes, &writeMerges, &writeSectors, &writeTicks,
+                &inFlight, &ioTicks, &timeInQueue,
+            )
+            if n != 11 || err != nil {
+                continue
+            }
+
+            parsedDevStats[dev] = devStatStruct{
+                reads: reads,
+                readSectors: readSectors,
+                readTicks: readTicks,
+                writes: writes,
+                writeSectors: writeSectors,
+                writeTicks: writeTicks,
+                ioTicks: ioTicks,
+            }
+
         }
 
-        n, err := fmt.Sscanf(
-            st, "%d %d %d %d %d %d %d %d %d %d %d",
-            &reads, &readMerges, &readSectors, &readTicks,
-            &writes, &writeMerges, &writeSectors, &writeTicks,
-            &inFlight, &ioTicks, &timeInQueue,
-        )
-        if n != 11 || err != nil {
-            continue
+        go func() {
+            time.Sleep(devParseMinimumWait)
+            atomic.StoreInt32(&devParsed, 0)
+        }()
+
+    }
+
+}
+
+// STAT ---
+
+const (
+    typeDevReads = iota
+    typeDevWrites
+    typeDevReadBytes
+    typeDevWriteBytes
+)
+
+var prevDevStats = make(map[int] map[string] int64)
+func getDevStat(key string, typ int, nested bool) interface{} {
+
+    if !nested {
+        parseDevStats()
+        devMutex.RLock()
+        defer devMutex.RUnlock()
+    }
+
+    // Multiple
+    if key == "*" {
+        ret := make(map[string] float64)
+        for dev := range parsedDevStats {
+            out := getDevStat(dev, typ, true)
+            if out == nil {continue}
+            ret[dev] = out.(float64)
         }
+        if len(ret) == 0 {return nil}
+        return ret
+    }
+    
+    // Single
+    dev := getDev(key)
+    if dev == "" {return nil}
 
-        ds.reads = reads
-        ds.readSectors = readSectors
-        ds.readTicks = readTicks
-        ds.writes = writes
-        ds.writeSectors = writeSectors
-        ds.writeTicks = writeTicks
-        ds.ioTicks = ioTicks
-
-        // Assign
-        pds[name] = ds
+    if _, ok := prevDevStats[typ]; !ok {
+        prevDevStats[typ] = make(map[string] int64)
     }
 
-    parsedDiskStats = pds
+    var curr int64
+    prev, prevOk    := prevDevStats[typ][dev]
+    devStat, statOk := parsedDevStats[dev]
+    if !statOk {return nil}
 
-    time.Sleep(diskStatParsingMinimumWait)
-    atomic.StoreInt32(&diskStatParsingWait, 0)
+    switch typ {
+    case typeDevReads: curr = devStat.reads
+    case typeDevWrites: curr = devStat.writes
+    case typeDevReadBytes: curr = devStat.readSectors * 512 // 1 sector is 512 bytes
+    case typeDevWriteBytes: curr = devStat.writeSectors * 512
+    }
+
+    prevDevStats[typ][dev] = curr
+    if !prevOk {return float64(0.0)}
+
+    return float64(curr - prev)
 
 }
 
-//
-// Requests
-//
-var prevDiskWrites = make(map[string] int64)
-func GetDiskWrites() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name := range pds {
-        prev, _ := prevDiskWrites[name]
-        ret[name] = float64(pds[name].writes - prev)
-        prevDiskWrites[name] = pds[name].writes
-    }
-    return ret
+func GetDevReads(key string) interface{} {
+    return getDevStat(key, typeDevReads, false)
 }
 
-var prevMountWrites = make(map[string] int64)
-func GetMountWrites(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
+func GetDevWrites(key string) interface{} {
+    return getDevStat(key, typeDevWrites, false)
+}
 
-    for name, ds := range pds {
-        if ds.mount == m {
-            prev, _ := prevMountWrites[m]
-            prevMountWrites[m] = pds[name].writes
-            return float64(pds[name].writes - prev), nil
+func GetDevReadBytes(key string) interface{} {
+    return getDevStat(key, typeDevReadBytes, false)
+}
+
+func GetDevWriteBytes(key string) interface{} {
+    return getDevStat(key, typeDevWriteBytes, false)
+}
+
+
+// STATFS ---
+
+const (
+    typeDevUsage = iota
+    typeDevSize
+)
+
+func getStatfs(key string, typ int, nested bool) interface{} {
+
+    if !nested {
+        parseDevStats()
+        devMutex.RLock()
+        defer devMutex.RUnlock()
+    }
+
+    if key == "*" {
+        ret := make(map[string] float64)
+        for dev := range parsedStatfs {
+            out := getStatfs(dev, typ, true)
+            if out == nil {continue}
+            ret[dev] = out.(float64)
         }
+        if len(ret) == 0 {return nil}
+        return ret
     }
-    return 0.0, fmt.Errorf("Not found")
+
+    dev := getDev(key)
+    if dev == "" {return nil}
+
+    statfs, statfsOk := parsedStatfs[dev]
+    if !statfsOk {return nil}
+
+    switch typ {
+    case typeDevUsage: return (1.0 - float64(statfs.free) / float64(statfs.blocks)) * 100.0
+    case typeDevSize: return float64(statfs.blocks * statfs.blocksize)
+    }
+
+    return nil
+
 }
 
-var prevDiskReads = make(map[string] int64)
-func GetDiskReads() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name := range pds {
-        prev, _ := prevDiskReads[name]
-        ret[name] = float64(pds[name].reads - prev)
-        prevDiskReads[name] = pds[name].reads
-    }
-    return ret
+func GetDevUsage(key string) interface{} {
+    return getStatfs(key, typeDevUsage, false)
 }
 
-var prevMountReads = make(map[string] int64)
-func GetMountReads(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for name, ds := range pds {
-        if ds.mount == m {
-            prev, _ := prevMountReads[m]
-            prevMountReads[m] = pds[name].reads
-            return float64(pds[name].reads - prev), nil
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
-}
-
-//
-// Bytes
-//
-var prevDiskWriteBytes = make(map[string] int64)
-func GetDiskWriteBytes() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name := range pds {
-        prev, _ := prevDiskWriteBytes[name]
-        ret[name] = float64(pds[name].writeSectors - prev) * 512.0 // 1 secotr = 512 bytes
-        prevDiskWriteBytes[name] = pds[name].writeSectors
-    }
-    return ret
-}
-
-var prevMountWriteBytes = make(map[string] int64)
-func GetMountWriteBytes(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for name, ds := range pds {
-        if ds.mount == m {
-            prev, _ := prevMountWriteBytes[m]
-            prevMountWriteBytes[m] = pds[name].writeSectors
-            return float64(pds[name].writeSectors - prev) * 512.0, nil
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
-}
-
-var prevDiskReadBytes = make(map[string] int64)
-func GetDiskReadBytes() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name := range pds {
-        prev, _ := prevDiskReadBytes[name]
-        ret[name] = float64(pds[name].readSectors - prev) * 512.0 // 1 secotr = 512 bytes
-        prevDiskReadBytes[name] = pds[name].readSectors
-    }
-    return ret
-}
-
-var prevMountReadBytes = make(map[string] int64)
-func GetMountReadBytes(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for name, ds := range pds {
-        if ds.mount == m {
-            prev, _ := prevMountReadBytes[m]
-            prevMountReadBytes[m] = pds[name].readSectors
-            return float64(pds[name].readSectors - prev) * 512.0, nil
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
-}
-
-func GetDiskUsage() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name, ds := range pds {
-        blocks := float64(ds.blocks)
-        used := float64(ds.used)
-        ret[name] = used / blocks * 100.0
-    }
-    return ret
-}
-
-func GetMountUsage(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for _, ds := range pds {
-        if ds.mount == m {
-            blocks := float64(ds.blocks)
-            used := float64(ds.used)
-            return float64(used / blocks * 100.0), nil
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
-}
-
-func GetDiskSize() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
-
-    for name, ds := range pds {
-        ret[name] = float64(ds.blocks)
-    }
-    return ret
-}
-
-func GetMountSize(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for _, ds := range pds {
-        if ds.mount == m {
-            return float64(ds.blocks), nil
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
+func GetDevSize(key string) interface{} {
+    return getStatfs(key, typeDevSize, false)
 }
 
 // IO USAGE
 // https://serverfault.com/questions/862334/interpreting-read-write-and-total-io-time-in-proc-diskstats
 
-var prevDiskIOTicks = make(map[string] int64)
-var lastDiskIOTick  = time.Time{}
-func GetDiskIOUsage() map[string] float64 {
-    parseDiskStats()
-    pds := parsedDiskStats
-    ret := make(map[string] float64)
+var prevIoTicks = make(map[string] int64)
+var lastIoTick  = make(map[string] time.Time)
+func getDevIoUsage(key string, nested bool) interface{} {
 
-    if lastDiskIOTick == (time.Time{}) {
-        // First call is always divided by uptime
-        lastDiskIOTick = systemStartTime
+    if !nested {
+        parseDevStats()
+        devMutex.RLock()
+        defer devMutex.RUnlock()
     }
+
+    if key == "*" {
+        ret := make(map[string] float64)
+        for dev := range parsedDevStats {
+            out := getDevIoUsage(dev, true)
+            if out == nil {continue}
+            ret[dev] = out.(float64)
+        }
+        if len(ret) == 0 {return nil}
+        return ret
+    }
+
+    dev := getDev(key)
+    if dev == "" {return nil}
 
     now  := time.Now()
-    past := now.Sub(lastDiskIOTick) / time.Millisecond
-    lastDiskIOTick = now
-
-    for name := range pds {
-
-        prev, _ := prevDiskIOTicks[name]
-        prevDiskIOTicks[name] = pds[name].ioTicks
-
-        ret[name] = float64(pds[name].ioTicks - prev) / float64(past) * 100.0
-
+    last, lastOk := lastIoTick[dev]
+    if !lastOk {
+        last = systemStartTime
     }
-    return ret
+    past := now.Sub(last) / time.Millisecond
+    lastIoTick[dev] = now
+
+    ds   := parsedDevStats[dev]
+    prev := prevIoTicks[dev]
+    prevIoTicks[dev] = ds.ioTicks
+
+    return float64(ds.ioTicks - prev) / float64(past) * 100.0
+
 }
 
-var prevMountIOTicks = make(map[string] int64)
-var lastMountIOTick  = make(map[string] time.Time)
-func GetMountIOUsage(m string) (float64, error) {
-    parseDiskStats()
-    pds := parsedDiskStats
-
-    for name, ds := range pds {
-        if ds.mount == m {
-
-            if lastMountIOTick[m] == (time.Time{}) {
-                // First call is always divided by uptime
-                lastMountIOTick[m] = systemStartTime
-            }
-
-            prev, _ := prevMountIOTicks[m]
-            now     := time.Now()
-            past    := now.Sub(lastMountIOTick[m]) / time.Millisecond
-            lastMountIOTick[m] = now
-            prevMountIOTicks[m] = pds[name].ioTicks
-
-            return float64(pds[name].ioTicks - prev) / float64(past) * 100.0, nil
-
-        }
-    }
-    return 0.0, fmt.Errorf("Not found")
+func GetDevIoUsage(key string) interface{} {
+    return getDevIoUsage(key, false)
 }
