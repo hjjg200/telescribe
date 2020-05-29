@@ -224,7 +224,7 @@ This metrics **requires a parameter** and it is as defined under `dev-reads`.
 
 ***#** `devs-reads`*
 
-Device reads is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Devices reads is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
 
 This is **indexed metrics** and its indexes are:
 
@@ -233,28 +233,28 @@ This is **indexed metrics** and its indexes are:
 
 ***#** `devs-writes`*
 
-Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last writes count from the current one.
+Devices writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last writes count from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-readBytes`*
 
-Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last read bytes from the current one.
+Devices read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last read bytes from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-writeBytes`*
 
-Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last write bytes from the current one.
+Devices write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last write bytes from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-usage`*
 
-Device usage is evaluated from the `statvfs` result.
+Devices usage is evaluated from the `statvfs` result.
 
 ```go
 usage = (1.0 - (f_free / f_blocks)) * 100.0
@@ -265,35 +265,35 @@ This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 ***#** `devs-size`*
 
-Device size is evaluated from `/proc/partitions` and it is converted into SI prefix `kB` from 1024-byte block unit.
+Devices size is evaluated from `/proc/partitions` and it is converted into SI prefix `kB` from 1024-byte block unit.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-size-mb`*
 
-Device size MB is device size in SI prefix `MB`(1e+6 bytes).
+Devices size MB is device size in SI prefix `MB`(1e+6 bytes).
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-size-gb`*
 
-Device size GB is device size in SI prefix `GB`(1e+9 bytes).
+Devices size GB is device size in SI prefix `GB`(1e+9 bytes).
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-size-tb`*
 
-Device size TB is device size in SI prefix `TB`(1e+12 bytes).
+Devices size TB is device size in SI prefix `TB`(1e+12 bytes).
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-io-usage`*
 
-Device IO usage is evaluated from `/sys/dev/block/[major:minor]/stat` by examining the ratio of elapsed io ticks(milliseconds) during the period since the last evaluation.
+Devices IO usage is evaluated from `/sys/dev/block/[major:minor]/stat` by examining the ratio of elapsed io ticks(milliseconds) during the period since the last evaluation.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
@@ -331,12 +331,6 @@ This is **indexed metrics** and its indexes are the same as `network-in`.
 
 
 ### Process
-
-|`process-cpu-usage(<pid/comm/arg0>)`|CPU usage of the specified processes in whole|
-|`process-memory-usage(<pid/comm/arg0>)`|Memory usage of the speicifed processes in whole|
-|`process-swap-usage(<pid/comm/arg0>)`|Memory usage of the speicifed processes in whole|
-|`process-read-bytes(<pid/comm/arg0>)`|Bytes read by the speicifed processes in whole|
-|`process-write-bytes(<pid/comm/arg0>)`|Bytes written by the speicifed processes in whole|
 
 ***#** `process-cpu-usage`*
 
