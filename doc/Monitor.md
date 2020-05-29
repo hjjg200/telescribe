@@ -62,10 +62,10 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`devs-io-usage[<deviceName>]`|The IO usage of the specified device in percentage|
 |`network-in`|Incoming bytes of the entire interfaces|
 |`network-in[<interfaceName>]`|Incoming bytes of the specified interface|
-|`network-inPackets`|Incoming packets of the entire interfaces|
-|`network-inPackets[<interfaceName>]`|Incoming packets of the specified interface|
 |`network-out`|Outgoing bytes of the entire interfaces|
 |`network-out[<interfaceName>]`|Outgoing bytes of the specified interface|
+|`network-inPackets`|Incoming packets of the entire interfaces|
+|`network-inPackets[<interfaceName>]`|Incoming packets of the specified interface|
 |`network-outPackets`|Outgoing packets of the entire interfaces|
 |`network-outPackets[<interfaceName>]`|Outgoing packets of the specified interface|
 |`process-cpu-usage(<pid/comm/arg0>)`|CPU usage of the specified processes in whole|
@@ -215,7 +215,7 @@ Device reads is evaluated from `/sys/dev/block/[major:minor]/stat` by subtractin
 
 This is **indexed metrics** and its indexes are:
 
-* `[<device_name>]`: short device names such as `xvda`, `sdb`, and `sdb1`
+* `[<deviceName>]`: short device names such as `xvda`, `sdb`, and `sdb1`
 
 
 ***#** `devs-writes`*
@@ -282,6 +282,36 @@ This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ### Network
+
+***#** `network-in`*
+
+Network in is evaluated from `/proc/net/dev` by examining the difference in received bytes since the last evaluation. Its unit is B(bytes).
+
+This is **indexed metrics** and its indexes are:
+
+* `[<interfaceName>]`: network interface name; `eth0`, `lo`, etc.
+
+
+***#** `network-out`*
+
+Network out is evaluated from `/proc/net/dev` by examining the difference in transmitted bytes since the last evaluation. Its unit is B(bytes).
+
+This is **indexed metrics** and its indexes are the same as `network-in`.
+
+
+***#** `network-inPackets`*
+
+Network in packets is evaluated from `/proc/net/dev` by examining the difference in the count of received packets since the last evaluation.
+
+This is **indexed metrics** and its indexes are the same as `network-in`.
+
+
+***#** `network-outPackets`*
+
+Network out packets is evaluated from `/proc/net/dev` by examining the difference in the count of transmitted packets since the last evaluation.
+
+This is **indexed metrics** and its indexes are the same as `network-in`.
+
 
 ### Process
 
