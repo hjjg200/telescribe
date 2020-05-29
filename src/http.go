@@ -8,6 +8,7 @@ import (
     "io"
     "net"
     "net/http"
+    "net/url"
     "os"
     "regexp"
     "strconv"
@@ -426,8 +427,23 @@ func(hr *httpRouter) Serve(hctx HttpContext) {
     for rgx, handlers := range hr.routes {
         matches := rgx.FindStringSubmatch(r.URL.Path)
         if matches == nil || matches[0] != r.URL.Path {
+            if len(matches) > 0 {
+                EventLogger.Debugln("may29:urlRawPath", r.URL.RawPath)
+                EventLogger.Debugln("may29:urlMatch", r.URL.Path, "\n", matches[0])
+            }
             continue
         }
+        // Unescape
+        for i := range matches {
+            buf, err := url.QueryUnescape(matches[i])
+            if err != nil {
+                EventLogger.Warnln("Failed query unescape:", err)
+                continue
+            }
+            matches[i] = buf
+        }
+        EventLogger.Debugln("may29:urlUnescape", matches)
+        // Check handler
         hctx.Matches = matches
         if handler, ok := handlers[r.Method]; ok {
             handler(hctx)

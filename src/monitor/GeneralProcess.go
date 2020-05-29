@@ -85,7 +85,7 @@ func parseProcesses() {
             // /proc/[pid]/stat
             stat, err := readFile("/proc/" + spid + "/stat")
             switch {
-            case err == os.ErrPermission: // Ignore unaccessible processes
+            case os.IsPermission(err): // Ignore unaccessible processes
                 continue EachProcess
             case err != nil:
                 ErrorCallback(err)
@@ -114,7 +114,7 @@ func parseProcesses() {
 
                 cmdline, err := readFile("/proc/" + spid + "/cmdline")
                 switch {
-                case err == os.ErrPermission: // Ignore unaccessible processes
+                case os.IsPermission(err): // Ignore unaccessible processes
                     continue EachProcess
                 case err != nil:
                     ErrorCallback(err)
@@ -131,7 +131,7 @@ func parseProcesses() {
             // /proc/[pid]/io
             io, err := readFile("/proc/" + spid + "/io")
             switch {
-            case err == os.ErrPermission: // Ignore unaccessible processes
+            case os.IsPermission(err): // Ignore unaccessible processes
                 continue EachProcess
             case err != nil:
                 ErrorCallback(err)
@@ -148,7 +148,7 @@ func parseProcesses() {
             // /proc/[pid]/smaps
             smaps, err := readFile("/proc/" + spid + "/smaps")
             switch {
-            case err == os.ErrPermission: // Ignore unaccessible processes
+            case os.IsPermission(err): // Ignore unaccessible processes
                 continue EachProcess
             case err != nil:
                 ErrorCallback(err)

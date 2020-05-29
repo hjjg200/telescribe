@@ -87,8 +87,10 @@ func TestAllDevices(t *testing.T) {
 
     for {
 
-        enc.Encode(GetDevUsage("*"))
-        enc.Encode(GetDevSize("*"))
+        out, _ := GetDevUsage("/code-server/shared")
+        enc.Encode(out)
+        enc.Encode(GetDevsSize())
+        enc.Encode(GetDevsReads())
         fmt.Println("")
 
         time.Sleep(3 * time.Second)

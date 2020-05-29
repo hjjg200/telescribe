@@ -87,6 +87,7 @@ var devMutex sync.RWMutex
 var devParsed int32
 
 var devHierarchy map[string] []string
+var devBlocks map[string] uint64
 var devAliases map[string] []string
 var devTargets map[string] []string
 var devMajorMinors map[string] string
@@ -115,14 +116,12 @@ func parseDevHierarchy() {
     byDirs, err := filepath.Glob("/dev/by-*")
     if err == nil {
         for _, byDir := range byDirs {
-            
             entries, err := filepath.Glob(byDir + "/*")
             if err != nil {
                 continue
             }
 
             for _, entry := range entries {
-
                 eval, err := filepath.EvalSymlinks(entry)
                 if err != nil {
                     continue
@@ -135,11 +134,8 @@ func parseDevHierarchy() {
                 devAliases[dev] = append(
                     devAliases[dev], filepath.Base(entry),
                 )
-
             }
-
         }
-
     }
 
     // Mountinfo
@@ -191,6 +187,7 @@ func parseDevHierarchy() {
 
     // Device hierarchy
     devHierarchy   = make(map[string] []string)
+    devBlocks      = make(map[string] uint64)
     devTargets     = make(map[string] []string)
     devMajorMinors = make(map[string] string)
     for _, line := range strings.Split(pt, "\n") {
@@ -208,6 +205,7 @@ func parseDevHierarchy() {
         if name[:4] == "loop" {continue}
 
         devHierarchy[name]   = make([]string, 0)
+        devBlocks[name]      = uint64(blocks)
         devMajorMinors[name] = fmt.Sprintf("%d:%d", major, minor)
 
         // Check mounted
@@ -397,29 +395,10 @@ const (
 )
 
 var prevDevStats = make(map[int] map[string] int64)
-func getDevStat(key string, typ int, nested bool) interface{} {
+func getDevStat(key string, typ int) (float64, error) {
 
-    if !nested {
-        parseDevStats()
-        devMutex.RLock()
-        defer devMutex.RUnlock()
-    }
-
-    // Multiple
-    if key == "*" {
-        ret := make(map[string] float64)
-        for dev := range parsedDevStats {
-            out := getDevStat(dev, typ, true)
-            if out == nil {continue}
-            ret[dev] = out.(float64)
-        }
-        if len(ret) == 0 {return nil}
-        return ret
-    }
-    
-    // Single
     dev := getDev(key)
-    if dev == "" {return nil}
+    if dev == "" {return 0.0, fmt.Errorf("Not found")}
 
     if _, ok := prevDevStats[typ]; !ok {
         prevDevStats[typ] = make(map[string] int64)
@@ -428,7 +407,7 @@ func getDevStat(key string, typ int, nested bool) interface{} {
     var curr int64
     prev, prevOk    := prevDevStats[typ][dev]
     devStat, statOk := parsedDevStats[dev]
-    if !statOk {return nil}
+    if !statOk {return 0.0, fmt.Errorf("Stat not found")}
 
     switch typ {
     case typeDevReads: curr = devStat.reads
@@ -438,26 +417,71 @@ func getDevStat(key string, typ int, nested bool) interface{} {
     }
 
     prevDevStats[typ][dev] = curr
-    if !prevOk {return float64(0.0)}
+    if !prevOk {return float64(0.0), nil}
 
-    return float64(curr - prev)
+    return float64(curr - prev), nil
 
 }
 
-func GetDevReads(key string) interface{} {
-    return getDevStat(key, typeDevReads, false)
+func GetDevReads(key string) (float64, error) {
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+    return getDevStat(key, typeDevReads)
 }
 
-func GetDevWrites(key string) interface{} {
-    return getDevStat(key, typeDevWrites, false)
+func GetDevWrites(key string) (float64, error) {
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+    return getDevStat(key, typeDevWrites)
 }
 
-func GetDevReadBytes(key string) interface{} {
-    return getDevStat(key, typeDevReadBytes, false)
+func GetDevReadBytes(key string) (float64, error) {
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+    return getDevStat(key, typeDevReadBytes)
 }
 
-func GetDevWriteBytes(key string) interface{} {
-    return getDevStat(key, typeDevWriteBytes, false)
+func GetDevWriteBytes(key string) (float64, error) {
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+    return getDevStat(key, typeDevWriteBytes)
+}
+
+// Multiple
+
+func getDevsStat(typ int) map[string] float64 {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    ret := make(map[string] float64)
+    for dev := range parsedDevStats {
+        out, _ := getDevStat(dev, typ)
+        ret[dev] = out
+    }
+    return ret
+
+}
+
+func GetDevsReads() map[string] float64 {
+    return getDevsStat(typeDevReads)
+}
+
+func GetDevsWrites() map[string] float64 {
+    return getDevsStat(typeDevWrites)
+}
+
+func GetDevsReadBytes() map[string] float64 {
+    return getDevsStat(typeDevReadBytes)
+}
+
+func GetDevsWriteBytes() map[string] float64 {
+    return getDevsStat(typeDevWriteBytes)
 }
 
 
@@ -465,49 +489,89 @@ func GetDevWriteBytes(key string) interface{} {
 
 const (
     typeDevUsage = iota
-    typeDevSize
+    // typeDevSize
 )
 
-func getStatfs(key string, typ int, nested bool) interface{} {
-
-    if !nested {
-        parseDevStats()
-        devMutex.RLock()
-        defer devMutex.RUnlock()
-    }
-
-    if key == "*" {
-        ret := make(map[string] float64)
-        for dev := range parsedStatfs {
-            out := getStatfs(dev, typ, true)
-            if out == nil {continue}
-            ret[dev] = out.(float64)
-        }
-        if len(ret) == 0 {return nil}
-        return ret
-    }
+func getStatfs(key string, typ int) (float64, error) {
 
     dev := getDev(key)
-    if dev == "" {return nil}
+    if dev == "" {return 0.0, fmt.Errorf("Not found")}
 
     statfs, statfsOk := parsedStatfs[dev]
-    if !statfsOk {return nil}
+    if !statfsOk {return 0.0, fmt.Errorf("Statfs not found")}
 
     switch typ {
-    case typeDevUsage: return (1.0 - float64(statfs.free) / float64(statfs.blocks)) * 100.0
-    case typeDevSize: return float64(statfs.blocks * statfs.blocksize)
+    case typeDevUsage: return (1.0 - float64(statfs.free) / float64(statfs.blocks)) * 100.0, nil
+    // case typeDevSize: return float64(statfs.blocks * statfs.blocksize)
     }
 
-    return nil
+    return 0.0, fmt.Errorf("Wrong type")
 
 }
 
-func GetDevUsage(key string) interface{} {
-    return getStatfs(key, typeDevUsage, false)
+func GetDevUsage(key string) (float64, error) {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    return getStatfs(key, typeDevUsage)
+
 }
 
-func GetDevSize(key string) interface{} {
-    return getStatfs(key, typeDevSize, false)
+func GetDevsUsage() map[string] float64 {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    ret := make(map[string] float64)
+    for dev := range parsedStatfs {
+        usage, _ := getStatfs(dev, typeDevUsage)
+        ret[dev] = usage
+    }
+    return ret
+
+}
+
+// BLOCKS ---
+
+// /proc/partitions
+//              Contains the major and minor numbers of each partition as well
+//              as the number of 1024-byte blocks and the partition name.
+
+func getDevSize(key string) (float64, bool) {
+    dev := getDev(key)
+    if dev == "" {return 0.0, false}
+
+    blocks, ok := devBlocks[dev]
+    return float64(blocks), ok
+}
+
+func GetDevSize(key string) (float64, error) {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    kb, ok := getDevSize(key)
+    if !ok {return 0.0, fmt.Errorf("Not found")}
+    return kb, nil
+
+}
+
+func GetDevsSize() map[string] float64 {
+    
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    ret := make(map[string] float64)
+    for dev, blocks := range devBlocks {
+        ret[dev] = float64(blocks)
+    }
+    return ret
+
 }
 
 // IO USAGE
@@ -515,27 +579,10 @@ func GetDevSize(key string) interface{} {
 
 var prevIoTicks = make(map[string] int64)
 var lastIoTick  = make(map[string] time.Time)
-func getDevIoUsage(key string, nested bool) interface{} {
-
-    if !nested {
-        parseDevStats()
-        devMutex.RLock()
-        defer devMutex.RUnlock()
-    }
-
-    if key == "*" {
-        ret := make(map[string] float64)
-        for dev := range parsedDevStats {
-            out := getDevIoUsage(dev, true)
-            if out == nil {continue}
-            ret[dev] = out.(float64)
-        }
-        if len(ret) == 0 {return nil}
-        return ret
-    }
+func getDevIoUsage(key string) (float64, error) {
 
     dev := getDev(key)
-    if dev == "" {return nil}
+    if dev == "" {return 0.0, fmt.Errorf("Not found")}
 
     now  := time.Now()
     last, lastOk := lastIoTick[dev]
@@ -549,10 +596,31 @@ func getDevIoUsage(key string, nested bool) interface{} {
     prev := prevIoTicks[dev]
     prevIoTicks[dev] = ds.ioTicks
 
-    return float64(ds.ioTicks - prev) / float64(past) * 100.0
+    return float64(ds.ioTicks - prev) / float64(past) * 100.0, nil
 
 }
 
-func GetDevIoUsage(key string) interface{} {
-    return getDevIoUsage(key, false)
+func GetDevIoUsage(key string) (float64, error) {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    return getDevIoUsage(key)
+
+}
+
+func GetDevsIoUsage() map[string] float64 {
+
+    parseDevStats()
+    devMutex.RLock()
+    defer devMutex.RUnlock()
+
+    ret := make(map[string] float64)
+    for dev := range parsedDevStats {
+        out, _ := getDevIoUsage(dev)
+        ret[dev] = out
+    }
+    return ret
+
 }

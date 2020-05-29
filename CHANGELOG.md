@@ -7,10 +7,11 @@ First version that complies with the documentation
 - [x] **Added:** `go` add `Colorer` to log package
 - [x] **Added:** `go` add process metrics
 - [x] **Added:** `go` add io usage metrics
-- [ ] **Added:** `all` add `alias` for monitor keys
+- [x] **Added:** `all` add `alias` for monitor keys
 - [x] **Added:** `server` add config validators
 - [x] **Added:** `server` add config default handlers
 - [x] **Fixed:** `go` fixed auto update feature
+- [x] **Fixed:** `all` correct handling for monitor keys that include slashes
 - [x] **Fixed:** `client` made moniter interval change is immediately effective
 - [x] **Fixed:** `web` fixed queue functionality
 - [x] **Changed:** `go` make signal handler accessible for both client and server

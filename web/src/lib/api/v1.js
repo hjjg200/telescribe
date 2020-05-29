@@ -12,6 +12,8 @@ class apiError {
 }
 
 function formatURI(key, ...args) {
+  // Encode twice as net/url unencodes automatically
+  args = args.map(arg => encodeURIComponent(encodeURIComponent(arg)));
   let suffix = args.length ? `/${args.join("/")}` : "";
   return `/${apiName}/${key}${suffix}`;
 }
