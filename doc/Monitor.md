@@ -30,26 +30,36 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`load-perCpu[1m]`|Load average per cpu for 1m|
 |`load-perCpu[5m]`|Load average per cpu for 5m|
 |`load-perCpu[15m]`|Load average per cpu for 15m|
-|`dev-reads(device/uuid/label/.../mount)`|Read operation count for the entire disks|
-|`dev-writes`|Write operation count for the entire disks|
-|`dev-readBytes`|Read bytes of the entire disks|
-|`dev-writeBytes`|Written bytes of the entire disks|
-|`dev-usage`|The usage of the entire disks|
-|`dev-size`|The size of the entire disks in kB|
-|`dev-size-mb`|The size of the entire disks in MB|
-|`dev-size-gb`|The size of the entire disks in GB|
-|`dev-size-tb`|The size of the entire disks in TB|
-|`dev-io-usage`|The IO usage of the entire disks in percentage|
-|`devs-reads[<deviceName>]`|Read operation count for the specified disk|
-|`devs-writes[<deviceName>]`|Write operation count for the specified disk|
-|`devs-readBytes[<deviceName>]`|Read bytes of the specified disk|
-|`devs-writeBytes[<deviceName>]`|Written bytes of the specified disk|
-|`devs-usage[<deviceName>]`|The usage of the specified disk|
-|`devs-size[<deviceName>]`|The size of the specified disk in kB|
-|`devs-size-mb[<deviceName>]`|The size of the specified disk in MB|
-|`devs-size-gb[<deviceName>]`|The size of the specified disk in GB|
-|`devs-size-tb[<deviceName>]`|The size of the specified disk in TB|
-|`devs-io-usage[<deviceName>]`|The IO usage of the specified disk in percentage|
+|`dev-reads(name/alias/.../mount)`|Read operation count for the specified device|
+|`dev-writes(name/alias/.../mount)`|Write operation count for the specified device|
+|`dev-readBytes(name/alias/.../mount)`|Read bytes of the specified device|
+|`dev-writeBytes(name/alias/.../mount)`|Written bytes of the specified device|
+|`dev-usage(name/alias/.../mount)`|The usage of the specified device|
+|`dev-size(name/alias/.../mount)`|The size of the specified device in kB|
+|`dev-size-mb(name/alias/.../mount)`|The size of the specified device in MB|
+|`dev-size-gb(name/alias/.../mount)`|The size of the specified device in GB|
+|`dev-size-tb(name/alias/.../mount)`|The size of the specified device in TB|
+|`dev-io-usage(name/alias/.../mount)`|The IO usage of the specified device in percentage|
+|`devs-reads`|Read operation count for the entire devices|
+|`devs-reads[<deviceName>]`|Read operation count for the specified device|
+|`devs-writes`|Write operation count for the entire devices|
+|`devs-writes[<deviceName>]`|Write operation count for the specified device|
+|`devs-readBytes`|Read bytes of the entire devices|
+|`devs-readBytes[<deviceName>]`|Read bytes of the specified device|
+|`devs-writeBytes`|Written bytes of the entire devices|
+|`devs-writeBytes[<deviceName>]`|Written bytes of the specified device|
+|`devs-usage`|The usage of the entire devices|
+|`devs-usage[<deviceName>]`|The usage of the specified device|
+|`devs-size`|The size of the entrie devices in kB|
+|`devs-size[<deviceName>]`|The size of the specified device in kB|
+|`devs-size-mb`|The size of the entrie devices in MB|
+|`devs-size-mb[<deviceName>]`|The size of the specified device in MB|
+|`devs-size-gb`|The size of the entrie devices in GB|
+|`devs-size-gb[<deviceName>]`|The size of the specified device in GB|
+|`devs-size-tb`|The size of the entrie devices in TB|
+|`devs-size-tb[<deviceName>]`|The size of the specified device in TB|
+|`devs-io-usage`|The IO usage of the entrie devices in percentage|
+|`devs-io-usage[<deviceName>]`|The IO usage of the specified device in percentage|
 |`network-in`|Incoming bytes of the entire interfaces|
 |`network-in[<interfaceName>]`|Incoming bytes of the specified interface|
 |`network-inPackets`|Incoming packets of the entire interfaces|
@@ -138,21 +148,21 @@ This metrics **accept a parameter** and it can be:
 
 ***#** `dev-writes`*
 
-Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last writes count from the current one.
 
 This metrics **accept a parameter** and it is as defined under `dev-reads`.
 
 
 ***#** `dev-readBytes`*
 
-Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last read bytes from the current one.
 
 This metrics **accept a parameter** and it is as defined under `dev-reads`.
 
 
 ***#** `dev-writeBytes`*
 
-Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last write bytes from the current one.
 
 This metrics **accept a parameter** and it is as defined under `dev-reads`.
 
@@ -210,21 +220,21 @@ This is **indexed metrics** and its indexes are:
 
 ***#** `devs-writes`*
 
-Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last writes count from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-readBytes`*
 
-Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last read bytes from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 
 ***#** `devs-writeBytes`*
 
-Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last write bytes from the current one.
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 

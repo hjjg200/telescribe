@@ -5,127 +5,145 @@ import (
     "strings"
     "sync/atomic"
     "time"
+
+    "github.com/hjjg200/go-together"
 )
 
 // https://stackoverflow.com/questions/3521678/what-are-meanings-of-fields-in-proc-net-dev
 
 type netStat struct {
-    name string
-    in int64 // Bytes
-    inPackets int64
-    out int64
+    name       string
+    in         int64 // Bytes
+    out        int64
+    inPackets  int64
     outPackets int64
 }
-var parsedNetworkStats map[string] netStat
-const netStatParsingMinimumWait = time.Millisecond * 10
-var netStatParsingWait int32
-
-func init() {
-    parseNetworkStats()
-
-    // Initialize
-    GetNetworkIn()
-    GetNetworkInPackets()
-    GetNetworkOut()
-    GetNetworkOutPackets()
-}
+var parsedNetStats map[string] netStat
+var netRail = together.NewRailSwitch()
+var netParsed int32
+const netParseMinimumWait = time.Millisecond * 10
 
 func parseNetworkStats() {
 
-    if atomic.CompareAndSwapInt32(&netStatParsingWait, 0, 1) == false {
-        // Already running
-        return
-    }
+    netRail.Queue(railWrite, 1)
+    defer netRail.Proceed(railWrite)
 
-    netDev, err := readFile("/proc/net/dev")
-    if err != nil {
-        emitError(err)
-    }
+    if atomic.CompareAndSwapInt32(&netParsed, 0, 1) {
 
-    pns := make(map[string] netStat)
-    for _, line := range strings.Split(netDev, "\n") {
-        var (
-            name string
-            in, inPackets, inErrs, inDrop, inFifo, inFrame, inCompressed, inMulticast int64
-            out, outPackets, outErrs, outDrop, outFifo, outColls, outCarrier, outCompressed int64 
-        )
-
-        n, err := fmt.Sscanf(
-            line, "%s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-            &name, &in, &inPackets, &inErrs, &inDrop, &inFifo, &inFrame, &inCompressed, &inMulticast,
-            &out, &outPackets, &outErrs, &outDrop, &outFifo, &outColls, &outCarrier, &outCompressed,
-        )
-        if n != 17 || err != nil {
-            continue
+        netDev, err := readFile("/proc/net/dev")
+        if err != nil {
+            ErrorCallback(err)
         }
 
-        // Remove colon from the name
-        name = name[:len(name) - 1]
+        pns := make(map[string] netStat)
+        for _, line := range strings.Split(netDev, "\n") {
+            var (
+                name string
+                in, inPackets, inErrs, inDrop, inFifo, inFrame, inCompressed, inMulticast int64
+                out, outPackets, outErrs, outDrop, outFifo, outColls, outCarrier, outCompressed int64 
+            )
 
-        pns[name] = netStat{
-            name: name,
-            in: in,
-            inPackets: inPackets,
-            out: out,
-            outPackets: outPackets,
+            n, err := fmt.Sscanf(
+                line, "%s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+                &name, &in, &inPackets, &inErrs, &inDrop, &inFifo, &inFrame, &inCompressed, &inMulticast,
+                &out, &outPackets, &outErrs, &outDrop, &outFifo, &outColls, &outCarrier, &outCompressed,
+            )
+            if n != 17 || err != nil {
+                continue
+            }
+
+            // Remove colon from the name
+            name = name[:len(name) - 1]
+
+            pns[name] = netStat{
+                name: name,
+                in: in,
+                inPackets: inPackets,
+                out: out,
+                outPackets: outPackets,
+            }
         }
+
+        parsedNetStats = pns
+
+        go func() {
+            time.Sleep(netParseMinimumWait)
+            atomic.StoreInt32(&netParsed, 0)
+        }()
+    
     }
-
-    parsedNetworkStats = pns
-
-    time.Sleep(netStatParsingMinimumWait)
-    atomic.StoreInt32(&netStatParsingWait, 0)
 
 }
 
 var prevNetworkIn = make(map[string] int64)
 func GetNetworkIn() map[string] float64 {
+
     parseNetworkStats()
-    pns := parsedNetworkStats
+    netRail.Queue(railRead, 1)
+    defer netRail.Proceed(railRead)
+
+    pns := parsedNetStats
     ret := make(map[string] float64)
     for name := range pns {
-        prev, _ := prevNetworkIn[name]
-        ret[name] = float64(pns[name].in - prev)
+        prev, ok := prevNetworkIn[name]
+        // Continue if prev is undefined
+        if ok {ret[name] = float64(pns[name].in - prev)}
         prevNetworkIn[name] = pns[name].in
     }
     return ret
+
 }
 
 var prevNetworkInPackets = make(map[string] int64)
 func GetNetworkInPackets() map[string] float64 {
+
     parseNetworkStats()
-    pns := parsedNetworkStats
+    netRail.Queue(railRead, 1)
+    defer netRail.Proceed(railRead)
+
+    pns := parsedNetStats
     ret := make(map[string] float64)
     for name := range pns {
-        prev, _ := prevNetworkInPackets[name]
-        ret[name] = float64(pns[name].inPackets - prev)
+        prev, ok := prevNetworkInPackets[name]
+        if ok {ret[name] = float64(pns[name].inPackets - prev)}
         prevNetworkInPackets[name] = pns[name].inPackets
     }
     return ret
+
 }
 
 var prevNetworkOut = make(map[string] int64)
 func GetNetworkOut() map[string] float64 {
+
     parseNetworkStats()
-    pns := parsedNetworkStats
+    netRail.Queue(railRead, 1)
+    defer netRail.Proceed(railRead)
+
+    pns := parsedNetStats
     ret := make(map[string] float64)
     for name := range pns {
-        prev, _ := prevNetworkOut[name]
-        ret[name] = float64(pns[name].out - prev)
+        prev, ok := prevNetworkOut[name]
+        if ok {ret[name] = float64(pns[name].out - prev)}
         prevNetworkOut[name] = pns[name].out
     }
     return ret
+
 }
 
 var prevNetworkOutPackets = make(map[string] int64)
 func GetNetworkOutPackets() map[string] float64 {
+
     parseNetworkStats()
-    pns := parsedNetworkStats
+    netRail.Queue(railRead, 1)
+    defer netRail.Proceed(railRead)
+
+    pns := parsedNetStats
     ret := make(map[string] float64)
     for name := range pns {
-        prev, _ := prevNetworkOutPackets[name]
-        ret[name] = float64(pns[name].outPackets - prev)
+        prev, ok := prevNetworkOutPackets[name]
+        if ok {ret[name] = float64(pns[name].outPackets - prev)}
         prevNetworkOutPackets[name] = pns[name].outPackets
     }
     return ret
+
 }

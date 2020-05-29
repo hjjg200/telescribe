@@ -6,9 +6,10 @@ import (
     "path/filepath"
     "strconv"
     "strings"
-    "sync"
     "sync/atomic"
     "time"
+
+    "github.com/hjjg200/go-together"
 )
 
 type pidStatStruct struct {
@@ -41,11 +42,12 @@ type pidSmapsStruct struct {
     swap uint64 // Swap
 }
 
-var pidArg0s = make(map[int] string)
+var pidArg0s       = make(map[int] string)
 var parsedPidStats = make(map[int] pidStatStruct)
 var parsedPidIos   = make(map[int] pidIoStruct)
 var parsedPidSmaps = make(map[int] pidSmapsStruct)
-var processMutex sync.RWMutex
+
+var processRail = together.NewRailSwitch()
 var processParsed int32
 const processParseMinimumWait = time.Second * 1
 
@@ -55,8 +57,8 @@ func init() {
 
 func parseProcesses() {
 
-    processMutex.Lock()
-    defer processMutex.Unlock()
+    processRail.Queue(railWrite, 1)
+    defer processRail.Proceed(railWrite)
     if atomic.CompareAndSwapInt32(&processParsed, 0, 1) {
 
         matches, err := filepath.Glob("/proc/*")
@@ -108,9 +110,9 @@ func parseProcesses() {
             // taining the actual pathname of the executed command.
             arg0, err := filepath.EvalSymlinks("/proc/" + spid + "/exe")
             if err != nil {
-                // On fail
+
                 // /proc/[pid]/cmdline
-                // Use arg0 of cmdline instead
+                // On fail use arg0 of cmdline instead
 
                 cmdline, err := readFile("/proc/" + spid + "/cmdline")
                 switch {
@@ -121,8 +123,10 @@ func parseProcesses() {
                     continue EachProcess
                 }
 
+                // cmdline is separated by null chars
                 arg0 = strings.SplitN(cmdline, "\x00", 2)[0]
                 if len(arg0) == 0 {
+                    // In case of empty cmdline, use comm
                     arg0 = ppids.GetComm()
                 }
 
@@ -154,6 +158,7 @@ func parseProcesses() {
                 ErrorCallback(err)
                 continue EachProcess
             }
+
             ppidmp := pidSmapsStruct{}
             err = ppidmp.Parse(smaps)
             if err != nil {
@@ -283,48 +288,51 @@ func getProcessIds(key string) []int {
 // seconds = now - last eval time
 // usage = 100.0 * (total_time / _SC_CLK_TCK) / seconds
 
-var prevCpuUsageArg0s = make(map[int] string)
-var prevCpuUsagePidStats = make(map[int] pidStatStruct)
-var prevCpuUsageGroupCpuTime = make(map[string] int) // Entire cpu time
+var prevProcessCpuGroupCpuTime = make(map[string] int) // Entire cpu time
+var prevProcessCpuPidStats     = make(map[int] pidStatStruct)
+var prevProcessCpuArg0s        = make(map[int] string)
 func GetProcessCpuUsage(key string) (float64, error) {
 
     parseProcesses()
-    processMutex.RLock()
-    defer processMutex.RUnlock()
+    processRail.Queue(railRead, 1)
+    defer processRail.Proceed(railRead)
 
     pids := getProcessIds(key)
     if len(pids) == 0 {
         return 0.0, fmt.Errorf("Process not found")
     }
 
-    ret := 0.0
-
     // CPU time is per group in order to prevent percentage reflecting wrong value
-    prevCpuTime, _ := prevCpuUsageGroupCpuTime[key] // defaults to 0 when key doesn't exist
-    cpuTime        := getProcStats()[0].GetTotal()
-    pastCpuTime    := cpuTime - prevCpuTime
+    prevCpuTime, groupOk := prevProcessCpuGroupCpuTime[key] // defaults to 0 when key doesn't exist
+    cpuTime              := getProcStats()[0].GetTotal()
+    pastCpuTime          := cpuTime - prevCpuTime
     
-    prevCpuUsageGroupCpuTime[key] = cpuTime
+    // Set previous variables
+    prevProcessCpuGroupCpuTime[key] = cpuTime
+
+    // Variables
+    initialized := false && groupOk // Check group is parsed before
+    ret         := 0.0
 
     for _, pid := range pids {
 
-        ppids := parsedPidStats[pid]
+        ppids             := parsedPidStats[pid]
+        prevPpids, prevOk := prevProcessCpuPidStats[pid]
+        arg0              := pidArg0s[pid]
+        prevArg0, _       := prevProcessCpuArg0s[pid]
 
-        // Parse
-        var prevPpids pidStatStruct
-        arg0         := pidArg0s[pid]
-        prevArg0, ok := prevCpuUsageArg0s[pid]
+        // Set previous variables
+        prevProcessCpuPidStats[pid] = ppids
+        prevProcessCpuArg0s[pid]    = arg0
+
         switch {
-        case !ok,             // first parse
+        case !prevOk,          // first parse
             prevArg0 != arg0: // pid owner changed
-            // default to zero
-        default: // was parsed before
-            prevPpids = prevCpuUsagePidStats[pid]
+            
+            continue // Uninitialized
         }
 
-        // Prev
-        prevCpuUsageArg0s[pid]    = arg0
-        prevCpuUsagePidStats[pid] = ppids
+        initialized = true
 
         // Metrics
         ownTotal     := ppids.GetOwnTotal()
@@ -335,6 +343,7 @@ func GetProcessCpuUsage(key string) (float64, error) {
 
     }
 
+    if !initialized {return 0.0, fmt.Errorf("Not initialized")}
     return ret, nil
 
 }
@@ -396,88 +405,72 @@ func(ppids *pidStatStruct) Parse(line string) error {
 // was required (the read might have been satisfied from
 // pagecache)."
 
-var prevReadBytesArg0s = make(map[int] string)
-var prevReadBytesPidIos = make(map[int] pidIoStruct)
-func GetProcessReadBytes(key string) (float64, error) {
+const (
+    typeProcessIoReadBytes = iota
+    typeProcessIoWriteBytes
+)
 
-    parseProcesses()
-    processMutex.RLock()
-    defer processMutex.RUnlock()
+var prevProcessIoValues = make(map[int/* type */] map[int/* pid */] uint64)
+var prevProcessIoArg0s  = make(map[int/* type */] map[int/* pid */] string)
+func getProcessIo(key string, typ int) (float64, error) {
+
+    processRail.Queue(railRead, 1)
+    defer processRail.Proceed(railRead)
+
+    if _, ok := prevProcessIoValues[typ]; !ok {
+        prevProcessIoValues[typ] = make(map[int] uint64)
+        prevProcessIoArg0s[typ]  = make(map[int] string)
+    }
 
     pids := getProcessIds(key)
     if len(pids) == 0 {
         return 0.0, fmt.Errorf("Process not found")
     }
 
-    ret := 0.0
+    initialized := false
+    ret         := 0.0
     for _, pid := range pids {
         
         ppidio := parsedPidIos[pid]
-
-        // Parse
-        var prevPpidIo pidIoStruct
-        arg0         := pidArg0s[pid]
-        prevArg0, ok := prevReadBytesArg0s[pid]
-        switch {
-        case !ok,             // first parse
-            prevArg0 != arg0: // pid owner changed
-            // default to zero
-        default: // was parsed before
-            prevPpidIo = prevReadBytesPidIos[pid]
+        var value uint64
+        switch typ {
+        case typeProcessIoReadBytes:  value = ppidio.readBytes
+        case typeProcessIoWriteBytes: value = ppidio.writeBytes
         }
 
-        // Prev
-        prevReadBytesArg0s[pid]  = arg0
-        prevReadBytesPidIos[pid] = ppidio
+        prevValue, prevOk := prevProcessIoValues[typ][pid]
+        arg0              := pidArg0s[pid]
+        prevArg0, _       := prevProcessIoArg0s[typ][pid]
 
-        ret += float64(ppidio.readBytes - prevPpidIo.readBytes)
+        // Set previous vars
+        prevProcessIoValues[typ][pid] = value
+        prevProcessIoArg0s[typ][pid]  = arg0
+
+        switch {
+        case !prevOk,         // first parse
+            prevArg0 != arg0: // pid owner changed
+
+            continue // Uninitialized
+        }
+
+        initialized = true
+        ret += float64(value - prevValue)
 
     }
 
+    if !initialized {return 0.0, fmt.Errorf("Not initialized")}
     return ret, nil
 
 }
 
-var prevWriteBytesArg0s = make(map[int] string)
-var prevWriteBytesPidIos = make(map[int] pidIoStruct)
-func GetProcessWriteBytes(key string) (float64, error) {
-
+func GetProcessReadBytes(key string) (float64, error) {
     parseProcesses()
-    processMutex.RLock()
-    defer processMutex.RUnlock()
+    return getProcessIo(key, typeProcessIoReadBytes)
+}
 
-    pids := getProcessIds(key)
-    if len(pids) == 0 {
-        return 0.0, fmt.Errorf("Process not found")
-    }
-
-    ret := 0.0
-    for _, pid := range pids {
-        
-        ppidio := parsedPidIos[pid]
-
-        // Parse
-        var prevPpidIo pidIoStruct
-        arg0         := pidArg0s[pid]
-        prevArg0, ok := prevWriteBytesArg0s[pid]
-        switch {
-        case !ok,             // first parse
-            prevArg0 != arg0: // pid owner changed
-            // default to zero
-        default: // was parsed before
-            prevPpidIo = prevWriteBytesPidIos[pid]
-        }
-
-        // Prev
-        prevWriteBytesArg0s[pid]  = arg0
-        prevWriteBytesPidIos[pid] = ppidio
-
-        ret += float64(ppidio.writeBytes - prevPpidIo.writeBytes)
-
-    }
-
-    return ret, nil
-    
+func GetProcessWriteBytes(key string) (float64, error) {
+    parseProcesses()
+    return getProcessIo(key, typeProcessIoWriteBytes)
 }
 
 func(ppidio *pidIoStruct) Parse(io string) error {
@@ -526,12 +519,15 @@ func(ppidio *pidIoStruct) Parse(io string) error {
 //
 // USS = Private_Clean + Private_Dirty
 
+const (
+    typeProcessSmapMemory = iota
+    typeProcessSmapSwap
+)
 
-func GetProcessMemoryUsage(key string) (float64, error) {
+func getProcessSmap(key string, typ int) (float64, error) {
 
-    parseProcesses()
-    processMutex.RLock()
-    defer processMutex.RUnlock()
+    processRail.Queue(railRead, 1)
+    defer processRail.Proceed(railRead)
 
     pids := getProcessIds(key)
     if len(pids) == 0 {
@@ -541,36 +537,31 @@ func GetProcessMemoryUsage(key string) (float64, error) {
     total := uint64(0)
     for _, pid := range pids {
         ppidmp := parsedPidSmaps[pid]
-        total += ppidmp.uss
+        switch typ {
+        case typeProcessSmapMemory: total += ppidmp.uss
+        case typeProcessSmapSwap:   total += ppidmp.swap
+        }
     }
 
-    return float64(total) / GetMemoryTotal() * 100.0, nil
+    // Divide
+    ret := float64(total)
+    switch typ {
+    case typeProcessSmapMemory: ret /= GetMemoryTotal()
+    case typeProcessSmapSwap:   ret /= GetSwapTotal()
+    }
+    
+    return ret * 100.0, nil
 
+}
+
+func GetProcessMemoryUsage(key string) (float64, error) {
+    parseProcesses()
+    return getProcessSmap(key, typeProcessSmapMemory)
 }
 
 func GetProcessSwapUsage(key string) (float64, error) {
-
     parseProcesses()
-    processMutex.RLock()
-    defer processMutex.RUnlock()
-
-    pids := getProcessIds(key)
-    if len(pids) == 0 {
-        return 0.0, fmt.Errorf("Process not found")
-    }
-
-    total := uint64(0)
-    for _, pid := range pids {
-        ppidmp := parsedPidSmaps[pid]
-        total += ppidmp.swap
-    }
-
-    return float64(total) / GetSwapTotal() * 100.0, nil
-
-}
-
-func(ppidmp pidSmapsStruct) GetUss() uint64 {
-    return ppidmp.uss
+    return getProcessSmap(key, typeProcessSmapSwap)
 }
 
 func(ppidmp *pidSmapsStruct) Parse(smaps string) error {

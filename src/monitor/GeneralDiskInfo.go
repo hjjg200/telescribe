@@ -96,10 +96,6 @@ var parsedDevStats   map[string] devStatStruct
 var parsedStatvfs    map[string] statvfsStruct
 var parsedMountInfos []mountInfoStruct
 
-func init() {
-    parseDevStats()
-}
-
 func parseDevStats() {
 
     devRail.Queue(railWrite, 1)
@@ -407,7 +403,8 @@ func getDevStat(key string, typ int) (float64, error) {
     }
 
     prevDevStats[typ][dev] = curr
-    if !prevOk {return float64(0.0), nil}
+    // Ignore uninitialized devices
+    if !prevOk {return float64(0.0), fmt.Errorf("Not initialized")}
 
     return float64(curr - prev), nil
 
@@ -443,7 +440,8 @@ func getDevsStat(typ int) map[string] float64 {
 
     ret := make(map[string] float64)
     for dev := range parsedDevStats {
-        out, _ := getDevStat(dev, typ)
+        out, err := getDevStat(dev, typ)
+        if err != nil {continue}
         ret[dev] = out
     }
     return ret
@@ -574,9 +572,13 @@ func getDevIoUsage(key string) (float64, error) {
     past := now.Sub(last) / time.Millisecond
     lastIoTick[dev] = now
 
-    ds   := parsedDevStats[dev]
-    prev := prevIoTicks[dev]
+    ds           := parsedDevStats[dev]
+    prev, prevOk := prevIoTicks[dev]
     prevIoTicks[dev] = ds.ioTicks
+    if !prevOk {
+        // Ignore uninitialized devices
+        return 0.0, fmt.Errorf("Not initialized")
+    }
 
     return float64(ds.ioTicks - prev) / float64(past) * 100.0, nil
 
