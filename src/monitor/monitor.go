@@ -11,6 +11,7 @@ type wrapper struct {
     body interface{}
     coef float64
 }
+
 func Wrap(body interface{}, coef float64) wrapper {
     return wrapper{body, coef}
 }
@@ -116,6 +117,11 @@ var Wrappers = map[string] wrapper {
     // Misc
     KeyCustomCommand: Wrap(CustomCommand, 1.0),
 }
+
+const (
+    railRead = iota
+    railWrite
+)
 
 var ErrorCallback = func(err error) {
     fmt.Println("monitor:", err)
