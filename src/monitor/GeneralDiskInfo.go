@@ -20,12 +20,12 @@ package monitor
 // https://code.woboq.org/userspace/glibc/sysdeps/unix/sysv/linux/statvfs.c.html#39
 // https://github.com/coreutils/gnulib/blob/e93bdf684a7ed2c9229c0f113e33dc639f1050d7/lib/mountlist.c#L444
 
-// statfs
-// https://www.man7.org/linux/man-pages/man2/statfs.2.html
+// statvfs
+// https://www.man7.org/linux/man-pages/man2/statvfs.2.html
 
 // Use /proc/self/mountinfo to get mounted disks
 
-// df uses statfs syscall to get disk informations and
+// df uses statvfs syscall to get disk informations and
 // for path parameter, it uses target and disk in order of preference to get info
 // and the target and disk info is acquired from /proc/self/mountinfo
 
@@ -40,8 +40,8 @@ package monitor
 // Get all entries from /proc/partitions
 // those entries will be in /sys/block
 // check if they are mounted by /proc/self/mountinfo
-// statfs with the mount point
-// e.g., disk-usage(<devname/uuid/label/id/mount point>) => statfs
+// statvfs with the mount point
+// e.g., disk-usage(<devname/uuid/label/id/mount point>) => statvfs
 // e.g., disk-io-usage... => /sys/block
 
 import (
@@ -50,7 +50,6 @@ import (
     "strings"
     "sync"
     "sync/atomic"
-    "syscall"
     "time"
 
     . "github.com/hjjg200/go-act"
@@ -66,7 +65,7 @@ type devStatStruct struct {
     ioTicks      int64 // millisecond
 }
 
-type statfsStruct struct {
+type statvfsStruct struct {
     blocksize uint64
     blocks    uint64
     free      uint64
@@ -93,7 +92,7 @@ var devTargets map[string] []string
 var devMajorMinors map[string] string
 
 var parsedDevStats   map[string] devStatStruct
-var parsedStatfs     map[string] statfsStruct
+var parsedStatvfs    map[string] statvfsStruct
 var parsedMountInfos []mountInfoStruct
 
 func init() {
@@ -113,7 +112,7 @@ func parseDevHierarchy() {
     devAliases = make(map[string] []string)
 
     // Aliases
-    byDirs, err := filepath.Glob("/dev/by-*")
+    byDirs, err := filepath.Glob("/dev/disk/by-*")
     if err == nil {
         for _, byDir := range byDirs {
             entries, err := filepath.Glob(byDir + "/*")
@@ -294,18 +293,18 @@ func parseDevStats() {
 
         // Prepare
         parseDevHierarchy()
-        parsedStatfs = make(map[string] statfsStruct)
+        parsedStatvfs = make(map[string] statvfsStruct)
 
-        // Statfs
+        // Statvfs
         for dev, targets := range devTargets {
 
             var ok bool
-            var statfs syscall.Statfs_t
+            var statvfs Statvfs_t
             for _, target := range targets {
-                var buf syscall.Statfs_t
-                err := syscall.Statfs(target, &buf)
+                var buf Statvfs_t
+                err := Statvfs(target, &buf)
                 if err == nil {
-                    statfs = buf
+                    statvfs = buf
                     ok = true
                     break
                 }
@@ -317,18 +316,18 @@ func parseDevStats() {
             // Many space usage primitives use all 1 bits to denote a value that is
             // not applicable or unknown.
             var blocksize uint64
-            if ^statfs.Frsize == 0 || statfs.Frsize == 0 {
-                if ^statfs.Bsize == 0 {continue}
-                blocksize = uint64(statfs.Bsize)
+            if ^statvfs.Frsize == 0 || statvfs.Frsize == 0 {
+                if ^statvfs.Bsize == 0 {continue}
+                blocksize = uint64(statvfs.Bsize)
             } else {
-                blocksize = uint64(statfs.Frsize)
+                blocksize = uint64(statvfs.Frsize)
             }
 
             // Assign
-            parsedStatfs[dev] = statfsStruct{
+            parsedStatvfs[dev] = statvfsStruct{
                 blocksize: blocksize,
-                blocks: statfs.Blocks,
-                free: statfs.Bfree,
+                blocks: statvfs.Blocks,
+                free: statvfs.Bfree,
             }
 
         }
@@ -485,24 +484,24 @@ func GetDevsWriteBytes() map[string] float64 {
 }
 
 
-// STATFS ---
+// STATVFS ---
 
 const (
     typeDevUsage = iota
     // typeDevSize
 )
 
-func getStatfs(key string, typ int) (float64, error) {
+func getStatvfs(key string, typ int) (float64, error) {
 
     dev := getDev(key)
     if dev == "" {return 0.0, fmt.Errorf("Not found")}
 
-    statfs, statfsOk := parsedStatfs[dev]
-    if !statfsOk {return 0.0, fmt.Errorf("Statfs not found")}
+    statvfs, statvfsOk := parsedStatvfs[dev]
+    if !statvfsOk {return 0.0, fmt.Errorf("Statvfs not found")}
 
     switch typ {
-    case typeDevUsage: return (1.0 - float64(statfs.free) / float64(statfs.blocks)) * 100.0, nil
-    // case typeDevSize: return float64(statfs.blocks * statfs.blocksize)
+    case typeDevUsage: return (1.0 - float64(statvfs.free) / float64(statvfs.blocks)) * 100.0, nil
+    // case typeDevSize: return float64(statvfs.blocks * statvfs.blocksize)
     }
 
     return 0.0, fmt.Errorf("Wrong type")
@@ -515,7 +514,7 @@ func GetDevUsage(key string) (float64, error) {
     devMutex.RLock()
     defer devMutex.RUnlock()
 
-    return getStatfs(key, typeDevUsage)
+    return getStatvfs(key, typeDevUsage)
 
 }
 
@@ -526,8 +525,8 @@ func GetDevsUsage() map[string] float64 {
     defer devMutex.RUnlock()
 
     ret := make(map[string] float64)
-    for dev := range parsedStatfs {
-        usage, _ := getStatfs(dev, typeDevUsage)
+    for dev := range parsedStatvfs {
+        usage, _ := getStatvfs(dev, typeDevUsage)
         ret[dev] = usage
     }
     return ret
@@ -561,7 +560,7 @@ func GetDevSize(key string) (float64, error) {
 }
 
 func GetDevsSize() map[string] float64 {
-    
+
     parseDevStats()
     devMutex.RLock()
     defer devMutex.RUnlock()

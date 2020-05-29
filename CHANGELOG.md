@@ -14,6 +14,7 @@ First version that complies with the documentation
 - [x] **Fixed:** `all` correct handling for monitor keys that include slashes
 - [x] **Fixed:** `client` made moniter interval change is immediately effective
 - [x] **Fixed:** `web` fixed queue functionality
+- [ ] **Fixed:** `web` fixed tiny gaps in graphs
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app

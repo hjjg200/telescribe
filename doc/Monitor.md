@@ -30,36 +30,26 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`load-perCpu[1m]`|Load average per cpu for 1m|
 |`load-perCpu[5m]`|Load average per cpu for 5m|
 |`load-perCpu[15m]`|Load average per cpu for 15m|
-|`disk-writes`|Write operation count for the entire disks|
-|`disk-writes[<deviceName>]`|Write operation count for the specified disk|
-|`mount-writes(<mountPoint>)`|Write operation count for the disk mounted at the mount point|
-|`disk-reads`|Read operation count for the entire disks|
-|`disk-reads[<deviceName>]`|Read operation count for the specified disk|
-|`mount-reads(<mountPoint>)`|Read operation count for the disk mounted at the mount point|
-|`disk-writeBytes`|Written bytes of the entire disks|
-|`disk-writeBytes[<deviceName>]`|Written bytes of the specified disk|
-|`mount-writeBytes(<mountPoint>)`|Written bytes of the disk mounted at the mount point|
-|`disk-readBytes`|Read bytes of the entire disks|
-|`disk-readBytes[<deviceName>]`|Read bytes of the specified disk|
-|`mount-readBytes(<mountPoint>)`|Read bytes of the disk mounted at the mount point|
-|`disk-usage`|The usage of the entire disks|
-|`disk-usage[<deviceName>]`|The usage of the specified disk|
-|`mount-usage(<mountPoint>)`|The usage of the disk mounted at the mount point|
-|`disk-size`|The size of the entire disks in kB|
-|`disk-size[<deviceName>]`|The size of the specified disk in kB|
-|`mount-size(<mountPoint>)`|The size of the disk mounted at the mount point in kB|
-|`disk-size-mb`|The size of the entire disks in MB|
-|`disk-size-mb[<deviceName>]`|The size of the specified disk in MB|
-|`mount-size-mb(<mountPoint>)`|The size of the disk mounted at the mount point in MB|
-|`disk-size-gb`|The size of the entire disks in GB|
-|`disk-size-gb[<deviceName>]`|The size of the specified disk in GB|
-|`mount-size-gb(<mountPoint>)`|The size of the disk mounted at the mount point in GB|
-|`disk-size-tb`|The size of the entire disks in TB|
-|`disk-size-tb[<deviceName>]`|The size of the specified disk in TB|
-|`mount-size-tb(<mountPoint>)`|The size of the disk mounted at the mount point in TB|
-|`disk-io-usage`|The IO usage of the entire disks in percentage|
-|`disk-io-usage[<deviceName>]`|The IO usage of the specified disk in percentage|
-|`mount-io-usage(<mountPoint>)`|The IO usage of the disk mounted at the mount point in percentage|
+|`dev-reads(device/uuid/label/.../mount)`|Read operation count for the entire disks|
+|`dev-writes`|Write operation count for the entire disks|
+|`dev-readBytes`|Read bytes of the entire disks|
+|`dev-writeBytes`|Written bytes of the entire disks|
+|`dev-usage`|The usage of the entire disks|
+|`dev-size`|The size of the entire disks in kB|
+|`dev-size-mb`|The size of the entire disks in MB|
+|`dev-size-gb`|The size of the entire disks in GB|
+|`dev-size-tb`|The size of the entire disks in TB|
+|`dev-io-usage`|The IO usage of the entire disks in percentage|
+|`devs-reads[<deviceName>]`|Read operation count for the specified disk|
+|`devs-writes[<deviceName>]`|Write operation count for the specified disk|
+|`devs-readBytes[<deviceName>]`|Read bytes of the specified disk|
+|`devs-writeBytes[<deviceName>]`|Written bytes of the specified disk|
+|`devs-usage[<deviceName>]`|The usage of the specified disk|
+|`devs-size[<deviceName>]`|The size of the specified disk in kB|
+|`devs-size-mb[<deviceName>]`|The size of the specified disk in MB|
+|`devs-size-gb[<deviceName>]`|The size of the specified disk in GB|
+|`devs-size-tb[<deviceName>]`|The size of the specified disk in TB|
+|`devs-io-usage[<deviceName>]`|The IO usage of the specified disk in percentage|
 |`network-in`|Incoming bytes of the entire interfaces|
 |`network-in[<interfaceName>]`|Incoming bytes of the specified interface|
 |`network-inPackets`|Incoming packets of the entire interfaces|
@@ -130,15 +120,92 @@ Load average per cpu is evaluated by dividing the load average by the number of 
 This is **indexed metrics** and its indexes are the same as `load`
 
 
-### Disk
+### Devices
 
-***#** `disk-usage`*
+|`dev-reads(device/uuid/label/.../mount)`|Read operation count for the entire disks|
+|`dev-writes`|Write operation count for the entire disks|
+|`dev-readBytes`|Read bytes of the entire disks|
+|`dev-writeBytes`|Written bytes of the entire disks|
+|`dev-usage`|The usage of the entire disks|
+|`dev-size`|The size of the entire disks in kB|
+|`dev-size-mb`|The size of the entire disks in MB|
+|`dev-size-gb`|The size of the entire disks in GB|
+|`dev-size-tb`|The size of the entire disks in TB|
+|`dev-io-usage`|The IO usage of the entire disks in percentage|
 
-Disk usage is evaluated from the command output of `df -kP` which uses the POSIX output format, by dividing the used blocks by the total blocks. 
+***#** `dev-reads`*
 
-This is **indexed metrics** and its indexes are:
+Device reads is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
 
-* `[<device_name>]`: Disk usage for the disk of the specified name
+This metrics **accept a parameter** and it can be:
+
+* **Device name:** `xvda1`, `sdb`
+* **Device full name:** `/dev/xvda`, `/dev/sda`
+* **Device alias:** `/dev/disk/by-*/<alias>` or just `<alias>`
+  * **Device UUID:** `556ce1a0-...` or `/dev/disk/by-uuid/556ce1a0-...`
+  * **Device label:** `cloudimg-rootfs` or `/dev/disk/by-label/cloudimg-rootfs...`
+* **Device mount point:** `/`, `/var/telescribe`
+
+
+***#** `dev-writes`*
+
+Device writes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-readBytes`*
+
+Device read bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-writeBytes`*
+
+Device write bytes is evaluated from `/sys/dev/block/[major:minor]/stat` by subtracting the last reads count from the current one.
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-usage`*
+
+Device usage is evaluated from the `statvfs` result: `(1 - (f_free / f_blocks)) * 100`.
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-size`*
+
+Device size is evaluated from `/proc/partitions` and it is converted into SI prefix `kB` from 1024-byte block unit.
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-size-mb`*
+
+Device size MB is device size in SI prefix `MB`(1e+6 bytes).
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-size-gb`*
+
+Device size GB is device size in SI prefix `GB`(1e+9 bytes).
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-size-tb`*
+
+Device size TB is device size in SI prefix `TB`(1e+12 bytes).
+
+This metrics **accept a parameter** and it is as defined under `dev-reads`.
+
+
+***#** `dev-io-usage`*
+
+
 
 
 ### Network
