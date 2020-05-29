@@ -30,16 +30,16 @@ A key can be divided into three parts: base, parameter, and index; `<base>(<para
 |`load-perCpu[1m]`|Load average per cpu for 1m|
 |`load-perCpu[5m]`|Load average per cpu for 5m|
 |`load-perCpu[15m]`|Load average per cpu for 15m|
-|`dev-reads(name/alias/.../mount)`|Read operation count for the specified device|
-|`dev-writes(name/alias/.../mount)`|Write operation count for the specified device|
-|`dev-readBytes(name/alias/.../mount)`|Read bytes of the specified device|
-|`dev-writeBytes(name/alias/.../mount)`|Written bytes of the specified device|
-|`dev-usage(name/alias/.../mount)`|The usage of the specified device|
-|`dev-size(name/alias/.../mount)`|The size of the specified device in kB|
-|`dev-size-mb(name/alias/.../mount)`|The size of the specified device in MB|
-|`dev-size-gb(name/alias/.../mount)`|The size of the specified device in GB|
-|`dev-size-tb(name/alias/.../mount)`|The size of the specified device in TB|
-|`dev-io-usage(name/alias/.../mount)`|The IO usage of the specified device in percentage|
+|`dev-reads(<name/alias/.../mount>)`|Read operation count for the specified device|
+|`dev-writes(<name/alias/.../mount>)`|Write operation count for the specified device|
+|`dev-readBytes(<name/alias/.../mount>)`|Read bytes of the specified device|
+|`dev-writeBytes(<name/alias/.../mount>)`|Written bytes of the specified device|
+|`dev-usage(<name/alias/.../mount>)`|The usage of the specified device|
+|`dev-size(<name/alias/.../mount>)`|The size of the specified device in kB|
+|`dev-size-mb(<name/alias/.../mount>)`|The size of the specified device in MB|
+|`dev-size-gb(<name/alias/.../mount>)`|The size of the specified device in GB|
+|`dev-size-tb(<name/alias/.../mount>)`|The size of the specified device in TB|
+|`dev-io-usage(<name/alias/.../mount>)`|The IO usage of the specified device in percentage|
 |`devs-reads`|Read operation count for the entire devices|
 |`devs-reads[<deviceName>]`|Read operation count for the specified device|
 |`devs-writes`|Write operation count for the entire devices|
@@ -102,6 +102,10 @@ Memory size is evaluated from `/proc/memstat`'s MemTotal entry which is expresse
 
 Memory usage is evaluated from `/proc/memstat` by examining the ratio of used memory(non-buffer, non-cached, and non-free) size.
 
+```go
+usage = (1.0 - ((buffer + cache + free) / total)) * 100.0
+```
+
 ***#** `swap-size`*
 
 Swap size is evaluated from `/proc/memstat`'s SwapTotal entry which is expressed in kB.
@@ -109,6 +113,10 @@ Swap size is evaluated from `/proc/memstat`'s SwapTotal entry which is expressed
 ***#** `swap-usage`*
 
 Swap usage is evaluated from `/proc/memstat` by examining the ratio of used swap(non-cached and non-free) size.)
+
+```go
+usage = (1.0 - ((cache + free) / total)) * 100.0
+```
 
 
 ### Load Average
@@ -122,6 +130,7 @@ This is **indexed metrics** and its indexes are:
 * `[1m]`: Load average for 1 minute
 * `[5m]`: Load average for 5 minutes
 * `[15m]`: Load average for 15 minutes
+
 
 ***#** `load-perCpu`*
 
@@ -169,7 +178,11 @@ This metrics **requires a parameter** and it is as defined under `dev-reads`.
 
 ***#** `dev-usage`*
 
-Device usage is evaluated from the `statvfs` result: `(1 - (f_free / f_blocks)) * 100`.
+Device usage is evaluated from the `statvfs` result.
+
+```go
+usage = (1.0 - (f_free / f_blocks)) * 100.0
+```
 
 This metrics **requires a parameter** and it is as defined under `dev-reads`.
 
@@ -241,7 +254,11 @@ This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
 ***#** `devs-usage`*
 
-Device usage is evaluated from the `statvfs` result: `(1 - (f_free / f_blocks)) * 100`.
+Device usage is evaluated from the `statvfs` result.
+
+```go
+usage = (1.0 - (f_free / f_blocks)) * 100.0
+```
 
 This is **indexed metrics** and its indexes are the same as `devs-reads`.
 
@@ -462,6 +479,7 @@ A value map can be expressed as `map[string] float64` in go. The keys are **Moni
 ## Per
 
 |Go|Javascript|HTML|
+|-|-|-|
 |`per`|`per`|`per`|
 
 A per value represents the duration, in seconds, for its relevant datum; for example, a cpu usage datum whose value is 50% and per is 60 seconds indicates the cpu was at 50% of usage for the last 60 seconds.
