@@ -95,8 +95,8 @@ function sliceFromTo(arr, from, to, accessor = e => e) {
 
 // Util
 function addThrottledAsyncEvent(elem, type, handler, interval) {
-  var running = false;
-  var wrap = function(event) {
+  let running = false;
+  let wrap = function(event) {
     if(!running) {
       running = true;
       handler(event).then(function() {
@@ -110,8 +110,8 @@ function addThrottledAsyncEvent(elem, type, handler, interval) {
 }
 
 function addDebouncedAsyncEvent(elem, type, handler, interval) {
-  var timer;
-  var wrap = function(event) {
+  let timer;
+  let wrap = function(event) {
     clearTimeout(timer);
     timer = setTimeout(() => handler(event), interval);
   }
@@ -128,22 +128,19 @@ import {extent, bisector} from "d3-array";
 const d3 = {get event() {return event;}, selectAll, select, axisBottom, axisLeft, extent, scaleLinear, bisector, line, mouse, customEvent};
 
 export default {
+
   name: "Graph",
+
   props: {
-    boundaries: {
-      type: Array, default: []
-    },
-    dataset: {
-      type: Object, default: {}
-    },
-    duration: Number,
-    model: {
-      type: Object, default: {}
-    },
-    options: {
-      type: Object, default: {}
-    }
+    boundaries: {type: Array,  default: []},
+    dataset:    {type: Object, default: {}},
+    duration:   Number,
+    model:      {type: Object, default: {}},
+    options:    {type: Object, default: {}}
   },
+
+  // v-model
+  // This is for accessing focused key-values from parent components
   model: {
     prop: "model",
     event: "change"
@@ -176,65 +173,67 @@ export default {
 
   methods: {
 
-    asx(d) {
+    asx(d) { // x accessor
       return this.computedOptions.accessors.x(d);
     },
-    asy(d) {
+    asy(d) { // y accessor
       return this.computedOptions.accessors.y(d);
     },
 
     async _draw() {
 
-      // Check vars
+      // Validate variables
       if(this.boundaries == undefined || this.boundaries.length < 2)
         return;
 
       if(this.duration == undefined || this.duration == 0)
         return;
 
-      // Accessing Purposes
-      var $ = this;
+      // Accessing purposes
+      let $ = this;
       
       // Vars
-      var graph         = d3.select(this.$el);
-      var graphNode     = graph.node();
-      var graphDuration = this.duration;
-      var graphMargin   = {
+      let graph         = d3.select(this.$el);
+      let graphNode     = graph.node();
+      let graphDuration = this.duration;
+      let graphMargin   = {
         top: remToPx(0.5),
         left: remToPx(3),
         bottom: remToPx(2)
       };
-      var graphRect = {
-        width: graphNode.offsetWidth - graphMargin.left,
+      let graphRect = {
+        width:  graphNode.offsetWidth - graphMargin.left,
         height: graphNode.offsetHeight - graphMargin.top - graphMargin.bottom
       };
 
       // Scale and boundaries
       this._xBoundary   = d3.extent(this.boundaries);
-      var xBoundary     = this._xBoundary;
+      let xBoundary     = this._xBoundary;
       this._priorXScale = this._xScale;
       this._xScale      = this._scale();
-      var xScale        = this._xScale;
+      let xScale        = this._xScale;
 
       // Total x-axis duration
-      var xDuration = xScale.totalDuration;
+      let xDuration = xScale.totalDuration;
 
       // Prevent duration being longer than actual data
-      graphDuration  = Math.min(graphDuration, xDuration);
+      graphDuration = Math.min(graphDuration, xDuration);
       this._xDuration     = xDuration;
       this._graphDuration = graphDuration;
 
       // Total width needed for data plotting
-      var dataWidth  = graphRect.width * xDuration / graphDuration;
+      let dataWidth  = graphRect.width * xDuration / graphDuration;
       // Plotted data height
-      var dataHeight = graphRect.height;
-      var dw_cw      = dataWidth / graphRect.width;
+      let dataHeight = graphRect.height;
+      let dw_cw      = dataWidth / graphRect.width;
       // Total number of segments
-      var segNo      = Math.ceil(dw_cw);
+      let segNo      = Math.ceil(dw_cw);
       // Total count of x-axis ticks
-      var xTicks     = Math.round(dw_cw * 4);
+      let xTicks     = Math.round(dw_cw * 4);
       // Y-axis ticks count
-      var yTicks     = 4;
+      let yTicks     = 4;
+
+      // Assign for later use
       this._dataWidth  = dataWidth;
       this._dataHeight = dataHeight;
       this._width      = graphRect.width;
@@ -243,38 +242,40 @@ export default {
       this._xTicks     = xTicks;
       this._yTicks     = yTicks;
     
-    // Element Var
+      // Scroll left and graph hand
       // Scroll left is max(0, total width minus graph width)
-      var scrollLeft = Math.max(0, dataWidth - graphRect.width);
-      // X of hand is middle of the graph
-      var handX      = scrollLeft + graphRect.width / 2;
+      let scrollLeft = Math.max(0, dataWidth - graphRect.width);
+      // X of hand defaults to middle of the graph
+      let handX      = scrollLeft + graphRect.width / 2;
 
-    // Axis Range
+      // Axis range
       // Set the output range for x scale: 0 to total width
       xScale.range([0, dataWidth]);
     
-    // PRIOR VALUES
-      var prior = false;
+      // PRIOR VALUES
+      let prior = false;
       {
-        var segmentsWrap = graph.select(".segments-wrap");
-        var priorHandXEnRectPercent;
-        var priorHandT;
+        let segmentsWrap = graph.select(".segments-wrap");
+        // Percent of hand position relative to visible rect
+        let priorHandXEnRectPercent;
+        let priorHandT;
 
-        // If segmentsWrap already exists
+        // If segmentsWrap already exists, it means it was drawn before
         if(segmentsWrap.size() > 0) {
           prior = true;
     
-          var node        = segmentsWrap.node();
-          var hand        = segmentsWrap.select(".hand");
-          var priorHandX  = Number(hand.attr("x1"));
-          var priorXScale = this._priorXScale;
+          let node        = segmentsWrap.node();
+          let hand        = segmentsWrap.select(".hand");
+          let priorHandX  = + hand.attr("x1");
+          // Prior x scale is required for inverting prior position
+          let priorXScale = this._priorXScale;
     
           // Hand position relative to the visible rect
           priorHandXEnRectPercent = (priorHandX - node.scrollLeft) / node.offsetWidth;
           // Find timestamp for the hand x position
           priorHandT = priorXScale.invert(priorHandX);
     
-          // Restore Scroll Left and Hand X
+          // Restore scroll left and hand x position
           handX      = xScale(priorHandT);
           scrollLeft = Math.max(0, handX - graphRect.width * priorHandXEnRectPercent);
 
@@ -285,22 +286,22 @@ export default {
         }
       }
     
-    // LAYOUT STACK
-    // + xAxis
-    // + projection
-    // + grid
-    // + hand
-    // + segments
-    //  + path
-    // + points
-    // + tooltip no pointer events
+      // LAYOUT STACK
+      // + xAxis
+      // + projection
+      // + grid
+      // + hand
+      // + segments
+      //   + paths
+      // + circles
+      // + tooltip
     
-    // Elements
+      // Elements
       // Erase Elements first
       graph.node().innerHTML = "";
     
-    // Background
-      var background = graph.append("div")
+      // Background
+      let background = graph.append("div")
         .attr("class", "background-wrap")
         .style("width",  `${graphRect.width}px`)
         .style("height", `${graphRect.height}px`)
@@ -313,37 +314,27 @@ export default {
             .attr("height", graphRect.height)
             .append("g")
               .attr("class", "background");
-      // Disabled for now
-      var focusDate = background.append("g")
-        .attr("class", "focus-date")
-        .append("text")
-          .attr("text-anchor", "middle")
-          .attr("x", (graphRect.width + graphMargin.left) / 2 - graphMargin.left)
-          .attr("y", graphRect.height / 2)
-          .attr("dy", "25%")
-          .attr("font-size", graphRect.height / 1.5)
-          .style("opacity", 0);
     
-    // Segments
-      var segmentsWrap = graph.append("div")
-        .attr("class", "segments-wrap")
+      // Segments
+      let segmentsWrap = graph.append("div")
+        .attr("class",   "segments-wrap")
         .style("width",  `${graphRect.width}px`)
         .style("height", `${graphRect.height + graphMargin.top + graphMargin.bottom}px`)
         .style("left",   `${graphMargin.left}px`)
         .style("top",    `0px`);
-      var segmentsContainer = segmentsWrap.append("div")
+      let segmentsContainer = segmentsWrap.append("div")
         .attr("class", "segments-container");
-      var segments = segmentsContainer.append("svg")
+      let segments = segmentsContainer.append("svg")
         .attr("width",  dataWidth)
         .attr("height", dataHeight)
         .append("g")
           .attr("class",     "segments")
           .attr("transform", `translate(0, ${graphMargin.top})`);
-      // Set Scroll Left
+      // Set scroll left
       segmentsWrap.node().scrollLeft = scrollLeft;
     
-    // Axis
-      var xAxis = segments.append("g")
+      // Axis
+      let xAxis = segments.append("g")
         .attr("class",     "axis x-axis")
         .attr("transform", `translate(0, ${graphRect.height})`)
         .call(d3.axisBottom(xScale)
@@ -353,46 +344,45 @@ export default {
             .attr("font-family", "")
             .attr("font-size",   "");
     
-    // Projection (entire path domain)
-      var projection = segments.append("g")
+      // Projection (entire path domain)
+      let projection = segments.append("g")
         .attr("class", "projection");
       projection.append("rect")
         .attr("class", "projection-domain")
         .attr("x", 0)
         .attr("y", 0)
-        .attr("width", dataWidth)
+        .attr("width",  dataWidth)
         .attr("height", dataHeight);
       this._projection = projection;
-    // Hand
-      var hand = projection.append("line")
+      // Hand
+      let hand = projection.append("line")
         .attr("class", "hand")
         .attr("x1", handX)
         .attr("x2", handX)
         .attr("y1", 0)
         .attr("y2", dataHeight);
     
-    // For each segment
+      // For each segment
       {
-        for(var i = 0; i < segNo; i++) {
+        for(let i = 0; i < segNo; i++) {
           // Pre ---
-          var segLeft  = graphRect.width * i;
+          let segLeft  = graphRect.width * i;
           // Start is the timestamp for the start of this segment
-          var segStart = xScale.invert(segLeft);
+          let segStart = xScale.invert(segLeft);
           // End is the timestamp for the end
-          var segEnd   = Math.min(xScale.invert(segLeft + graphRect.width), xBoundary[1]);
+          let segEnd   = Math.min(xScale.invert(segLeft + graphRect.width), xBoundary[1]);
           // Main ---
-          var seg = segments.append("g")
+          let seg = segments.append("g")
             .attr("class", "segment")
             .attr("data-start", segStart)
             .attr("data-end",   segEnd)
             .attr("data-left",  segLeft);
-          // Post ---
         }
       }
     
-    // Overlay
-      // Overlay is for everything that is above the plotted data
-      var overlay = graph.append("div")
+      // Overlay
+      // It is for everything that is above the plotted data
+      let overlay = graph.append("div")
         .attr("class", "overlay-wrap")
         .style("width",  `${graphRect.width}px`)
         .style("height", `${graphRect.height}px`)
@@ -405,45 +395,47 @@ export default {
             .attr("height", graphRect.height)
             .append("g")
               .attr("class", "overlay");
-    // Tooltip // no pointer events
-      var tooltipSize = {width: r2px(13), height: r2px(2.625)};
+
+      // Tooltip
+      // no pointer events
+      let tooltipSize = {width: r2px(13), height: r2px(2.625)};
       //       | 0.375 6/16
       //       | 0.875 14/16
       // 0.375 | 0.25  4/16
       //       | 0.75  12/16
       //       | 0.375 6/16
-      var tooltip = overlay.append("g")
+      let tooltip = overlay.append("g")
         .attr("class", "tooltip")
         .style("opacity", 0);
       tooltip.append("rect")
-        .attr("class", "background")
+        .attr("class",  "background")
         .attr("height", tooltipSize.height)
         .attr("width",  tooltipSize.width)
         .attr("x", 0)
         .attr("y", 0);
-      var tooltipIcon = tooltip.append("rect")
+      let tooltipIcon = tooltip.append("rect")
         .attr("height", r2px(14/16))
         .attr("width",  r2px(14/16))
         .attr("x",      r2px(6/16))
         .attr("y",      r2px(6/16));
-      var tooltipY = tooltip.append("text")
+      let tooltipY = tooltip.append("text")
         .attr("class", "y")
         .attr("text-anchor", "left")
         .attr("x",  r2px(26/16))
         .attr("y",  r2px(6/16))
         .attr("dy", r2px(12/16));
-      var tooltipX = tooltip.append("text")
+      let tooltipX = tooltip.append("text")
         .attr("class", "x")
         .attr("text-anchor", "left")
         .attr("x",  r2px(6/16))
         .attr("y",  r2px(24/16))
         .attr("dy", r2px(11/16));
     
-    // Draw Y Scale
-      var yBoundary = d3.extent(function() {
-        var arr = [];
+      // Draw y scale
+      let yBoundary = d3.extent(function() {
+        let arr = [];
         for(let key in $.dataset) {
-          var {data} = $.dataset[key];
+          let {data} = $.dataset[key];
           data.forEach(i => arr.push(
             $.asy(i)
           ));
@@ -453,13 +445,13 @@ export default {
       if(yBoundary[0] == undefined)         yBoundary = [0, 1];
       else if(yBoundary[0] == yBoundary[1]) yBoundary[0] = 0;
 
-      // Y Scale
-      var yScale = d3.scaleLinear()
+      // Y scale
+      let yScale = d3.scaleLinear()
         .domain(yBoundary)
         .range([dataHeight, 0]);
       this._yScale = yScale;
       let yTickValues = yScale.ticks(5).slice(1, -1);
-      var yAxis = graph.append("div")
+      let yAxis = graph.append("div")
         .attr("class", "axis-wrap y-axis-wrap")
         .append("div")
           .attr("class", "axis-container y-axis-container")
@@ -478,7 +470,7 @@ export default {
 
       // Draw Grid
       graph.select(".grid").remove();
-      var grid = projection.append("g")
+      let grid = projection.append("g")
         .attr("class", "grid")
         .call(d3.axisLeft(yScale)
           .tickValues(yTickValues)
@@ -491,38 +483,39 @@ export default {
 
       // Points
       this._points = {};
-      var circles = segments.append("g")
+      let circles = segments.append("g")
         .attr("class", "circles");
       circles.selectAll("circles")
         .data(this.keys)
         .enter()
         .append("circle")
           .each(function(key) {$._points[key] = this;})
-          .attr("data-key", key => key)
           .attr("class",    "point")
+          .attr("data-key", key => key)
           .attr("fill",     key => $.dataset[key].color)
           .attr("stroke",   "none")
           .attr("r",        4)
           .attr("cx",       -100);
 
-    // Plot Visible Parts
+      // Plot Visible Parts
       await this._plotVisible();
     
-    // EVENTS ---
+      // EVENTS ---
       // Segments Wrap Scroll
       addThrottledAsyncEvent(
         segmentsWrap.node(), "scroll", $._plotVisible, 10
       );
 
       { // Hand, Points and Tooltip and Touch Interface
-        var isMouseDown = false;
-        var isTouch     = false;
+        let isMouseDown = false;
+        let isTouch     = false;
+
         // Bisect is used to get the nearest point to a timestamp
-        var bisect = function(slice, x, accessor) {
-          var bs = d3.bisector(accessor).left;
-          var i   = bs(slice, x);
-          var d0  = slice[i-1];
-          var d1  = slice[i];
+        let bisect = function(slice, x, accessor) {
+          let bs = d3.bisector(accessor).left;
+          let i   = bs(slice, x);
+          let d0  = slice[i-1];
+          let d1  = slice[i];
           if(d0 === undefined && d1 === undefined) return undefined;
           else if(d0 === undefined) return d1;
           else if(d1 === undefined) return d0;
@@ -530,19 +523,19 @@ export default {
         };
 
         // Moving hand
-        var mouseHandler = function() {
+        let mouseHandler = function() {
 
-          var event      = d3.event;
-          var target     = event.target;
-          var onPoint    = target.classList.contains("point");
+          let event      = d3.event;
+          let target     = event.target;
+          let onPoint    = target.classList.contains("point");
           // No onLine events as paths trigger mouse events in a rectangle shape.
-          var mouse      = d3.mouse(projection.node());
-          var [mX, mY]   = mouse;
-          var x          = xScale.invert(mX);
-          var dataset    = $.dataset;
-          var yScale     = $._yScale;
-          var scrollLeft = segmentsWrap.node().scrollLeft;
-          var newModel   = {};
+          let mouse      = d3.mouse(projection.node());
+          let [mX, mY]   = mouse;
+          let x          = xScale.invert(mX);
+          let dataset    = $.dataset;
+          let yScale     = $._yScale;
+          let scrollLeft = segmentsWrap.node().scrollLeft;
+          let newModel   = {};
 
           // Reset stroke width
           d3.selectAll(".line")
@@ -606,14 +599,15 @@ export default {
           hand.attr("x1", handX).attr("x2", handX);
 
           // Tooltip
-          var [tw, th] = [tooltipSize.width, tooltipSize.height];
-          var tx       = Math.min(Math.max(mX - scrollLeft - tw/2, 0), graphRect.width - tw);
-          var ty       = mY < th ? mY + 5 : mY - th - 5;
+          let [tw, th] = [tooltipSize.width, tooltipSize.height];
+          let tx       = Math.min(Math.max(mX - scrollLeft - tw/2, 0), graphRect.width - tw);
+          let ty       = mY < th ? mY + 5 : mY - th - 5;
           tooltip.attr("transform", `translate(${tx},${ty})`);
           if(onPoint) {
             let ttKey  = target.getAttribute("data-key");
             let ttEl   = $.model[ttKey];
             let ttCl   = $.dataset[ttKey].color;
+            // In case of no formatters, default to default formatters
             let ttXfmt = $.dataset[ttKey].formatters.x || $.computedOptions.formatters.x;
             let ttYfmt = $.dataset[ttKey].formatters.y || $.computedOptions.formatters.y;
           
@@ -625,18 +619,21 @@ export default {
     
         //
         { // Touch Interface
+
+          // Check for touch
           window.addEventListener("touchstart", function handler() {
             isTouch = true;
             window.removeEventListener("touchstart", handler);
           });
+
           // Dispatch mouse event as you scroll
-          var node     = segmentsWrap.node();
-          var lastLeft = node.scrollLeft;
-          var handler  = async function(event) {
+          let node     = segmentsWrap.node();
+          let lastLeft = node.scrollLeft;
+          let handler  = async function(event) {
             if(isTouch) {
-              var left  = node.scrollLeft;
-              var rect  = node.getBoundingClientRect();
-              var handX = Number(hand.attr("x1"));
+              let left  = node.scrollLeft;
+              let rect  = node.getBoundingClientRect();
+              let handX = + hand.attr("x1");
               // Arbitrary Coords
               event.clientX = (handX - left) + (left - lastLeft) + rect.left;
               event.clientY = rect.top + rect.height / 2;
@@ -644,7 +641,9 @@ export default {
               d3.customEvent(event, mouseHandler);
             }
           }
+
           addThrottledAsyncEvent(node, "scroll", handler, 1);
+
         }
     
         // Add Handlers
@@ -657,7 +656,7 @@ export default {
         // such as input change or click.foo click.bar.
         graph
           .on("mouseout", function() {
-            var event = d3.event;
+            let event = d3.event;
             if(event.target.classList.contains("point")) {
               overlay.selectAll(".tooltip").style("opacity", 0);
             }
@@ -719,9 +718,9 @@ export default {
       steps.unshift(1);
 
       // xScale
-      var create;
+      let create;
       create = function() {
-        var $;
+        let $;
         $ = function(timestamp) {
           return $._(timestamp) * ($._range[1] - $._range[0]) + $._range[0];
         };
@@ -749,7 +748,7 @@ export default {
         $.duration      = duration;
         $.totalDuration = totalDuration;
         $.copy = function() {
-          var copy = create();
+          let copy = create();
           copy.range($._range);
           return copy;
         }
@@ -780,10 +779,10 @@ export default {
           return (x - 1) * $.totalDuration + $._lastT;
         };
         $.ticks = function(n) {
-          var tv = [];
+          let tv = [];
           if(n <= 2) return;
           // Exclude 0 and 1
-          for(var i = 1; i < n - 1; i++) {
+          for(let i = 1; i < n - 1; i++) {
             tv.push(
               $.invert((1 * i / (n - 1)) * ($._range[1] - $._range[0]) + $._range[0])
             );
@@ -805,42 +804,40 @@ export default {
     async _plotVisible() {
 
       // Shorthand
-      var $ = this;
+      let $ = this;
 
       // Graph
-      var graph         = d3.select(this.$el);
-      var xDuration     = this._xDuration;
-      var xBoundary     = this._xBoundary;
-      var yBoundary     = this._yBoundary;
-      var graphWidth    = this._width;
-      var graphHeight   = this._height;
-      var graphMargin   = this._margin;
-      var dataWidth     = this._dataWidth;
-      var dataHeight    = this._dataHeight;
-      var graphDuration = this._graphDuration;
-      var xTicks        = this._xTicks;
-      var yTicks        = this._yTicks;
+      let graph         = d3.select(this.$el);
+      let xDuration     = this._xDuration;
+      let xBoundary     = this._xBoundary;
+      let yBoundary     = this._yBoundary;
+      let graphWidth    = this._width;
+      let graphHeight   = this._height;
+      let graphMargin   = this._margin;
+      let dataWidth     = this._dataWidth;
+      let dataHeight    = this._dataHeight;
+      let graphDuration = this._graphDuration;
+      let xTicks        = this._xTicks;
+      let yTicks        = this._yTicks;
       // ELements
-      var xScale        = this._xScale;
-      var yScale        = this._yScale;
-      var projection    = this._projection;
+      let xScale        = this._xScale;
+      let yScale        = this._yScale;
+      let projection    = this._projection;
 
       // Segments
-      var segmentsWrap = graph.select(".segments-wrap");
-      var scrollLeft   = segmentsWrap.node().scrollLeft;
+      let segmentsWrap        = graph.select(".segments-wrap");
+      let scrollLeft          = segmentsWrap.node().scrollLeft;
+      let scrollLeftTimestamp = xScale.invert(scrollLeft); // scrollLefTime
 
-      // Dataset
-      //
-      var scrollLeftTimestamp = xScale.invert(scrollLeft); // scrollLefTime
-      // 
-      var visibleBoundary = [
+      // Visible boundary
+      let visibleBoundary = [
         Math.max(xScale.invert(scrollLeft - graphWidth), xBoundary[0]),
         Math.min(xScale.invert(scrollLeft + graphWidth * 2), xBoundary[1])
       ];
       this.visibleBoundary = visibleBoundary;
 
       // Visible Dataset
-      var visibleDataset = {};
+      let visibleDataset = {};
       for(let key in this.dataset) {
         visibleDataset[key] = sliceFromTo(
           this.dataset[key].data, visibleBoundary[0], visibleBoundary[1], $.asx
@@ -849,26 +846,28 @@ export default {
 
       // Segments Each
       // Loop
-      var segments     = segmentsWrap.select(".segments");
-      var segmentNodes = segmentsWrap.selectAll(".segment").nodes().reverse(); // Reverse() to start from the most recent segment
-      var visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
+      let segments     = segmentsWrap.select(".segments");
+      let segmentNodes = segmentsWrap.selectAll(".segment").nodes().reverse(); // reverse() to start from the most recent segment
+      let visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
         scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
       segmentNodes.forEach(function(node) {
-        var seg   = d3.select(node);
-        var start = Number(node.getAttribute("data-start"));
-        var end   = Number(node.getAttribute("data-end"));
-        var left  = Number(node.getAttribute("data-left"));
 
-        // Check Already Drawn
-        if(seg.selectAll("path").size() > 0) return;
+        let seg   = d3.select(node);
+        let start = + node.getAttribute("data-start");
+        let end   = + node.getAttribute("data-end");
+        let left  = + node.getAttribute("data-left");
 
-        // Check Visibility
+        // If it is already drawn
+        if(seg.selectAll("path").size() > 0)
+          return;
+
+        // Check visibility
         if(!(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]))
           return;
 
-        // Segment Dataset
-        var segDataGroups = [];
+        // Segment dataset
+        let segDataGroups = [];
         for(let key in visibleDataset) {
           let data = sliceFromTo(
             visibleDataset[key], start, end, $.asx
@@ -878,21 +877,21 @@ export default {
           }
         }
 
-        // If No Data
+        // If no data
         if(segDataGroups.length === 0)
           return;
 
-        // Add Path
+        // Add paths
         seg.selectAll("paths")
           .data(segDataGroups)
           .enter()
           .append("path")
             .each(function(d) {$._lines[d.key].push(this);})
-            .attr("class", "line")
-            .attr("data-key", d => d.key)
-            .attr("stroke", d => $.dataset[d.key].color)
+            .attr("class",        "line")
+            .attr("fill",         "none")
+            .attr("data-key",     d => d.key)
+            .attr("stroke",       d => $.dataset[d.key].color)
             .attr("stroke-width", 1)
-            .attr("fill", "none")
             .attr("d", d => d3.line()
               .defined(e => !isNaN($.asy(e)))
               .x(e => xScale($.asx(e)))
