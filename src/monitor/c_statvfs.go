@@ -25,6 +25,28 @@ type Statvfs_t struct {
     Namemax uint64
 }
 
+func c_PROPAGATE_ALL_ONES(in interface{}) uint64 {
+
+    val := uint64(0)
+    all := false
+    switch cast := in.(type) {
+    case int:    all = ^cast == 0; val = uint64(cast)
+    case int8:   all = ^cast == 0; val = uint64(cast)
+    case int16:  all = ^cast == 0; val = uint64(cast)
+    case int32:  all = ^cast == 0; val = uint64(cast)
+    case int64:  all = ^cast == 0; val = uint64(cast)
+    case uint:   all = ^cast == 0; val = uint64(cast)
+    case uint8:  all = ^cast == 0; val = uint64(cast)
+    case uint16: all = ^cast == 0; val = uint64(cast)
+    case uint32: all = ^cast == 0; val = uint64(cast)
+    case uint64: all = ^cast == 0; val = uint64(cast)
+    }
+
+    if all {return ^uint64(0)}
+    return val
+
+}
+
 func Statvfs(path string, buf *Statvfs_t) (err error) {
 
     c_stat := C.struct_statvfs{}
@@ -36,17 +58,17 @@ func Statvfs(path string, buf *Statvfs_t) (err error) {
     }
 
     *buf = Statvfs_t{
-        Bsize:   uint64(c_stat.f_bsize),
-        Frsize:  uint64(c_stat.f_frsize),
-        Blocks:  uint64(c_stat.f_blocks),
-        Bfree:   uint64(c_stat.f_bfree),
-        Bavail:  uint64(c_stat.f_bavail),
-        Files:   uint64(c_stat.f_files),
-        Ffree:   uint64(c_stat.f_ffree),
-        Favail:  uint64(c_stat.f_favail),
-        Fsid:    uint64(c_stat.f_fsid),
-        Flag:    uint64(c_stat.f_flag),
-        Namemax: uint64(c_stat.f_namemax),
+        Bsize:   c_PROPAGATE_ALL_ONES(c_stat.f_bsize),
+        Frsize:  c_PROPAGATE_ALL_ONES(c_stat.f_frsize),
+        Blocks:  c_PROPAGATE_ALL_ONES(c_stat.f_blocks),
+        Bfree:   c_PROPAGATE_ALL_ONES(c_stat.f_bfree),
+        Bavail:  c_PROPAGATE_ALL_ONES(c_stat.f_bavail),
+        Files:   c_PROPAGATE_ALL_ONES(c_stat.f_files),
+        Ffree:   c_PROPAGATE_ALL_ONES(c_stat.f_ffree),
+        Favail:  c_PROPAGATE_ALL_ONES(c_stat.f_favail),
+        Fsid:    c_PROPAGATE_ALL_ONES(c_stat.f_fsid),
+        Flag:    c_PROPAGATE_ALL_ONES(c_stat.f_flag),
+        Namemax: c_PROPAGATE_ALL_ONES(c_stat.f_namemax),
     }
 
     return nil

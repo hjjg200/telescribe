@@ -96,11 +96,11 @@ This is **indexed metrics** and its indexes are:
 
 ***#** `memory-size`*
 
-Memory size is evaluated from `/proc/memstat`'s MemTotal entry which is expressed in kB.
+Memory size is evaluated from `/proc/meminfo`'s MemTotal entry which is expressed in kB.
 
 ***#** `memory-usage`*
 
-Memory usage is evaluated from `/proc/memstat` by examining the ratio of used memory(non-buffer, non-cached, and non-free) size.
+Memory usage is evaluated from `/proc/meminfo` by examining the ratio of used memory(non-buffer, non-cached, and non-free) size.
 
 ```go
 usage = (1.0 - ((buffer + cache + free) / total)) * 100.0
@@ -108,11 +108,11 @@ usage = (1.0 - ((buffer + cache + free) / total)) * 100.0
 
 ***#** `swap-size`*
 
-Swap size is evaluated from `/proc/memstat`'s SwapTotal entry which is expressed in kB.
+Swap size is evaluated from `/proc/meminfo`'s SwapTotal entry which is expressed in kB.
 
 ***#** `swap-usage`*
 
-Swap usage is evaluated from `/proc/memstat` by examining the ratio of used swap(non-cached and non-free) size.)
+Swap usage is evaluated from `/proc/meminfo` by examining the ratio of used swap(non-cached and non-free) size.)
 
 ```go
 usage = (1.0 - ((cache + free) / total)) * 100.0

@@ -14,7 +14,7 @@ First version that complies with the documentation
 - [x] **Fixed:** `all` correct handling for monitor keys that include slashes
 - [x] **Fixed:** `client` made moniter interval change is immediately effective
 - [x] **Fixed:** `web` fixed queue functionality
-- [ ] **Fixed:** `web` fixed tiny gaps in graphs
+- [x] **Fixed:** `web` fixed tiny gaps in graphs
 - [x] **Changed:** `go` make signal handler accessible for both client and server
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app
@@ -30,7 +30,6 @@ First version that complies with the documentation
 
 - [ ] No indicator for status and disabled status for clients not sending data
 - [ ] GapThresholdTime might have to be per-client, such as monitorInterval + 1 minute
-- [ ] `web` Tiny gaps are present in the graph; it is because segments do not have path that connects them to each other
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
 - [ ] `web` sometimes mousemove event takes much more time than usual
 

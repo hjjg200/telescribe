@@ -75,6 +75,18 @@ function r2px(n) {return remToPx(n);}
 function remToPx(rem) {
   return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
 }
+function sliceFromTo(arr, from, to, accessor = e => e) {
+  let fromIdx = arr.findIndex(i => accessor(i) >= from);
+  let toIdx   = arr.slice(fromIdx).findIndex(i => accessor(i) >= to);
+
+  toIdx = toIdx === -1
+    ? (arr.length ? arr.length : 0)
+    : toIdx + fromIdx;
+  fromIdx = fromIdx > 0
+    ? fromIdx - 1
+    : 0;
+  return arr.slice(fromIdx, toIdx + 1); // slice doesn't include end
+}
 
 // TODO: make this independent from external code
 //  + change timestamp to x
@@ -830,8 +842,8 @@ export default {
       // Visible Dataset
       var visibleDataset = {};
       for(let key in this.dataset) {
-        visibleDataset[key] = this.dataset[key].data.filter(
-          i => visibleBoundary[0] <= $.asx(i) && $.asx(i) <= visibleBoundary[1]
+        visibleDataset[key] = sliceFromTo(
+          this.dataset[key].data, visibleBoundary[0], visibleBoundary[1], $.asx
         );
       }
 
@@ -858,10 +870,9 @@ export default {
         // Segment Dataset
         var segDataGroups = [];
         for(let key in visibleDataset) {
-          let data = visibleDataset[key].filter(i => {
-            return start <= $.asx(i) && $.asx(i) <= end;
-            // TODO include the neighboring point to the end in order to connect paths of segments together
-          });
+          let data = sliceFromTo(
+            visibleDataset[key], start, end, $.asx
+          );
           if(data.length > 0) {
             segDataGroups.push({key, data});
           }

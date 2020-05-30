@@ -31,7 +31,7 @@ Monitor Record is a procedure where the client sends the monitored items to the 
 
 |Origin|Round|Details|
 |-|-|-|
-|Client|1 Monitor Record|Gives **Version, Config Version, Alias, Timestamp, Value Map**|
+|Client|1 Monitor Record|Gives **Version, Config Version, Alias, Timestamp, Value Map, and Per**|
 |Server|2 OK|Ok|
 |Server|2a Version Mismatch|When version does not match, initiates **Version Mismatch**|
 |Server|2b Reconfigure|When client config version does not match, initiates **Reconfigure**|
@@ -45,7 +45,7 @@ Reconfigure is a procedure where the server notifies the client that the client 
 
 |Origin|Round|Details|
 |-|-|-|
-|Server|1 Reconfigure|Gives **Config in JSON, Config Version**|
+|Server|1 Reconfigure|Gives **Config in JSON and Config Version**|
 |Client|2 Terminate|Terminate connection|
 
 
