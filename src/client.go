@@ -321,7 +321,7 @@ func(roleMap ClientRuleMap) Get(r string) ClientRule {
 type ClientItemStatus struct { // itemStat
     Timestamp int64   `json:"timestamp"`
     Value     float64 `json:"value"`
-    Per       int     `json:"per"`
+    Per       int32   `json:"per"`
     Status    int     `json:"status"`
 }
 

@@ -4,6 +4,7 @@ import (
     "bufio"
     "bytes"
     "compress/gzip"
+    "encoding/binary"
     "encoding/gob"
     "math"
     "./monitor"
@@ -35,10 +36,22 @@ type MonitorDataTableBox struct {
 
 type MonitorDataMap map[string/* monitorKey */] MonitorData
 type MonitorData []MonitorDatum
+const MonitorDatumVersion uint8 = 1
+const MointorDatumSize int = 20
 type MonitorDatum struct {
-    Timestamp int64
+    Timestamp int64 // timestamp is int64 as go uses int64 for unix timetamps
     Value float64
-    Per int
+    Per int32
+}
+
+// CHUNK ---
+type MonitorDataChunkIndexesMap map[string/* monitorKey */] MonitorDataChunkIndexes
+type MonitorDataChunkIndexes []MonitorDataChunkIndex
+type MonitorDataChunkIndex struct {
+    Name  string `json:"name"`
+    Order uint64 `json:"order"`
+    From  int64  `json:"from"`
+    To    int64  `json:"to"`
 }
 
 // sort.Interface
@@ -93,6 +106,54 @@ func FormatMonitorKey(base, param, idx string) string {
     return monitor.FormatWrapperKey(base, param, idx)
 }
 
+// SERIALIZATION ---
+
+func SerializeMonitorData(md MonitorData) []byte {
+
+    // Type version check
+    Assert(MonitorDatumVersion == 1, "MonitorDatum version must be 1")
+
+    // Byte
+    lenMd  := len(md)
+    serial := make(
+        []byte,
+        1 + lenMd * MointorDatumSize, // version byte + data bytes
+    )
+
+    // Version byte
+    serial[0] = byte(MonitorDatumVersion)
+
+    // Data
+    le   := binary.LittleEndian
+    base := 1 // from 1st position
+    for _, datum := range md {
+        le.PutUint64(serial[base:base + 8],       uint64(datum.Timestamp))
+        le.PutUint64(serial[base + 8:base + 16],  math.Float64bits(datum.Value))
+        le.PutUint32(serial[base + 16:base + 20], uint32(datum.Per))
+
+        base += MointorDatumSize
+    }
+
+    return serial
+
+}
+
+func DeserializeMonitorData(serial []byte) (md MonitorData, err error) {
+
+    // Type version check
+    Assert(MonitorDatumVersion == 1, "MonitorDatum version must be 1")
+
+    defer Catch(&err) // recover from panic from this point
+
+    // Version byte
+    version := serial[0]
+    Assert(uint8(version) == MonitorDatumVersion, "MonitorData version must match the current version")
+
+    // 
+
+    return nil, nil
+
+}
 
 // COMPRESSION ---
 
@@ -113,7 +174,7 @@ func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
 
         timestamps := make([]int64, len(md))
         values     := make([]float64, len(md))
-        pers       := make([]int, len(md))
+        pers       := make([]int32, len(md))
         for i := range md {
             timestamps[i] = md[i].Timestamp
             values[i]     = md[i].Value
@@ -156,7 +217,7 @@ func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
 
         timestamps := make([]int64, 0)
         values     := make([]float64, 0)
-        pers       := make([]int, 0)
+        pers       := make([]int32, 0)
 
         // Timestamp
         dec.Decode(&timestamps)

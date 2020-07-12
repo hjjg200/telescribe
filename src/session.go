@@ -813,8 +813,11 @@ func (rp *Response) String(key string) (str string) {
 }
 
 func (rp *Response) Int(key string) int {
-    v, _ := rp.args[key].(float64)
-    return int(v)
+    return int(rp.Int64(key))
+}
+
+func (rp *Response) Int32(key string) int32 {
+    return int32(rp.Int64(key))
 }
 
 func (rp *Response) Int64(key string) int64 {

@@ -559,3 +559,44 @@ timestamp,value,per
 1590766257,12.6,10
 1590766262,32.7,10
 ```
+
+
+## Data Index
+
+|Go|Javascript|HTML|
+|-|-|-|
+|`mdIdx`|`monitorDataIndex`|`monitor-data-index`|
+
+A monitor data index contains the information about a part file of monitor data.
+
+```go
+type MonitorDataIndex struct {
+    Uuid  string `json:"uuid"`
+    Order uint64 `json:"order"`
+    From  int64 `json:"from"`
+    To    int64 `json:"to"`
+}
+```
+
+### UUID
+
+A UUID can be any string as long as it is unique to that specific part of the monitor data. As of the start of the beta stage, a UUID is lowercase string representation of a random sha256 checksum, ensuring that UUID is unique during the creation process.
+
+### Order
+
+Order indicates the order of that part in the relevant monitor data. As there come new parts of that monitor data, the order increases.
+
+### From
+
+From is the timestamp from which that monitor data part starts.
+
+### To
+
+To is the timestamp to which that monitor data part extends.
+
+
+## Data Indexes
+
+|Go|Javascript|HTML|
+|-|-|-|
+|`mdIdxes`|`monitorDataIndex`|`monitor-data-index`|

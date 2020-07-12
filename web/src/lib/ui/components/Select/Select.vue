@@ -3,14 +3,15 @@
     :class="{
       'has-selected': selected.length > 0
     }"
-    v-click-outside="function() {open = false;}">
+    v-click-outside="function() {open = false;}"
+    @keydown="onKeyDown">
 
     <div class="button"
       @click="open = !open">
 
-      <!-- form support -->
+      <!-- underlying form control -->
       <select v-model="selectedValue" :name="name" :multiple="multiple"
-        size="1" ref="select" @focus="focused = true">
+        size="1" ref="select" tabindex="-1">
         <option v-for="item in items" :key="item.value" :value="item.value">{{ item.text }}</option>
       </select>
 
@@ -81,6 +82,22 @@ export default {
     }
   },
   methods: {
+    onKeyDown(event) {
+      // TODO refer to https://github.com/angular/components/blob/96c24f5c80d1419b297478b656ee3f10b58f53df/src/material/select/select.ts#L783
+      event.preventDefault();
+      switch(event.code) {
+      case "Enter":
+      case "Space":
+        this.open = !this.open;
+        break;
+      case "ArrowDown":
+        if(!this.open) this.open = true;
+        else {
+          //
+        }
+        break;
+      }
+    },
     hasSelected(item) {
       let value = item.value;
       if(this.selectedValue)

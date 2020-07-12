@@ -19,15 +19,13 @@ First version that complies with the documentation
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app
 - [x] **Changed:** `web` made Graph component an independent component; made it use x and y instead of timestamp and value
-
-
-#### Delayed
-
+- [ ] **Changed:** `server` increase the data storing performance
 - [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
 
 
 #### Known Issues
 
+- [ ] No error stacks for clients and server storage size information
 - [ ] No indicator for status and disabled status for clients not sending data
 - [ ] GapThresholdTime might have to be per-client, such as monitorInterval + 1 minute
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
