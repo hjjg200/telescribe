@@ -599,4 +599,23 @@ To is the timestamp to which that monitor data part extends.
 
 |Go|Javascript|HTML|
 |-|-|-|
-|`mdIdxes`|`monitorDataIndex`|`monitor-data-index`|
+|`mdIndexes`|`monitorDataIndexes`|`monitor-data-indexes`|
+
+A monitor data indexes object is an array of **Monitor.DataIndex**, not necessarily in the ascending order for the **Monitor.DataIndex.Order**.
+
+```go
+type MonitorDataIndexes []MonitorDataIndex
+```
+
+
+## Data Indexes Map
+
+|Go|Javascript|HTML|
+|-|-|-|
+|`mdisMap`|`monitorDataIndexesMap`|`monitor-data-indexes-map`|
+
+A monitor data indexes map is a map that contains **Monitor.DataIndexes** and the keys are, typically, **Monitor.Key**.
+
+```go
+type MonitorDataIndexesMap map[string/* mKey */] MonitorDataIndexes
+```
