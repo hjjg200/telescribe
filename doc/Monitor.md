@@ -495,9 +495,19 @@ A datum is a set of **Monitor.Timestamp**, **Monitor.Value**, and **Monitor.Per*
 type MonitorDatum struct {
     Timestamp int64
     Value float64
-    Per int
+    Per int32
 }
 ```
+
+### Encoding
+
+Encoding for **Monitor.Datum** is done in the following manner:
+
+|Order|Size|Format|Description|
+|-|-|-|-|
+|0 -- 7|8|Little endian uint64|Timestamp|
+|8 -- 15|8|Float64 bits in uint64|Value|
+|16 -- 19|4|Little endian uint32|Per|
 
 
 ## Data
@@ -509,16 +519,16 @@ type MonitorDatum struct {
 Data is an array of **Monitor.Datum**. Typically, it is sorted in ascending order for timestamps.
 
 
-### Compressed
+### Encoding
 
-Compression for **Monitor.Data** is done in the following manner in gzip encoding; the entire content of compressed data is as follows:
+Encoding for **Monitor.Data** is done in the following manner:
 
-|Order|Encoding|Type|Description|
+|Order|Size|Format|Description|
 |-|-|-|-|
-|1|gob|`string`|`"float64"` or `"nil"`|
-|2|gob|`[]int64`|An array of **Monitor.Timestamp**|
-|3|gob|`[]float64`|An array of **Monitor.Value**|
-|4|gob|`[]int`|An array of **Monitor.Per**|
+|0|1|Single byte|Major version|
+|1|1|Single byte|Minor version|
+|2 -- 9|8|Little endian uint64|Length of data|
+|10 -- ...|20|**Moniotr.Datum**|All entries|
 
 
 ## Data Map
@@ -573,14 +583,14 @@ A monitor data index contains the information about a part file of monitor data.
 type MonitorDataIndex struct {
     Uuid  string `json:"uuid"`
     Order uint64 `json:"order"`
-    From  int64 `json:"from"`
-    To    int64 `json:"to"`
+    From  int64  `json:"from"`
+    To    int64  `json:"to"`
 }
 ```
 
 ### UUID
 
-A UUID can be any string as long as it is unique to that specific part of the monitor data. As of the start of the beta stage, a UUID is lowercase string representation of a random sha256 checksum, ensuring that UUID is unique during the creation process.
+A UUID can be any string as long as it is unique to that specific part of the monitor data. As of the start of the beta stage, a UUID is lowercase string representation of a random 64 bytes, ensuring that UUID is unique during the creation process.
 
 ### Order
 

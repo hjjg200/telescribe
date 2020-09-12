@@ -82,6 +82,7 @@ Note that, however, the above document is not a faithful representation of the w
 1. Web anchors(#) or queries for fullName, timestamp, and selected items
 1. Client config mixins
 1. Realtime graph updating using WebSockets
+1. Cache recently viewed data aggregates
 
 
 ## TODO (pre-beta)

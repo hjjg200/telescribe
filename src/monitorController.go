@@ -6,8 +6,10 @@ import (
     "compress/gzip"
     "encoding/binary"
     "encoding/gob"
+    "fmt"
     "math"
     "./monitor"
+    "./secret"
 
     . "github.com/hjjg200/go-act"
 )
@@ -44,23 +46,95 @@ type MonitorDatum struct {
     Per int32
 }
 
-// CHUNK ---
-type MonitorDataChunkIndexesMap map[string/* monitorKey */] MonitorDataChunkIndexes
-type MonitorDataChunkIndexes []MonitorDataChunkIndex
-type MonitorDataChunkIndex struct {
-    Name  string `json:"name"`
+// Index ---
+type MonitorDataIndex struct {
+    UUID  string `json:"uuid"`
     Order uint64 `json:"order"`
-    From  int64  `json:"from"`
-    To    int64  `json:"to"`
+    From  int64 `json:"from"`
+    To    int64 `json:"to"`
+    ptr   *MonitorData
+}
+type MonitorDataIndexes []MonitorDataIndex
+type MonitorDataIndexesMap map[string/* monitorKey */] MonitorDataIndexes
+
+func SliceAndIndexMonitorData(md MonitorData, sz uint64) MonitorDataIndexes {
+
+    // Slices and indexes the given monitor data
+    mdIndexes := make(MonitorDataIndexes, 0)
+    left      := uint64(len(md))
+
+    for i := uint64(0);; {
+
+        if left == 0 {
+            break
+        }
+
+        from   := i * sz
+        length := sz
+        if left < length {
+            length = left
+        }
+
+        // Index
+        uuidBytes := secret.RandomBytes(64)
+        uuid      := fmt.Sprintf("%x", uuidBytes)
+        data      := md[from:from + length]
+        fromDatum := data[0]
+        toDatum   := data[length - 1]
+        
+        mdIdx := MonitorDataIndex{
+            UUID: uuid,
+            Order: i,
+            From: fromDatum.Timestamp,
+            To: toDatum.Timestamp,
+            ptr: &data,
+        }
+        mdIndexes = append(mdIndexes, mdIdx)
+
+        // Post
+        i++
+        left -= length
+
+    }
+
+    return mdIndexes
+
+}
+func(mdIndexes MonitorDataIndexes) Append(rhs MonitorDataIndexes) MonitorDataIndexes {
+
+    // Copy
+    copied := make(MonitorDataIndexes, len(rhs))
+    copy(copied, rhs)
+
+    // If nil or zero
+    // because of this, the function returns indexes, not utilizing reference
+    if mdIndexes == nil || len(mdIndexes) == 0 {
+        return copied
+    }
+
+    // Append the rhs indexes to the lhs indexes
+    length   := len(mdIndexes)
+    maxOrder := mdIndexes[length - 1].Order
+    copied.orderOffset(maxOrder)
+
+    return append(mdIndexes, copied...)
+
+}
+func(mdIndexes MonitorDataIndexes) orderOffset(offset uint64) {
+    // Adds a defined value to all the orders of the indexes
+    offset += 1
+    for _, mdIdx := range mdIndexes {
+        mdIdx.Order += offset
+    }
 }
 
 // sort.Interface
-func (md MonitorData) Len() int { return len(md) }
-func (md MonitorData) Less(i, j int) bool { return md[i].Timestamp < md[j].Timestamp }
-func (md MonitorData) Swap(i, j int) { md[i], md[j] = md[j], md[i] }
+func(md MonitorData) Len() int { return len(md) }
+func(md MonitorData) Less(i, j int) bool { return md[i].Timestamp < md[j].Timestamp }
+func(md MonitorData) Swap(i, j int) { md[i], md[j] = md[j], md[i] }
 // For LTTB
-func (datum MonitorDatum) X() float64 { return float64(datum.Timestamp) }
-func (datum MonitorDatum) Y() float64 { return datum.Value }
+func(datum MonitorDatum) X() float64 { return float64(datum.Timestamp) }
+func(datum MonitorDatum) Y() float64 { return datum.Value }
 
 // CONFIG ---
 
