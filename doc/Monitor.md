@@ -581,10 +581,10 @@ A monitor data index contains the information about a part file of monitor data.
 
 ```go
 type MonitorDataIndex struct {
-    Uuid  string `json:"uuid"`
-    Order uint64 `json:"order"`
-    From  int64  `json:"from"`
-    To    int64  `json:"to"`
+    Uuid   string `json:"uuid"`
+    Length uint64 `json:"length"`
+    From   int64  `json:"from"`
+    To     int64  `json:"to"`
 }
 ```
 
@@ -592,9 +592,9 @@ type MonitorDataIndex struct {
 
 A UUID can be any string as long as it is unique to that specific part of the monitor data. As of the start of the beta stage, a UUID is lowercase string representation of a random 64 bytes, ensuring that UUID is unique during the creation process.
 
-### Order
+### Length
 
-Order indicates the order of that part in the relevant monitor data. As there come new parts of that monitor data, the order increases.
+Length specifies the entire length of data.
 
 ### From
 

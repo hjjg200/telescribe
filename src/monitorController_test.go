@@ -69,6 +69,33 @@ func ensureTestMonitorDataMap() {
     fmt.Printf("MonitorDataMap: %d metrics, each %d long\n", metrics, eachLength)
 }
 
+func TestMonitorDataSerialization(t *testing.T) {
+
+    md := MonitorData{
+        MonitorDatum{10, 2.0, 5},
+        MonitorDatum{15, 0.5, 5},
+        MonitorDatum{20, 2.1, 5},
+        MonitorDatum{25, 1.5, 5},
+        MonitorDatum{30, 2.0, 5},
+        MonitorDatum{35, 2.1, 5},
+        MonitorDatum{40, 2.0, 5},
+        MonitorDatum{45, 2.5, 5},
+    }
+
+    t.Logf("MD 1: %v\n", md)
+
+    serial := SerializeMonitorData(md)
+    t.Logf("SERIAL: %v\n", serial)
+
+    md2, err := DeserializeMonitorData(serial)
+    if err != nil {
+        t.Error(err)
+    }
+
+    t.Logf("MD 2: %v\n", md2)
+
+}
+
 // The first method that was used
 // go test -run MonitorDataEncode_1 -timeout 10m -v
 

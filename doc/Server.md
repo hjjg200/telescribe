@@ -30,6 +30,8 @@ By default, `serverConfig.json` contains the configuration of a server.
 |`monitor.gapThresholdTime`|The time length by which the server determines whether there is a gap in the monitor data; in minutes|
 |`monitor.decimationThreshold`|The number of records for each monitor data that the server decimates down to in order to increase the performance of graph drawing|
 |`monitor.decimationInterval`|How often the server prepares the decimated version of monitor data; in minutes|
+|`monitor.indexesFile`|The json file that contains the entire indexes for monitor data|
+|`monitor.dataChunkLength`|The length that a chunk of data will hold at most.|
 |`web`|A **Web.Config** object|
 |`network.bind`|To which address the server binds its main listener|
 |`network.port`|To which port the server opens its main listener|

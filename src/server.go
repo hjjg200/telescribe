@@ -7,6 +7,7 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "io/ioutil"
     "net"
     "net/http"
     "os"
@@ -21,7 +22,6 @@ import (
 
 const (
     dataStoreExt              = ".store"
-    dataChunkIndexesDir       = "indexes"
     clientConfigWatchInterval = time.Second * 5
 )
 
@@ -42,10 +42,8 @@ type ServerConfig struct { // srvCfg
     GapThresholdTime    int    `json:"monitor.gapThresholdTime"` // (minutes)
     DecimationThreshold int    `json:"monitor.decimationThreshold"`
     DecimationInterval  int    `json:"monitor.decimationInterval"` // (minutes)
-
-    AggregatePers       []int32 `json:"monitor.aggregatePers"`
-    DataLifespan        uint64 `json:"monitor.dataLifespan"`
-    DataChunkLength     uint64 `json:"monitor.dataChunkLength"`
+    DataIndexesFile     string `json:"monitor.dataIndexesFile"`
+    DataChunkLength     int    `json:"monitor.dataChunkLength"`
     // Web
     Web                 WebConfig `json:"web"`
     // Network
@@ -80,6 +78,8 @@ var DefaultServerConfig = ServerConfig{
     GapThresholdTime:    15,
     DecimationThreshold: 1500,
     DecimationInterval:  10,
+    DataIndexesFile:     "./dataIndexes.json",
+    DataChunkLength:     1000, // 20 kB per chunk
     // Web
     Web:                 DefaultWebConfig,
     // Network
@@ -187,22 +187,24 @@ var DefaultClientConfig = ClientConfig{
 // SERVER ---
 
 type Server struct { // srv
-    config                    ServerConfig
-    cachedExecutable          []byte
-    httpListener              net.Listener
-    httpRouter                *httpRouter
-    authFingerprint           string
-    clientConfig              ClientConfig
-    clientConfigVersion       map[string/* clId */] string
-    clientMonitorDataTableBox map[string/* clId */] MonitorDataTableBox
-    clientMonitorDataMap      map[string/* clId */] MonitorDataMap
-    configParser              *config.Parser
-    clientConfigParser        *config.Parser
+    config                      ServerConfig
+    cachedExecutable            []byte
+    httpListener                net.Listener
+    httpRouter                  *httpRouter
+    authFingerprint             string
+    clientConfig                ClientConfig
+    clientConfigVersion         map[string/* clId */] string
+    clientMonitorDataTableBox   map[string/* clId */] MonitorDataTableBox
+    clientMonitorDataMap        map[string/* clId */] MonitorDataMap
+    clientMonitorDataIndexesMap map[string/* clId */] MonitorDataIndexesMap
+    configParser                *config.Parser
+    clientConfigParser          *config.Parser
 }
 
 func NewServer() *Server {
     srv := &Server{
         clientMonitorDataMap: make(map[string/* clId */] MonitorDataMap),
+        clientMonitorDataIndexesMap: make(map[string/* clId */] MonitorDataIndexesMap),
     }
     return srv
 }
@@ -242,14 +244,18 @@ func (srv *Server) LoadConfig(p string) (err error) {
 
     // Open the config file
     f, err := os.OpenFile(p, os.O_RDONLY, 0644)
-    if err != nil && !os.IsNotExist(err) {
+    switch {
+    case os.IsNotExist(err):
+        // Not exists
+        Try(srv.configParser.Parse([]byte("{}"), &srv.config))
+    case err != nil:
         // Unexpected error
         panic(err)
-    } else if err == nil {
+    default:
         // File exists
-        buf := bytes.NewBuffer(nil)
-        io.Copy(buf, f)
-        Try(srv.configParser.Parse(buf.Bytes(), &srv.config))
+        p, err := ioutil.ReadAll(f)
+        Try(err)
+        Try(srv.configParser.Parse(p, &srv.config))
         Try(f.Close())
     }
 
@@ -291,22 +297,24 @@ func(srv *Server) loadClientConfig() (err error) {
 
     // File path
     fn := srv.config.ClientConfigPath
+    EventLogger.Debugln("1", fn)
     
     // Open file
     f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
     switch {
-    case err != nil && !os.IsNotExist(err): // Unexpected error
-        panic(err)
-
     case os.IsNotExist(err): // Does not exist
+
         // Save default config
         srv.clientConfig = DefaultClientConfig
-        f2, err := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0600)
-        Try(err)
+        f2, err2 := os.OpenFile(fn, os.O_WRONLY | os.O_CREATE, 0600)
+        Try(err2)
         enc := json.NewEncoder(f2)
         enc.SetIndent("", "  ")
         Try(enc.Encode(srv.clientConfig))
         Try(f2.Close())
+
+    case err != nil: // Unexpected error
+        panic(err)
 
     default: // Exists
 
@@ -395,8 +403,8 @@ func(srv *Server) Start() (err error) {
     EventLogger.Infoln("Cached executable for auto-update")
 
     // Read stored monitor data
-    Try(srv.readStoredClientMonitorDataMap())
-    EventLogger.Infoln("Read the stored monitored data")
+    Try(srv.readClientMonitorIndexesMap())
+    EventLogger.Infoln("Read the monitor data indexes")
 
     // Ensure directories
     Try(EnsureDirectory(srv.config.DataStoreDir))
@@ -581,6 +589,41 @@ func(srv *Server) Start() (err error) {
     }()}}()
     EventLogger.Infoln("Started data decimation thread")
 
+    // Debug
+    if flDebug {
+        go func() {
+            for {
+                time.Sleep(30 * time.Second)
+                var clId, mKey string
+                for i, mdMap := range srv.clientMonitorDataMap {
+                    clId = i
+                    for j := range mdMap {
+                        mKey = j
+                        break
+                    } 
+                    break
+                }
+                if clId == "" || mKey == "" {
+                    continue
+                }
+                srv.FprintMonitorDataCsvFilter(
+                    os.Stdout, clId, mKey, FprintCsvFilter{
+                        From: 0,
+                        To: 1700785212,
+                        Per: 45,
+                        Func: func(md MonitorData) float64 {
+                            accm := 0.0
+                            for _, datum := range md {
+                                accm += datum.Value
+                            }
+                            return accm / float64(len(md))
+                        },
+                    },
+                )
+            }
+        }()
+    }
+
     // Http
     go srv.startHttpServer()
     EventLogger.Infoln("Started HTTP server")
@@ -669,6 +712,27 @@ func(srv *Server) Start() (err error) {
 
 }
 
+func(srv *Server) readClientMonitorIndexesMap() (err error) {
+
+    defer Catch(&err)
+
+    fn := srv.config.DataIndexesFile
+    f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
+    
+    // Check existence
+    if os.IsNotExist(err) {
+        return TouchFile(fn, 0600)
+    }
+    Try(err)
+
+    // JSON
+    dec := json.NewDecoder(f)
+    Try(dec.Decode(&srv.clientMonitorDataIndexesMap))
+
+    return f.Close()
+
+}
+
 func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
@@ -729,57 +793,104 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
 }
 
-func(srv *Server) StoreClientMonitorDataChunks() (err error) {
+type FprintCsvFilter struct {
+    From int64
+    To   int64
+    Per  int32
+    Func func(MonitorData) float64
+}
+func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, filter FprintCsvFilter) {
 
-    defer Catch(&err)
+    // CSV header
+    w.Write([]byte("timestamp,value,per\n"))
 
-    for clId, mdMap := range srv.clientMonitorDataMap {
 
-        for mKey, mData := range mdMap {
 
-            _ = clId
-            _ = mKey
-            _ = mData
 
-            // Chunk name = sha256(clId + mKey + raw or per)
-            
-            // MonitorData file
-            // This only needs series of MonitorDatum
-            // |   0   |   1   |   2 ~ 9  | 10 ~ ... |
-            // | MAJOR | MINOR |  LENGTH  |   DATA   |
 
-            // Indexes file
-            // client-01.json
-            // {
-            //   "key-01": {
-            //     "orders": [
-            //        {"order": 4, "from": ..., "to": ...}
-            //     ],
-            //     "raw": "sha256 hash",
-            //     "aggregates": {
-            //       "4": [
-            //         {"per": 1, "name": "...", "type": 0} types such as average, max, min
-            //       ]
-            //     }
-            //   }
-            // }
 
-            // /api/v1/clientMonitorDataChunks
-            // from: ...
-            // to: ...
-            // per: ...
 
-            // CSV Form
-            // Timestamp,Value,Per
-            // ...,...,...         # Per may differ as it can take more or less amount of time to monitor metrics
 
-            
-
+    // Cache
+    cache := MonitorData{}
+    flush := func() {
+        if len(cache) == 0 {
+            return
         }
-
+        fmt.Fprintf(
+            w, "%d,%f,%d\n",
+            cache.MidTime(), filter.Func(cache), cache.Duration(),
+        )
+        cache = MonitorData{}
+    }
+    put := func(datum MonitorDatum) {
+        if filter.From > datum.Timestamp || filter.To < datum.Timestamp {
+            return
+        }
+        cache = append(cache, datum)
+        // When the put data's duration exceed or match the per 
+        if cache.Duration() >= int64(filter.Per) {
+            flush()
+        }
     }
 
-    return nil
+    // Indexes
+    indexes := srv.clientMonitorDataIndexesMap[clId][mKey]
+    for _, index := range indexes {func() {
+
+        if index.To < filter.From || index.From > filter.To {
+            return
+        }
+
+        // Debug
+        if flDebug {
+            fmt.Fprintf(w, "INDEX %s\n", index.Uuid)
+        }
+
+        warner := func(args ...interface{}) {
+            args = append([]interface{}{"FprintMonitorDataCsvFilter:"}, args...)
+            EventLogger.Warnln(args...)
+        }
+
+        fn := srv.config.DataStoreDir + "/" + index.Uuid + dataStoreExt
+        f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
+        if err != nil {
+            warner("failed index", index.Uuid, err)
+            return
+        }
+
+        p, err    := ioutil.ReadAll(f)
+        if err != nil {
+            warner("failed read", index.Uuid, err)
+            return
+        }
+
+        part, err := DeserializeMonitorData(p)
+        if err != nil {
+            warner("failed deserialization", index.Uuid, err)
+            return
+        }
+
+        // Write
+        for _, datum := range part {
+            put(datum)
+        }
+
+    }()}
+
+    // In-memory data
+    inMem := srv.clientMonitorDataMap[clId][mKey]
+    if len(inMem) > 0 && inMem.To() > filter.From {
+        if flDebug {
+            fmt.Fprintf(w, "IN-MEMORY\n")
+        }
+        for _, datum := range inMem {
+            put(datum)
+        }
+    }
+
+    // Flush remaining
+    flush()
 
 }
 
@@ -787,7 +898,15 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
 
     defer Catch(&err)
 
+    // Current indexes
+    clMdIdxMap := srv.clientMonitorDataIndexesMap
+
     for clId, mdMap := range srv.clientMonitorDataMap {
+
+        // Check indexes
+        if _, ok := clMdIdxMap[clId]; !ok {
+            clMdIdxMap[clId] = make(MonitorDataIndexesMap)
+        }
         
         for mKey, mData := range mdMap {func() {
 
@@ -797,6 +916,12 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
                 }
             }()
 
+            // Check indexes
+            indexes := MonitorDataIndexes{}
+            if _, ok := clMdIdxMap[clId][mKey]; ok {
+                indexes = clMdIdxMap[clId][mKey]
+            }
+
             // Check config
             _, ok := srv.getMonitorConfig(clId, mKey)
             switch {
@@ -805,27 +930,43 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
                 return
             }
 
-            // Compress
-            cmp, err2 := CompressMonitorData(mData)
-            Try(err2)
+            // Vars
+            stored    := MonitorData{}
+            lenChunk  := srv.config.DataChunkLength
+            quotient  := len(mData) / lenChunk
+            lenStored := quotient * lenChunk
+            stored, srv.clientMonitorDataMap[clId][mKey] = mData[:lenStored], mData[lenStored:] // separate
 
-            // Encode
-            buf := bytes.NewBuffer(nil)
-            enc := gob.NewEncoder(buf)
-            Try(enc.Encode(clId))
-            Try(enc.Encode(mKey))
-            Try(enc.Encode(cmp))
+            // Index each
+            for i := 0; i < quotient; i++ {
+                start   := i * lenChunk
+                part    := stored[start:start + lenChunk]
+                index   := CreateIndexForMonitorData(part)
+                indexes  = indexes.Append(index)
 
-            // Write file
-            h  := fmt.Sprintf("%x", Sha256Sum([]byte(
-                clId + string(mKey),
-            )))
-            fn := srv.config.DataStoreDir + "/" + h + dataStoreExt
-            Try(rewriteFile(fn, buf))
+                // Store
+                fn := srv.config.DataStoreDir + "/" + index.Uuid + dataStoreExt
+                f, err := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY, 0600)
+                Try(err)
+                f.Write(SerializeMonitorData(part))
+                f.Close()
+            }
+
+            // Assign
+            clMdIdxMap[clId][mKey] = indexes
 
         }()}
 
     }
+
+    // Store new indexes
+    buf := bytes.NewBuffer(nil)
+    enc := json.NewEncoder(buf)
+    enc.Encode(clMdIdxMap)
+    Try(rewriteFile(srv.config.DataIndexesFile, buf))
+
+    // Replace
+    //srv.clientMonitorDataIndexesMap = clMdIdxMap
 
     return
 

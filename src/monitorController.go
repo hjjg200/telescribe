@@ -4,12 +4,13 @@ import (
     "bufio"
     "bytes"
     "compress/gzip"
+    "crypto/sha256"
     "encoding/binary"
     "encoding/gob"
     "fmt"
     "math"
     "./monitor"
-    "./secret"
+   // "./secret"
 
     . "github.com/hjjg200/go-act"
 )
@@ -39,72 +40,72 @@ type MonitorDataTableBox struct {
 type MonitorDataMap map[string/* monitorKey */] MonitorData
 type MonitorData []MonitorDatum
 const MonitorDatumVersion uint8 = 1
-const MointorDatumSize int = 20
+const MonitorDatumSize int = 20
 type MonitorDatum struct {
     Timestamp int64 // timestamp is int64 as go uses int64 for unix timetamps
     Value float64
     Per int32
 }
 
+func(md MonitorData) From() int64 {
+    return md[0].Timestamp - int64(md[0].Per)
+}
+func(md MonitorData) To() int64 {
+    return md[len(md) - 1].Timestamp
+}
+func(md MonitorData) Duration() int64 {
+    return md.To() - md.From()
+}
+func(md MonitorData) MidTime() int64 {
+    return md.From() + md.Duration() / 2 + md.Duration() % 2
+}
+
 // Index ---
 type MonitorDataIndex struct {
-    UUID  string `json:"uuid"`
-    Order uint64 `json:"order"`
-    From  int64 `json:"from"`
-    To    int64 `json:"to"`
-    ptr   *MonitorData
+    Uuid   string `json:"uuid"`
+    Length uint64 `json:"length"`
+    From   int64  `json:"from"`
+    To     int64  `json:"to"`
 }
 type MonitorDataIndexes []MonitorDataIndex
 type MonitorDataIndexesMap map[string/* monitorKey */] MonitorDataIndexes
 
-func SliceAndIndexMonitorData(md MonitorData, sz uint64) MonitorDataIndexes {
+/*
 
-    // Slices and indexes the given monitor data
-    mdIndexes := make(MonitorDataIndexes, 0)
-    left      := uint64(len(md))
+Indexes are all json formatted
+Indexes must be updated when a new chunk of data is created
+Copy portion of data(server) -> created uuid for that portion(MC)
+-> encode it and store it(server) -> create index(MC) -> remove that portion atomically(server)
 
-    for i := uint64(0);; {
 
-        if left == 0 {
-            break
-        }
+*/
 
-        from   := i * sz
-        length := sz
-        if left < length {
-            length = left
-        }
+func CreateUuidForMonitorData(md MonitorData) string {
+    serial := SerializeMonitorData(md)
+    h := sha256.New()
+    h.Write(serial)
+    return fmt.Sprintf("%x", h.Sum(nil))
+}
 
-        // Index
-        uuidBytes := secret.RandomBytes(64)
-        uuid      := fmt.Sprintf("%x", uuidBytes)
-        data      := md[from:from + length]
-        fromDatum := data[0]
-        toDatum   := data[length - 1]
-        
-        mdIdx := MonitorDataIndex{
-            UUID: uuid,
-            Order: i,
-            From: fromDatum.Timestamp,
-            To: toDatum.Timestamp,
-            ptr: &data,
-        }
-        mdIndexes = append(mdIndexes, mdIdx)
-
-        // Post
-        i++
-        left -= length
-
+func CreateIndexForMonitorData(md MonitorData) MonitorDataIndex {
+    mi := MonitorDataIndex{}
+    if len(md) == 0 {
+        return mi
     }
 
-    return mdIndexes
+    mi.Uuid   = CreateUuidForMonitorData(md)
+    mi.Length = uint64(len(md))
+    mi.From   = md[0].Timestamp
+    mi.To     = md[len(md) - 1].Timestamp
 
+    return mi
 }
-func(mdIndexes MonitorDataIndexes) Append(rhs MonitorDataIndexes) MonitorDataIndexes {
+
+func(mdIndexes MonitorDataIndexes) Append(rhs ...MonitorDataIndex) MonitorDataIndexes {
 
     // Copy
     copied := make(MonitorDataIndexes, len(rhs))
-    copy(copied, rhs)
+    copy(copied, MonitorDataIndexes(rhs))
 
     // If nil or zero
     // because of this, the function returns indexes, not utilizing reference
@@ -112,20 +113,8 @@ func(mdIndexes MonitorDataIndexes) Append(rhs MonitorDataIndexes) MonitorDataInd
         return copied
     }
 
-    // Append the rhs indexes to the lhs indexes
-    length   := len(mdIndexes)
-    maxOrder := mdIndexes[length - 1].Order
-    copied.orderOffset(maxOrder)
-
     return append(mdIndexes, copied...)
 
-}
-func(mdIndexes MonitorDataIndexes) orderOffset(offset uint64) {
-    // Adds a defined value to all the orders of the indexes
-    offset += 1
-    for _, mdIdx := range mdIndexes {
-        mdIdx.Order += offset
-    }
 }
 
 // sort.Interface
@@ -188,11 +177,9 @@ func SerializeMonitorData(md MonitorData) []byte {
     Assert(MonitorDatumVersion == 1, "MonitorDatum version must be 1")
 
     // Byte
-    lenMd  := len(md)
-    serial := make(
-        []byte,
-        1 + lenMd * MointorDatumSize, // version byte + data bytes
-    )
+    lenMd    := len(md)
+    lenTotal := 1 + lenMd * MonitorDatumSize // version byte + data bytes
+    serial   := make([]byte, lenTotal)
 
     // Version byte
     serial[0] = byte(MonitorDatumVersion)
@@ -205,7 +192,7 @@ func SerializeMonitorData(md MonitorData) []byte {
         le.PutUint64(serial[base + 8:base + 16],  math.Float64bits(datum.Value))
         le.PutUint32(serial[base + 16:base + 20], uint32(datum.Per))
 
-        base += MointorDatumSize
+        base += MonitorDatumSize
     }
 
     return serial
@@ -223,9 +210,21 @@ func DeserializeMonitorData(serial []byte) (md MonitorData, err error) {
     version := serial[0]
     Assert(uint8(version) == MonitorDatumVersion, "MonitorData version must match the current version")
 
-    // 
+    // Make
+    mdPart := serial[1:]
+    lenMd  := len(mdPart) / MonitorDatumSize
+    md = make(MonitorData, lenMd)
 
-    return nil, nil
+    // Parse
+    le := binary.LittleEndian
+    for i := range md {
+        base := i * MonitorDatumSize
+        md[i].Timestamp = int64(le.Uint64(mdPart[base:base + 8]))
+        md[i].Value = math.Float64frombits(le.Uint64(mdPart[base + 8:base + 16]))
+        md[i].Per = int32(le.Uint32(mdPart[base + 16:base + 20]))
+    }
+
+    return md, nil
 
 }
 
