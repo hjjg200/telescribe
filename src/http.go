@@ -326,23 +326,49 @@ func(srv *Server) registerAPIV1() {
     // monitorDataBoundaries
     keyMdb := "monitorDataBoundaries"
     rgxMdb := formatRgx(keyMdb, 1)
-    hr.Get(rgxMdb, func(hctx HttpContext) {
+    hr.Post(rgxMdb, func(hctx HttpContext) {
+
         defer catchStatus(hctx)
 
         // Vars
-        w    := hctx.Writer
+        w     := hctx.Writer
         clId := hctx.Matches[1]
         // Permission
         assertStatus(isPermitted(hctx, keyMdb, clId), 403)
 
-        box, ok := srv.clientMonitorDataTableBox[clId]
-        assertStatus(ok, 400)
+        // Request body
+        dec    := json.NewDecoder(hctx.Request.Body)
+        filter := FprintCsvFilter{}
+        assertStatus(dec.Decode(&filter) == nil, 400)
 
-        // Respond
+        // Write
         w.Header().Set("Content-Type", "text/csv")
-        bds := box.Boundaries
-        rd  := bytes.NewReader(bds)
-        io.Copy(w, rd)
+        srv.FprintMonitorDataBoundariesFilter(w, clId, filter)
+
+    })
+
+    // monitorDataCsv
+    keyMdc := "monitorDataCsv"
+    rgxMdc := formatRgx(keyMdc, 2)
+    hr.Post(rgxMdc, func(hctx HttpContext) {
+
+        defer catchStatus(hctx)
+
+        // Vars
+        w          := hctx.Writer
+        clId, mKey := hctx.Matches[1], hctx.Matches[2]
+        // Permission
+        assertStatus(isPermitted(hctx, keyMdc, clId, mKey), 403)
+
+        // Request body
+        dec    := json.NewDecoder(hctx.Request.Body)
+        filter := FprintCsvFilter{}
+        assertStatus(dec.Decode(&filter) == nil, 400)
+
+        // Write
+        w.Header().Set("Content-Type", "text/csv")
+        srv.FprintMonitorDataCsvFilter(w, clId, mKey, filter)
+
     })
 
     // monitorDataTable

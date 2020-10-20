@@ -3,6 +3,8 @@ package main
 import (
     "bufio"
     "bytes"
+    "crypto/sha256"
+    "encoding/binary"
     "encoding/gob"
     "encoding/json"
     "fmt"
@@ -22,6 +24,7 @@ import (
 
 const (
     dataStoreExt              = ".store"
+    clientMetaExt             = ".meta"
     clientConfigWatchInterval = time.Second * 5
 )
 
@@ -31,6 +34,7 @@ type ServerConfig struct { // srvCfg
     // General
     AuthPrivateKeyPath  string `json:"authPrivateKeyPath"`
     ClientConfigPath    string `json:"clientConfigPath"`
+    ClientMetaDir       string `json:"clientMetaDir"`
     // Http
     HttpUsers           []HttpUser `json:"http.users"`
     HttpCertFilePath    string     `json:"http.certFilePath"` // For TLS
@@ -59,6 +63,7 @@ var DefaultServerConfig = ServerConfig{
     // General
     AuthPrivateKeyPath: "./.serverAuth.priv",
     ClientConfigPath:   "./clientConfig.json",
+    ClientMetaDir:      "./clientMeta.d",
     // Http
     HttpUsers: []HttpUser{
         HttpUser{
@@ -88,6 +93,121 @@ var DefaultServerConfig = ServerConfig{
     Tickrate:            60,
     // Alarm
     WebhookUrl:          "",
+}
+
+
+// CLIENT META ---
+
+const (
+    clientMetaKeyLastHello = "lastHello"
+    clientMetaKeyLastConnection = "lastConnection"
+    clientMetaKeyGaps = "gaps"
+)
+
+func(srv *Server) openClientMetaFile(clId, key string) (*os.File, error) {
+
+    hash := sha256.New()
+    hash.Write([]byte(clId))
+    hashId := fmt.Sprintf("%x", hash.Sum(nil))
+
+    // Ensure
+    dir := srv.config.ClientMetaDir + "/" + hashId
+    err := EnsureDirectory(dir)
+    if err != nil {
+        return nil, err
+    }
+
+    //
+    fn := dir + "/" + key + clientMetaExt
+    return os.OpenFile(fn, os.O_RDWR | os.O_CREATE, 0600)
+
+}
+func(srv *Server) readClientMetaFile(clId, key string) (p []byte, err error) {
+
+    defer Catch(&err)
+    f, err := srv.openClientMetaFile(clId, key)
+    Try(err)
+
+    return ioutil.ReadAll(f)
+
+}
+func(srv *Server) rewriteClientMetaFile(clId, key string, p []byte) (err error) {
+
+    defer Catch(&err)
+    f, err := srv.openClientMetaFile(clId, key)
+    Try(err)
+    Try(f.Truncate(0))
+    _, err = f.Seek(0, 0)
+    Try(err)
+    _, err = f.Write(p)
+    return err
+
+}
+func(srv *Server) appendClientMetaFile(clId, key string, p []byte) (err error) {
+
+    defer Catch(&err)
+    f, err := srv.openClientMetaFile(clId, key)
+    Try(err)
+    _, err = f.Write(p)
+    return err
+
+}
+func(srv *Server) getClientMetaInt64(clId, key string) (int64, bool) {
+    le := binary.LittleEndian
+    p, err := srv.readClientMetaFile(clId, key)
+    switch {
+    case err != nil,
+        len(p) < 8:
+        return 0, false
+    }
+    return int64(le.Uint64(p)), true
+}
+func(srv *Server) getClientMetaInt64Slice(clId, key string) []int64 {
+    le := binary.LittleEndian
+    p, err := srv.readClientMetaFile(clId, key)
+    arr := []int64{}
+    switch {
+    case err != nil,
+        len(p) % 8 != 0:
+        return arr
+    }
+    for i := 0; i < len(p); i += 8 {
+        arr = append(arr, int64(le.Uint64(p[i:i+8])))
+    }
+    return arr
+}
+func(srv *Server) updateClientMetaInt64(clId, key string, v int64) error {
+    le := binary.LittleEndian
+    p := make([]byte, 8)
+    le.PutUint64(p, uint64(v))
+    return srv.rewriteClientMetaFile(clId, key, p)
+}
+func(srv *Server) appendClientMetaInt64Slice(clId, key string, arr []int64) error {
+    le := binary.LittleEndian
+    p := make([]byte, 8 * len(arr))
+    for i, v := range arr {
+        le.PutUint64(p[i*8:i*8 + 8], uint64(v))
+    }
+    return srv.appendClientMetaFile(clId, key, p)
+}
+
+func(srv *Server) GetClientMetaLastHello(clId string) (int64, bool) {
+    return srv.getClientMetaInt64(clId, clientMetaKeyLastHello)
+}
+func(srv *Server) GetClientMetaLastConnection(clId string) (int64, bool) {
+    return srv.getClientMetaInt64(clId, clientMetaKeyLastConnection)
+}
+func(srv *Server) GetClientMetaGaps(clId string) []int64 {
+    return srv.getClientMetaInt64Slice(clId, clientMetaKeyGaps)
+}
+func(srv *Server) UpdateClientMetaLastHello(clId string, ts int64) error {
+    return srv.updateClientMetaInt64(clId, clientMetaKeyLastHello, ts)
+}
+func(srv *Server) UpdateClientMetaLastConnection(clId string, ts int64) error {
+    return srv.updateClientMetaInt64(clId, clientMetaKeyLastConnection, ts)
+}
+func(srv *Server) AppendClientMetaGaps(clId string, from, to int64) error {
+    return srv.appendClientMetaInt64Slice(clId, clientMetaKeyGaps, []int64{from, to})
 }
 
 
@@ -297,7 +417,6 @@ func(srv *Server) loadClientConfig() (err error) {
 
     // File path
     fn := srv.config.ClientConfigPath
-    EventLogger.Debugln("1", fn)
     
     // Open file
     f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
@@ -408,6 +527,7 @@ func(srv *Server) Start() (err error) {
 
     // Ensure directories
     Try(EnsureDirectory(srv.config.DataStoreDir))
+    Try(EnsureDirectory(srv.config.ClientMetaDir))
     EventLogger.Infoln("Ensured necessary directories")
 
     // Network
@@ -606,20 +726,16 @@ func(srv *Server) Start() (err error) {
                 if clId == "" || mKey == "" {
                     continue
                 }
+                buf := bytes.NewBuffer(nil)
                 srv.FprintMonitorDataCsvFilter(
-                    os.Stdout, clId, mKey, FprintCsvFilter{
+                    buf, clId, mKey, FprintCsvFilter{
                         From: 0,
                         To: 1700785212,
-                        Per: 45,
-                        Func: func(md MonitorData) float64 {
-                            accm := 0.0
-                            for _, datum := range md {
-                                accm += datum.Value
-                            }
-                            return accm / float64(len(md))
-                        },
+                        Per: 1,
                     },
                 )
+
+                EventLogger.Debugln("fprintCsv", buf.String())
             }
         }()
     }
@@ -794,22 +910,68 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 }
 
 type FprintCsvFilter struct {
-    From int64
-    To   int64
-    Per  int32
-    Func func(MonitorData) float64
+    From int64 `json:"from"`
+    To   int64 `json:"to"`
+    Per  int32 `json:"to"`
+}
+func(srv *Server) FprintMonitorDataBoundariesFilter(w io.Writer, clId string, filter FprintCsvFilter) {
+
+    // CSV header
+    w.Write([]byte("timestamp\n"))
+
+    // Meta
+    gaps := srv.GetClientMetaGaps(clId)
+
+    // Find the start and end
+    mdMap, ok := srv.clientMonitorDataMap[clId]
+    if !ok {
+        return
+    }
+
+    start, end := int64(1<<63 - 1), int64(0) // max int64, 0
+    for _, md := range mdMap {
+        if len(md) == 0 {
+            continue
+        }
+        ts0 := md[0].Timestamp
+        tsl := md[len(md) - 1].Timestamp
+        if ts0 < start {
+            start = ts0
+        }
+        if tsl > end {
+            end = tsl
+        }
+    }
+
+    // Unchanged
+    if end == 0 {
+        return
+    }
+
+    fmt.Fprintf(w, "%d\n", start)
+    for i := 0; i < len(gaps); i += 2 {
+        g1, g2 := gaps[i], gaps[i+1]
+        fmt.Fprintf(w, "%d\n%d\n", g1, g2)
+    }
+    fmt.Fprintf(w, "%d\n", end)
+
 }
 func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, filter FprintCsvFilter) {
 
     // CSV header
     w.Write([]byte("timestamp,value,per\n"))
 
+    // Meta
+    gaps := srv.GetClientMetaGaps(clId)
 
-
-
-
-
-
+    // Funcs
+    avgFunc := func(md MonitorData) float64 {
+        acc := 0.0
+        for _, datum := range md {
+            acc += datum.Value
+        }
+        return acc / float64(len(md))
+    }
 
     // Cache
     cache := MonitorData{}
@@ -817,9 +979,27 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
         if len(cache) == 0 {
             return
         }
+        // NaN for hello
+        if len(gaps) > 0 {
+            gMid := 0.0
+            for ; len(gaps) > 0; {
+                g1, g2 := gaps[0], gaps[1]
+                if g2 < cache.From() {
+                    gMid = float64(g1 + g2) / 2.0
+                    gaps = gaps[2:]
+                } else {
+                    break
+                }
+            }
+
+            if gMid != 0.0 {
+                fmt.Fprintf(w, "%f.1,NaN,NaN\n", gMid)
+            }
+        }
+        // Data
         fmt.Fprintf(
-            w, "%d,%f,%d\n",
-            cache.MidTime(), filter.Func(cache), cache.Duration(),
+            w, "%.1f,%f,%d\n",
+            cache.MidTime(), avgFunc(cache), cache.Duration(),
         )
         cache = MonitorData{}
     }
@@ -1192,6 +1372,15 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         srvRsp.Set("configVersion", srv.clientConfigVersion[clId])
         EventLogger.Infoln(clId, "HELLO CLIENT")
         Try(s.WriteResponse(srvRsp))
+
+        // Meta
+        timestamp := time.Now().Unix()
+        lastConnection, ok := srv.GetClientMetaLastConnection(clId)
+        if ok {
+            Try(srv.AppendClientMetaGaps(clId, lastConnection, timestamp))
+        }
+        Try(srv.UpdateClientMetaLastHello(clId, timestamp))
+
         return nil
 
     case "monitor-record":
@@ -1201,6 +1390,9 @@ func(srv *Server) HandleSession(s *Session) (err error) {
         Assert(ok, "Malformed value map")
         per        := clRsp.Int32("per")
         srv.RecordValueMap(clId, timestamp, valMap, per)
+
+        // Meta
+        srv.UpdateClientMetaLastConnection(clId, timestamp)
 
     default:
         panic("Unknown response")

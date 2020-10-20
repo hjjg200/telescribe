@@ -56,8 +56,8 @@ func(md MonitorData) To() int64 {
 func(md MonitorData) Duration() int64 {
     return md.To() - md.From()
 }
-func(md MonitorData) MidTime() int64 {
-    return md.From() + md.Duration() / 2 + md.Duration() % 2
+func(md MonitorData) MidTime() float64 {
+    return float64(md.To() + md.From()) / 2.0
 }
 
 // Index ---

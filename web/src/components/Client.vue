@@ -210,7 +210,10 @@ export default {
 
             let format = $.monitorConfigMap[monitorKey].format;
             let buf = [];
-            let csv = await $.$api.v1.getMonitorDataTable($.id, monitorKey);
+            let filter = {
+              from: 0, to: 2100000000, per: 1
+            };
+            let csv = await $.$api.v1.getMonitorDataTable($.id, monitorKey, filter);
 
             // Make this part of documentation
             d3.csvParse(csv, row => buf.push({

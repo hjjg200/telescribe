@@ -18,9 +18,11 @@ function formatURI(key, ...args) {
   return `/${apiName}/${key}${suffix}`;
 }
 
-async function apiFetch(method, typ, key, ...args) {
+async function apiFetch(method, typ, body, key, ...args) {
   let uri = formatURI(key, ...args);
-  let rsp = await fetch(uri, {method});
+  let info = {method};
+  if(body !== undefined) info.body = JSON.stringify(body);
+  let rsp = await fetch(uri, info);
   if(rsp.status !== 200) {
     throw new apiError(uri, rsp.status);
   }
@@ -32,61 +34,68 @@ export default {
   keyClientInfoMap: "clientInfoMap",
   async getClientInfoMap() {
     return await apiFetch(
-      "GET", "json", this.keyClientInfoMap
+      "GET", "json", undefined, this.keyClientInfoMap
     );
   },
 
   keyClientRule: "clientRule",
   async getClientRule(clientId) { 
     return await apiFetch(
-      "GET", "json", this.keyClientRule, clientId
+      "GET", "json", undefined, this.keyClientRule, clientId
     );
   },
 
   keyClientItemStatus: "clientItemStatus",
   async getClientItemStatus(clientId) { 
     return await apiFetch(
-      "GET", "json", this.keyClientItemStatus, clientId
+      "GET", "json", undefined, this.keyClientItemStatus, clientId
     );
   },
 
   keyMcfg: "monitorConfig",
   async getMonitorConfig(clientId, monitorKey) {
     return await apiFetch(
-      "GET", "json", this.keyMcfg, clientId, monitorKey
+      "GET", "json", undefined, this.keyMcfg, clientId, monitorKey
     );
   },
 
   keyMdb: "monitorDataBoundaries",
   async getMonitorDataBoundaries(clientId) {
     return await apiFetch(
-      "GET", "text", this.keyMdb, clientId
+      "POST", "text", undefined, this.keyMdb, clientId
+    );
+  },
+
+  keyMdc: "monitorDataCsv",
+  async getMonitorDataCsv(clientId, monitorKey, filter) {
+    return await apiFetch(
+      "POST", "text", filter, this.keyMdc, clientId, monitorKey
     );
   },
 
   keyMdt: "monitorDataTable",
   async getMonitorDataTable(clientId, monitorKey) {
     return await apiFetch(
-      "GET", "text", this.keyMdt, clientId, monitorKey
+      "GET", "text", undefined, this.keyMdt, clientId, monitorKey
     );
   },
   async deleteMonitorDataTable(clientId, monitorKey) {
     return await apiFetch(
-      "DELETE", undefined, this.keyMdt, clientId, monitorKey
+      "DELETE", undefined, undefined, this.keyMdt, clientId, monitorKey
     );
   },
 
   keyWebCfg: "webConfig",
   async getWebConfig() {
     return await apiFetch(
-      "GET", "json", this.keyWebCfg
+      "GET", "json", undefined, this.keyWebCfg
     );
   },
 
   keyVersion: "version",
   async getVersion() {
     return await apiFetch(
-      "GET", "json", this.keyVersion
+      "GET", "json", undefined, this.keyVersion
     );
   }
 

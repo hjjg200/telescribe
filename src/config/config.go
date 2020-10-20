@@ -16,6 +16,15 @@ type Parser struct {
     vf  map[uintptr] reflect.Value
 }
 
+// Experimental must function
+func MustNewParser(cfg interface{}) *Parser {
+    p, err := NewParser(cfg)
+    if err != nil {
+        panic(err)
+    }
+    return p
+}
+
 func NewParser(cfg interface{}) (*Parser, error) {
 
     // Ensure cfg is struct
