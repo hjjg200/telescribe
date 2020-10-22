@@ -714,18 +714,13 @@ func(srv *Server) Start() (err error) {
         go func() {
             for {
                 time.Sleep(30 * time.Second)
-                var clId, mKey string
-                for i, mdMap := range srv.clientMonitorDataMap { // indexes dont count with this for
-                    clId = i
-                    for j := range mdMap {
-                        mKey = j
-                        break
-                    } 
-                    break
-                }
-                if clId == "" || mKey == "" {
+                clId      := srv.GetClientIds()[0]
+                mKeys, ok := srv.GetClientMonitorKeys(clId)
+                if !ok || len(mKeys) == 0 {
                     continue
                 }
+                mKey := mKeys[0]
+
                 buf := bytes.NewBuffer(nil)
                 srv.FprintMonitorDataCsvFilter(
                     buf, clId, mKey, FprintCsvFilter{
@@ -738,8 +733,20 @@ func(srv *Server) Start() (err error) {
                 EventLogger.Debugln("fprintCsv", buf.String())
                 length := srv.GetMonitorDataLength(clId, mKey)
                 EventLogger.Debugln("fprintCsv", "\nLength:", length)
-                EventLogger.Debugln("fprintCsv", "\n[len - 3:len]:", srv.GetMonitorDataSlice(clId, mKey, length - 3, length))
-                EventLogger.Debugln("fprintCsv", "\nLast:", srv.GetMonitorDataSlice(clId, mKey, length - 1, length))
+
+                buf = bytes.NewBuffer(nil)
+                srv.FprintMonitorDataBoundaries(
+                    buf, clId,
+                )
+                EventLogger.Debugln("fprintCsv", "\nBoundaries:", buf.String())
+
+                // Meta
+                gaps := srv.GetClientMetaGaps(clId)
+                lh, _ := srv.GetClientMetaLastHello(clId)
+                lc, _ := srv.GetClientMetaLastConnection(clId)
+                EventLogger.Debugln("fprintCsv", "\nGaps:", gaps)
+                EventLogger.Debugln("fprintCsv", "\nLH:", lh)
+                EventLogger.Debugln("fprintCsv", "\nLC:", lc)
             }
         }()
     }
@@ -1034,9 +1041,9 @@ func(srv *Server) GetMonitorDataFromIndex(uuid string) (MonitorData, error) {
 type FprintCsvFilter struct {
     From int64 `json:"from"`
     To   int64 `json:"to"`
-    Per  int32 `json:"to"`
+    Per  int32 `json:"per"`
 }
-func(srv *Server) FprintMonitorDataBoundariesFilter(w io.Writer, clId string, filter FprintCsvFilter) {
+func(srv *Server) FprintMonitorDataBoundaries(w io.Writer, clId string) {
 
     // CSV header
     w.Write([]byte("timestamp\n"))
@@ -1045,18 +1052,18 @@ func(srv *Server) FprintMonitorDataBoundariesFilter(w io.Writer, clId string, fi
     gaps := srv.GetClientMetaGaps(clId)
 
     // Find the start and end
-    mdMap, ok := srv.clientMonitorDataMap[clId]
+    mKeys, ok := srv.GetClientMonitorKeys(clId)
     if !ok {
         return
     }
-
     start, end := int64(1<<63 - 1), int64(0) // max int64, 0
-    for _, md := range mdMap {
-        if len(md) == 0 {
+    for _, mKey := range mKeys {
+        length := srv.GetMonitorDataLength(clId, mKey)
+        if length == 0 {
             continue
         }
-        ts0 := md[0].Timestamp
-        tsl := md[len(md) - 1].Timestamp
+        ts0 := srv.GetMonitorDataSlice(clId, mKey, 0, 1)[0].Timestamp
+        tsl := srv.GetMonitorDataSlice(clId, mKey, length - 1, length)[0].Timestamp
         if ts0 < start {
             start = ts0
         }
@@ -1084,7 +1091,14 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
     w.Write([]byte("timestamp,value,per\n"))
 
     // Get gaps from meta
-    gaps := srv.GetClientMetaGaps(clId)
+    gaps  := srv.GetClientMetaGaps(clId)
+    gMids := []float64{}
+    for i := 0; i < len(gaps); i += 2 {
+        gMid := float64(gaps[i] + gaps[i + 1]) / 2.0
+        if gMid > float64(filter.From) && gMid < float64(filter.To) {
+            gMids = append(gMids, gMid)
+        }
+    }
 
     // Funcs
     avgFunc := func(md MonitorData) float64 {
@@ -1101,23 +1115,6 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
         if len(cache) == 0 {
             return
         }
-        // NaN for mid points of gaps
-        if len(gaps) > 0 {
-            gMid := 0.0
-            for ; len(gaps) > 0; {
-                g0, g1 := gaps[0], gaps[1]
-                if g1 < cache.From() {
-                    gMid = float64(g0 + g1) / 2.0
-                    gaps = gaps[2:]
-                } else {
-                    break
-                }
-            }
-
-            if gMid != 0.0 {
-                fmt.Fprintf(w, "%.1f,NaN,NaN\n", gMid)
-            }
-        }
         // Data
         fmt.Fprintf(
             w, "%.1f,%f,%d\n",
@@ -1125,12 +1122,24 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
         )
         cache = MonitorData{}
     }
+    lastTo := int64(0)
     put := func(datum MonitorDatum) {
         if filter.From > datum.Timestamp || filter.To < datum.Timestamp {
             return
         }
-        cache = append(cache, datum)
-        // When the put data's duration exceed or match the per 
+        if lastTo != 0 &&
+            len(gMids) > 0 &&
+            gMids[0] > float64(lastTo) &&
+            gMids[0] < float64(datum.Timestamp) {
+            flush()
+
+            fmt.Fprintf(w, "%.1f,NaN,NaN\n", gMids[0])
+            gMids = gMids[1:]
+        }
+        
+        cache  = append(cache, datum)
+        lastTo = cache.To()
+        // When the put data's duration exceed or match the per
         if cache.Duration() >= int64(filter.Per) {
             flush()
         }
@@ -1142,11 +1151,6 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
 
         if index.To < filter.From || index.From > filter.To {
             return
-        }
-
-        // Debug
-        if flDebug {
-            fmt.Fprintf(w, "INDEX %s\n", index.Uuid)
         }
 
         warner := func(args ...interface{}) {

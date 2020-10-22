@@ -62,7 +62,7 @@ export default {
   keyMdb: "monitorDataBoundaries",
   async getMonitorDataBoundaries(clientId) {
     return await apiFetch(
-      "POST", "text", undefined, this.keyMdb, clientId
+      "GET", "text", undefined, this.keyMdb, clientId
     );
   },
 

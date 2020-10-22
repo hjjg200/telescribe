@@ -207,7 +207,7 @@ export default {
       };
 
       // Scale and boudaries
-      this._xBoundary   = [this._firstT(), this._lastT()];
+      this._xBoundary   = d3.extent(this.boundaries);
       let xBoundary     = this._xBoundary;
       this._priorXScale = this._xScale;
       this._xScale      = this._scale();
@@ -667,28 +667,6 @@ export default {
           .on("mouseup",     () => {isMouseDown = false;});
       }
 
-    },
-
-    _getTimestamp(initial, mathFunc, idx) {
-      if(Object.keys(this.dataset).length === 0) return NaN;
-
-      let ts = initial;
-      for(const key in this.dataset) {
-        let data = this.dataset[key];
-        idx = (idx < 0)
-          ? data.length + idx
-          : idx;
-        const datum = data[idx];
-        ts = mathFunc(datum.x, ts);
-      }
-
-      return ts;
-    },
-    _firstT() {
-      return this._getTimestamp(Infinity, Math.min, 0);
-    },
-    _lastT() {
-      return this._getTimestamp(0, Math.max, -1);
     },
 
     _scale() {

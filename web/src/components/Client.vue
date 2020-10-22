@@ -213,7 +213,7 @@ export default {
             let filter = {
               from: 0, to: 2100000000, per: 1
             };
-            let csv = await $.$api.v1.getMonitorDataTable($.id, monitorKey, filter);
+            let csv = await $.$api.v1.getMonitorDataCsv($.id, monitorKey, filter);
 
             // Make this part of documentation
             d3.csvParse(csv, row => buf.push({
@@ -237,6 +237,7 @@ export default {
         }
         
         $.activeDataset = activeDataset;
+        console.log(activeDataset);
 
       });
 

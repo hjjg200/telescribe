@@ -328,24 +328,19 @@ func(srv *Server) registerAPIV1() {
     // monitorDataBoundaries
     keyMdb := "monitorDataBoundaries"
     rgxMdb := formatRgx(keyMdb, 1)
-    hr.Post(rgxMdb, func(hctx HttpContext) {
+    hr.Get(rgxMdb, func(hctx HttpContext) {
 
         defer catchStatus(hctx)
 
         // Vars
-        w     := hctx.Writer
+        w    := hctx.Writer
         clId := hctx.Matches[1]
         // Permission
         assertStatus(isPermitted(hctx, keyMdb, clId), 403)
 
-        // Request body
-        dec    := json.NewDecoder(hctx.Request.Body)
-        filter := FprintCsvFilter{}
-        assertStatus(dec.Decode(&filter) == nil, 400)
-
         // Write
         w.Header().Set("Content-Type", "text/csv")
-        srv.FprintMonitorDataBoundariesFilter(w, clId, filter)
+        srv.FprintMonitorDataBoundaries(w, clId)
 
     })
 
@@ -369,6 +364,7 @@ func(srv *Server) registerAPIV1() {
 
         // Write
         w.Header().Set("Content-Type", "text/csv")
+        EventLogger.Debugln("oct22-http", filter)
         srv.FprintMonitorDataCsvFilter(w, clId, mKey, filter)
 
     })
