@@ -715,7 +715,7 @@ func(srv *Server) Start() (err error) {
             for {
                 time.Sleep(30 * time.Second)
                 var clId, mKey string
-                for i, mdMap := range srv.clientMonitorDataMap {
+                for i, mdMap := range srv.clientMonitorDataMap { // indexes dont count with this for
                     clId = i
                     for j := range mdMap {
                         mKey = j
@@ -736,6 +736,10 @@ func(srv *Server) Start() (err error) {
                 )
 
                 EventLogger.Debugln("fprintCsv", buf.String())
+                length := srv.GetMonitorDataLength(clId, mKey)
+                EventLogger.Debugln("fprintCsv", "\nLength:", length)
+                EventLogger.Debugln("fprintCsv", "\n[len - 3:len]:", srv.GetMonitorDataSlice(clId, mKey, length - 3, length))
+                EventLogger.Debugln("fprintCsv", "\nLast:", srv.GetMonitorDataSlice(clId, mKey, length - 1, length))
             }
         }()
     }
@@ -909,6 +913,124 @@ func(srv *Server) readStoredClientMonitorDataMap() (err error) {
 
 }
 
+func(srv *Server) GetClientIds() []string {
+    infoMap := srv.clientConfig.InfoMap
+    ret := []string{}
+    for clId := range infoMap {
+        ret = append(ret, clId)
+    }
+    return ret
+}
+
+func(srv *Server) GetClientMonitorKeys(clId string) ([]string, bool) {
+    m := make(map[string] struct{})
+    // Index
+    indexes, ok1 := srv.clientMonitorDataIndexesMap[clId]
+    for mKey := range indexes {m[mKey] = struct{}{}}
+    // In-memory
+    inMem, ok2 := srv.clientMonitorDataMap[clId]
+    for mKey := range inMem   {m[mKey] = struct{}{}}
+
+    if !(ok1 || ok2) {return nil, false}
+    //
+    ret := []string{}
+    for mKey := range m {ret = append(ret, mKey)}
+    return ret, true
+}
+
+func(srv *Server) GetMonitorDataLength(clId, mKey string) int {
+
+    sum := 0
+    
+    // Indexes
+    indexes := srv.clientMonitorDataIndexesMap[clId][mKey]
+    for _, index := range indexes {
+        sum += index.Length
+    }
+
+    // In-memory
+    inMem := srv.clientMonitorDataMap[clId][mKey]
+    sum += len(inMem)
+
+    return sum
+
+}
+
+func(srv *Server) GetMonitorDataSlice(clId, mKey string, from, to int) MonitorData {
+
+    base  := 0
+    slice := MonitorData{}
+
+    checker := func(length int) (int, int) {
+
+        var p1, p2 int
+        if from >= base && from < base + length { // within
+            p1 = from - base
+        } else if from < base { // past
+            p1 = 0
+        } else if from >= base + length { // to come
+            p1 = length
+        }
+
+        if to > base + length { // to come
+            p2 = length
+        } else if to > base && to <= base + length { // within
+            p2 = to - base
+        } else if to < base + 1 {
+            p2 = 0
+        }
+
+        base += length
+        return p1, p2
+    }
+    
+    // Indexes
+    indexes := srv.clientMonitorDataIndexesMap[clId][mKey]
+    for _, index := range indexes {
+        p1, p2 := checker(index.Length)
+        if p2 - p1 != 0 {
+            part, err := srv.GetMonitorDataFromIndex(index.Uuid)
+            if err != nil {
+                EventLogger.Warnln("Failed to read index:", index.Uuid)
+                continue
+            }
+            slice = append(slice, part[p1:p2]...)
+        }
+    }
+
+    // In-memory
+    inMem := srv.clientMonitorDataMap[clId][mKey]
+    if len(inMem) > 0 {
+        p1, p2 := checker(len(inMem))
+        slice   = append(slice, inMem[p1:p2]...)
+    }
+
+    return slice
+
+}
+
+func(srv *Server) GetMonitorDataFromIndex(uuid string) (MonitorData, error) {
+
+    fn := srv.config.DataStoreDir + "/" + uuid + dataStoreExt
+    f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
+    if err != nil {
+        return nil, err
+    }
+
+    p, err := ioutil.ReadAll(f)
+    if err != nil {
+        return nil, err
+    }
+
+    part, err := DeserializeMonitorData(p)
+    if err != nil {
+        return nil, err
+    }
+
+    return part, nil
+
+}
+
 type FprintCsvFilter struct {
     From int64 `json:"from"`
     To   int64 `json:"to"`
@@ -961,7 +1083,7 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
     // CSV header
     w.Write([]byte("timestamp,value,per\n"))
 
-    // Meta
+    // Get gaps from meta
     gaps := srv.GetClientMetaGaps(clId)
 
     // Funcs
@@ -973,19 +1095,19 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
         return acc / float64(len(md))
     }
 
-    // Cache
+    // Cache and flush
     cache := MonitorData{}
     flush := func() {
         if len(cache) == 0 {
             return
         }
-        // NaN for hello
+        // NaN for mid points of gaps
         if len(gaps) > 0 {
             gMid := 0.0
             for ; len(gaps) > 0; {
-                g1, g2 := gaps[0], gaps[1]
-                if g2 < cache.From() {
-                    gMid = float64(g1 + g2) / 2.0
+                g0, g1 := gaps[0], gaps[1]
+                if g1 < cache.From() {
+                    gMid = float64(g0 + g1) / 2.0
                     gaps = gaps[2:]
                 } else {
                     break
@@ -993,7 +1115,7 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
             }
 
             if gMid != 0.0 {
-                fmt.Fprintf(w, "%f.1,NaN,NaN\n", gMid)
+                fmt.Fprintf(w, "%.1f,NaN,NaN\n", gMid)
             }
         }
         // Data
@@ -1032,22 +1154,9 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
             EventLogger.Warnln(args...)
         }
 
-        fn := srv.config.DataStoreDir + "/" + index.Uuid + dataStoreExt
-        f, err := os.OpenFile(fn, os.O_RDONLY, 0600)
+        part, err := srv.GetMonitorDataFromIndex(index.Uuid)
         if err != nil {
             warner("failed index", index.Uuid, err)
-            return
-        }
-
-        p, err    := ioutil.ReadAll(f)
-        if err != nil {
-            warner("failed read", index.Uuid, err)
-            return
-        }
-
-        part, err := DeserializeMonitorData(p)
-        if err != nil {
-            warner("failed deserialization", index.Uuid, err)
             return
         }
 

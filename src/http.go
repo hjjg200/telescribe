@@ -274,10 +274,11 @@ func(srv *Server) registerAPIV1() {
         // Permission
         assertStatus(isPermitted(hctx, keyClItStat, clId), 403)
 
-        mdMap, ok :=  srv.clientMonitorDataMap[clId]
+        mKeys, ok :=  srv.GetClientMonitorKeys(clId)
+        EventLogger.Debugln("oct22-http", clId, mKeys, ok)
         assertStatus(ok, 400)
 
-        for mKey, mData := range mdMap {
+        for _, mKey := range mKeys {
             if !isPermitted(hctx, keyClItStat, clId, mKey) {
                 continue
             }
@@ -288,12 +289,13 @@ func(srv *Server) registerAPIV1() {
                 EventLogger.Warnln("Monitor config for", mKey, "was not found")
             }
 
-            le   := mData[len(mData) - 1]
+            length := srv.GetMonitorDataLength(clId, mKey)
+            last   := srv.GetMonitorDataSlice(clId, mKey, length - 1, length)[0]
             ret[mKey] = ClientItemStatus{
-                Timestamp: le.Timestamp,
-                Value:     le.Value,
-                Per:       le.Per,
-                Status:    mCfg.StatusOf(le.Value),
+                Timestamp: last.Timestamp,
+                Value:     last.Value,
+                Per:       last.Per,
+                Status:    mCfg.StatusOf(last.Value),
             }
         }
 

@@ -21,6 +21,7 @@ First version that complies with the documentation
 - [x] **Changed:** `web` made Graph component an independent component; made it use x and y instead of timestamp and value
 - [ ] **Changed:** `server` increase the data storing performance
 - [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
+- [ ] **Fixed:** `server` added a handler for corrupted indexes file or store files
 
 
 #### Known Issues

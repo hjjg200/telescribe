@@ -63,7 +63,7 @@ func(md MonitorData) MidTime() float64 {
 // Index ---
 type MonitorDataIndex struct {
     Uuid   string `json:"uuid"`
-    Length uint64 `json:"length"`
+    Length int    `json:"length"`
     From   int64  `json:"from"`
     To     int64  `json:"to"`
 }
@@ -94,7 +94,7 @@ func CreateIndexForMonitorData(md MonitorData) MonitorDataIndex {
     }
 
     mi.Uuid   = CreateUuidForMonitorData(md)
-    mi.Length = uint64(len(md))
+    mi.Length = len(md)
     mi.From   = md[0].Timestamp
     mi.To     = md[len(md) - 1].Timestamp
 
