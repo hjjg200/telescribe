@@ -9,6 +9,7 @@ import "C"
 
 import (
     "fmt"
+    "reflect"
 )
 
 type Statvfs_t struct {
@@ -27,19 +28,16 @@ type Statvfs_t struct {
 
 func c_PROPAGATE_ALL_ONES(in interface{}) uint64 {
 
-    val := uint64(0)
     all := false
-    switch cast := in.(type) {
-    case int:    all = ^cast == 0; val = uint64(cast)
-    case int8:   all = ^cast == 0; val = uint64(cast)
-    case int16:  all = ^cast == 0; val = uint64(cast)
-    case int32:  all = ^cast == 0; val = uint64(cast)
-    case int64:  all = ^cast == 0; val = uint64(cast)
-    case uint:   all = ^cast == 0; val = uint64(cast)
-    case uint8:  all = ^cast == 0; val = uint64(cast)
-    case uint16: all = ^cast == 0; val = uint64(cast)
-    case uint32: all = ^cast == 0; val = uint64(cast)
-    case uint64: all = ^cast == 0; val = uint64(cast)
+    rv  := reflect.ValueOf(in)
+    sz  := rv.Type().Bits() / 8
+    val := rv.Uint() // uint64
+
+    switch sz {
+    case 8: all = ^val == 0
+    case 4: all = ^uint32(val) == 0
+    case 2: all = ^uint16(val) == 0
+    case 1: all = ^uint8(val) == 0
     }
 
     if all {return ^uint64(0)}
@@ -70,6 +68,8 @@ func Statvfs(path string, buf *Statvfs_t) (err error) {
         Flag:    c_PROPAGATE_ALL_ONES(c_stat.f_flag),
         Namemax: c_PROPAGATE_ALL_ONES(c_stat.f_namemax),
     }
+
+    fmt.Println(path, c_stat)
 
     return nil
 

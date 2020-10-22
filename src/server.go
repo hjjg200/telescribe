@@ -14,7 +14,6 @@ import (
     "net/http"
     "os"
     "path/filepath"
-    "sort"
     "strings"
     "time"
 
@@ -605,110 +604,6 @@ func(srv *Server) Start() (err error) {
     }()
     EventLogger.Infoln("Started client config reloading thread")
 
-    // Chart-ready csv preparing thread
-    go func() {for railSwitch.Queue(threadMain, 1) {func() {
-
-        defer func() {
-            if r := recover(); r != nil {
-                EventLogger.Warnln(r)
-            }
-        }()
-
-        //
-        timer := EventLogger.Timer("time:DataPreparation")
-
-        clMdtBox := make(map[string/* clId */] MonitorDataTableBox)
-        gthSec   := int64(srv.config.GapThresholdTime * 60) // To seconds
-
-        for clId, mdMap := range srv.clientMonitorDataMap {
-
-            // Maps
-            tsMap  := make(map[int64/* timestamp */] struct{})
-            mdtMap := make(map[string] []byte)
-
-            // Table-writing loop
-            for mKey, mData := range mdMap {
-
-                // Decimate monitor data
-                decimated := LttbMonitorData(
-                    mData, srv.config.DecimationThreshold,
-                )
-
-                // Write CSV(table)
-                csv    := bytes.NewBuffer(nil)
-                prevTs := decimated[0].Timestamp
-                fmt.Fprint(csv, "timestamp,value,per\n")
-
-                // Write rows
-                for _, each := range decimated {
-
-                    ts := each.Timestamp
-
-                    // Check if there is gap
-                    if ts - prevTs > gthSec {
-                        // Put NaN which indicates a gap
-                        midTs        := (ts + prevTs) / 2
-                        tsMap[midTs]  = struct{}{}
-                        fmt.Fprintf(csv, "%d,NaN,NaN\n", midTs)
-                    }
-
-                    prevTs    = ts
-                    tsMap[ts] = struct{}{}
-                    fmt.Fprintf(csv, "%d,%f,%d\n", ts, each.Value, each.Per)
-
-                }
-
-                // Assign csv
-                mdtMap[mKey] = csv.Bytes()
-
-            }
-
-            // Timestamps slice
-            i, tss := 0, make([]int64, len(tsMap))
-            for t := range tsMap {
-                tss[i] = t
-                i++
-            }
-            sort.Sort(Int64Slice(tss)) // Sort
-
-            // TODO make this documented
-            // Write boundaries table
-            bds := bytes.NewBuffer(nil)
-            fmt.Fprint(bds, "timestamp\n")
-            fmt.Fprintf(bds, "%d\n", tss[0])
-            for i := 1; i < len(tss); i++ {
-                prev := tss[i-1]
-                curr := tss[i]
-                if curr - prev > gthSec {
-                    fmt.Fprintf(bds, "%d\n", prev)
-                    fmt.Fprintf(bds, "%d\n", curr)
-                }
-            }
-            fmt.Fprintf(bds, "%d\n", tss[len(tss)-1])
-
-            // Assign
-            clMdtBox[clId] = MonitorDataTableBox{
-                Boundaries: bds.Bytes(),
-                DataMap: mdtMap,
-            }
-
-        }
-
-        // Assign
-        srv.clientMonitorDataTableBox = clMdtBox
-        EventLogger.Infoln("Chart-ready data prepared")
-
-        timer.Stop()
-
-        // Task done
-        railSwitch.Proceed(threadMain)
-
-        // Sleep at end
-        time.Sleep(time.Minute * time.Duration(srv.config.DecimationInterval))
-
-    }()}}()
-    EventLogger.Infoln("Started data decimation thread")
-
     // Debug
     if flDebug {
         go func() {
@@ -1188,6 +1083,8 @@ func(srv *Server) FprintMonitorDataCsvFilter(w io.Writer, clId, mKey string, fil
 }
 
 func(srv *Server) StoreClientMonitorDataMap() (err error) {
+
+    // TODO: store the in-memory values into indexes at cleanup
 
     defer Catch(&err)
 
