@@ -1,4 +1,4 @@
 #!/bin/bash
 
 export APP_NAME=telescribe
-export VERSION=pre-beta-debug4
+export VERSION=pre-beta_debug5

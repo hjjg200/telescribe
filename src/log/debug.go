@@ -9,6 +9,8 @@ import (
 var Debug = false
 var DebugFilter = &Filter{}
 
+// TODO make filter regex match a portion of the target text, not the whole of it
+
 func(lgr *Logger) Debugln(category string, args ...interface{}) {
 
     if !(Debug && DebugFilter.Filter(category)) {

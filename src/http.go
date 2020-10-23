@@ -274,7 +274,7 @@ func(srv *Server) registerAPIV1() {
         // Permission
         assertStatus(isPermitted(hctx, keyClItStat, clId), 403)
 
-        mKeys, ok :=  srv.GetClientMonitorKeys(clId)
+        mKeys, ok :=  srv.GetClientMonitorDataKeys(clId)
         EventLogger.Debugln("oct22-http", clId, mKeys, ok)
         assertStatus(ok, 400)
 
@@ -284,13 +284,13 @@ func(srv *Server) registerAPIV1() {
             }
 
             // Config
-            mCfg, ok := srv.getMonitorConfig(clId, mKey)
+            mCfg, ok := srv.getClientMonitorConfig(clId, mKey)
             if !ok {
                 EventLogger.Warnln("Monitor config for", mKey, "was not found")
             }
 
-            length := srv.GetMonitorDataLength(clId, mKey)
-            last   := srv.GetMonitorDataSlice(clId, mKey, length - 1, length)[0]
+            length := srv.GetClientMonitorDataLength(clId, mKey)
+            last   := srv.GetClientMonitorDataSlice(clId, mKey, length - 1, length)[0]
             ret[mKey] = ClientItemStatus{
                 Timestamp: last.Timestamp,
                 Value:     last.Value,
@@ -317,7 +317,7 @@ func(srv *Server) registerAPIV1() {
         assertStatus(isPermitted(hctx, keyMcfg, clId, mKey), 403)
 
         // Get Config
-        cfg, ok := srv.getMonitorConfig(clId, mKey)
+        cfg, ok := srv.getClientMonitorConfig(clId, mKey)
         assertStatus(ok, 400)
 
         // Respond
@@ -340,7 +340,7 @@ func(srv *Server) registerAPIV1() {
 
         // Write
         w.Header().Set("Content-Type", "text/csv")
-        srv.FprintMonitorDataBoundaries(w, clId)
+        srv.FprintClientMonitorDataBoundaries(w, clId)
 
     })
 
@@ -365,35 +365,8 @@ func(srv *Server) registerAPIV1() {
         // Write
         w.Header().Set("Content-Type", "text/csv")
         EventLogger.Debugln("oct22-http", filter)
-        srv.FprintMonitorDataCsvFilter(w, clId, mKey, filter)
+        srv.FprintClientMonitorDataCsvFilter(w, clId, mKey, filter)
 
-    })
-
-    // monitorDataTable
-    keyMdt := "monitorDataTable"
-    rgxMdt := formatRgx(keyMdt, 2)
-    hr.Get(rgxMdt, func(hctx HttpContext) {
-        defer catchStatus(hctx)
-
-        // Vars
-        w          := hctx.Writer
-        clId, mKey := hctx.Matches[1], hctx.Matches[2]
-        // Permission
-        assertStatus(isPermitted(hctx, keyMdt, clId, mKey), 403)
-
-        box, ok  := srv.clientMonitorDataTableBox[clId]
-        assertStatus(ok, 400)
-
-        mdt, ok := box.DataMap[mKey]
-        assertStatus(ok, 400)
-
-        // Respond
-        w.Header().Set("Content-Type", "text/csv")
-        rd := bytes.NewReader(mdt)
-        io.Copy(w, rd)
-    })
-    hr.Delete(rgxMdt, func(hctx HttpContext) {
-        
     })
 
     // webConfig

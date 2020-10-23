@@ -3,7 +3,7 @@
 # Populate Vars
 . ./VARS
 
-VERSION_STRING=${APP_NAME}-${VERSION}
+VERSION_STRING=${APP_NAME}_${VERSION}
 echo Building $VERSION_STRING
 
 opt=$1

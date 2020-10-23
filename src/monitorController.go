@@ -1,12 +1,8 @@
 package main
 
 import (
-    "bufio"
-    "bytes"
-    "compress/gzip"
     "crypto/sha256"
     "encoding/binary"
-    "encoding/gob"
     "fmt"
     "math"
     "./monitor"
@@ -47,6 +43,7 @@ type MonitorDatum struct {
     Per int32
 }
 
+// TODO these functions are liable to panic
 func(md MonitorData) From() int64 {
     return md[0].Timestamp - int64(md[0].Per)
 }
@@ -59,13 +56,24 @@ func(md MonitorData) Duration() int64 {
 func(md MonitorData) MidTime() float64 {
     return float64(md.To() + md.From()) / 2.0
 }
+func(md MonitorData) MinMax() (float64, float64) {
+    min, max := math.Inf(0), math.Inf(-1)
+    for _, datum := range md {
+        val := datum.Value
+        if val < min {min = val}
+        if val > max {max = val}
+    }
+    return min, max
+}
 
 // Index ---
 type MonitorDataIndex struct {
-    Uuid   string `json:"uuid"`
-    Length int    `json:"length"`
-    From   int64  `json:"from"`
-    To     int64  `json:"to"`
+    Uuid   string  `json:"uuid"`
+    Length int     `json:"length"`
+    From   int64   `json:"from"`
+    To     int64   `json:"to"`
+    Min    float64 `json:"min"`
+    Max    float64 `json:"max"`
 }
 type MonitorDataIndexes []MonitorDataIndex
 type MonitorDataIndexesMap map[string/* monitorKey */] MonitorDataIndexes
@@ -88,17 +96,29 @@ func CreateUuidForMonitorData(md MonitorData) string {
 }
 
 func CreateIndexForMonitorData(md MonitorData) MonitorDataIndex {
+
     mi := MonitorDataIndex{}
     if len(md) == 0 {
         return mi
     }
 
-    mi.Uuid   = CreateUuidForMonitorData(md)
-    mi.Length = len(md)
-    mi.From   = md[0].Timestamp
-    mi.To     = md[len(md) - 1].Timestamp
+    // Set
+    mi.Uuid        = CreateUuidForMonitorData(md)
+    mi.Length      = len(md)
+    mi.From, mi.To = md.From(), md.To()
+    mi.Min, mi.Max = md.MinMax()
 
     return mi
+
+}
+
+func(mdIndexes MonitorDataIndexes) MinMax() (float64, float64) {
+    min, max := math.Inf(0), math.Inf(-1)
+    for _, mi := range mdIndexes {
+        if mi.Min < min {min = mi.Min}
+        if mi.Max > max {max = mi.Max}
+    }
+    return min, max
 }
 
 func(mdIndexes MonitorDataIndexes) Append(rhs ...MonitorDataIndex) MonitorDataIndexes {
@@ -121,9 +141,6 @@ func(mdIndexes MonitorDataIndexes) Append(rhs ...MonitorDataIndex) MonitorDataIn
 func(md MonitorData) Len() int { return len(md) }
 func(md MonitorData) Less(i, j int) bool { return md[i].Timestamp < md[j].Timestamp }
 func(md MonitorData) Swap(i, j int) { md[i], md[j] = md[j], md[i] }
-// For LTTB
-func(datum MonitorDatum) X() float64 { return float64(datum.Timestamp) }
-func(datum MonitorDatum) Y() float64 { return datum.Value }
 
 // CONFIG ---
 
@@ -226,172 +243,4 @@ func DeserializeMonitorData(serial []byte) (md MonitorData, err error) {
 
     return md, nil
 
-}
-
-// COMPRESSION ---
-
-func CompressMonitorData(md MonitorData) (cmp []byte, err error) {
-
-    defer Catch(&err)
-
-    buf := bytes.NewBuffer(nil)
-    gzw := gzip.NewWriter(buf)
-    enc := gob.NewEncoder(gzw)
-
-    // |       entire content       |
-    // | type | timestamps | values |
-
-    if len(md) > 0 {
-
-        enc.Encode("float64")
-
-        timestamps := make([]int64, len(md))
-        values     := make([]float64, len(md))
-        pers       := make([]int32, len(md))
-        for i := range md {
-            timestamps[i] = md[i].Timestamp
-            values[i]     = md[i].Value
-            pers[i]       = md[i].Per
-        }
-
-        enc.Encode(timestamps)
-        enc.Encode(values)
-        enc.Encode(pers)
-
-    } else {
-
-        enc.Encode("nil")
-
-    }
-
-    // Return
-    gzw.Close()
-    cmp = buf.Bytes()
-    return
-
-}
-
-func DecompressMonitorData(cmp []byte) (md MonitorData, err error) {
-
-    defer Catch(&err)
-
-    rd       := bytes.NewReader(cmp)
-    gzr, err := gzip.NewReader(bufio.NewReader(rd))
-    Try(err)
-    dec      := gob.NewDecoder(gzr)
-
-    // Type
-    var typ string
-    dec.Decode(&typ)
-
-    // Value
-    switch typ {
-    case "float64":
-
-        timestamps := make([]int64, 0)
-        values     := make([]float64, 0)
-        pers       := make([]int32, 0)
-
-        // Timestamp
-        dec.Decode(&timestamps)
-        dec.Decode(&values)
-        dec.Decode(&pers)
-        
-        // Assign
-        md = make(MonitorData, len(timestamps))
-        for i := 0; i < len(timestamps); i++ {
-            md[i] = MonitorDatum{
-                Timestamp: timestamps[i],
-                Value:     values[i],
-                Per:       pers[i],
-            }
-        }
-
-    case "nil":
-
-        // Return empty
-        md = make(MonitorData, 0)
-
-    }
-
-    return
-
-}
-
-// Implementation of Largest-Triangle-Three-Buckets down-sampling algorithm
-// https://github.com/dgryski/go-lttb
-func LttbMonitorData(md MonitorData, threshold int) MonitorData {
-
-    if threshold >= len(md) || threshold == 0 {
-        return md
-    }
-
-    sampled := make(MonitorData, 0, threshold)
-
-    // Bucket size. Leave room for start and end data points
-    every := float64(len(md) - 2) / float64(threshold - 2)
-
-    sampled = append(sampled, md[0]) // Always add the first point
-
-    bucketStart := 1
-    bucketCenter := int(math.Floor(every)) + 1
-
-    var a int
-
-    for i := 0; i < threshold - 2; i++ {
-
-        bucketEnd := int(math.Floor(float64(i + 2) * every)) + 1
-
-        // Calculate point average for next bucket (containing c)
-        avgRangeStart := bucketCenter
-        avgRangeEnd := bucketEnd
-
-        if avgRangeEnd >= len(md) {
-            avgRangeEnd = len(md)
-        }
-
-        avgRangeLength := float64(avgRangeEnd - avgRangeStart)
-
-        var avgX, avgY float64
-        for ; avgRangeStart < avgRangeEnd; avgRangeStart++ {
-            avgX += md[avgRangeStart].X()
-            avgY += md[avgRangeStart].Y()
-        }
-        avgX /= avgRangeLength
-        avgY /= avgRangeLength
-
-        // Get the range for this bucket
-        rangeOffs := bucketStart
-        rangeTo := bucketCenter
-
-        // Point a
-        pointAX := md[a].X()
-        pointAY := md[a].Y()
-
-        maxArea := -1.0
-
-        var nextA int
-        for ; rangeOffs < rangeTo; rangeOffs++ {
-            // Calculate triangle area over three buckets
-            area := (pointAX - avgX) * (md[rangeOffs].Y() - pointAY) -
-                (pointAX - md[rangeOffs].X()) * (avgY - pointAY)
-            // We only care about the relative area here.
-            // Calling math.Abs() is slower than squaring
-            area *= area
-            if area > maxArea {
-                maxArea = area
-                nextA = rangeOffs // Next a is this b
-            }
-        }
-
-        sampled = append(sampled, md[nextA]) // Pick this point from the bucket
-        a = nextA                               // This a is the next a (chosen b)
-
-        bucketStart = bucketCenter
-        bucketCenter = bucketEnd
-    }
-
-    sampled = append(sampled, md[len(md) - 1]) // Always add last
-
-    return sampled
 }

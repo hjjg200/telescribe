@@ -81,6 +81,7 @@ export default {
       );
     }
   },
+  // TODO small screen could get filled with select when open, and so prevent users from being not able to close the select by having a collapse button at the bottom
   methods: {
     onKeyDown(event) {
       // TODO refer to https://github.com/angular/components/blob/96c24f5c80d1419b297478b656ee3f10b58f53df/src/material/select/select.ts#L783

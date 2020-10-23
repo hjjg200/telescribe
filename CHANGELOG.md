@@ -22,6 +22,7 @@ First version that complies with the documentation
 - [ ] **Changed:** `server` increase the data storing performance
 - [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
 - [ ] **Fixed:** `server` added a handler for corrupted indexes file or store files
+- [ ] **Added:** `server` added a value min-max info in the indexes for graph drawing
 
 
 #### Known Issues
