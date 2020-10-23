@@ -121,20 +121,31 @@ export default {
     // Vars
     this.duration = this.webConfig.durations[0];
 
-    // Populate Config Map
-    for(let monitorKey in this.itemStatusMap) {
-      this.queue.queue(async() => {
-        let {monitorConfig} = await $.$api.v1.getMonitorConfig($.id, monitorKey);
-        $.monitorConfigMap[monitorKey] = monitorConfig;
-      });
-    }
-
     // Get Monitor Data Boundaries
     this.queue.queue(async() => {
       let csv = await $.$api.v1.getMonitorDataBoundaries($.id);
       d3.csvParse(csv, row => boundaries.push(+row.timestamp));
       $.boundaries = boundaries;
     });
+
+    // For each monitor key
+    for(let monitorKey in this.itemStatusMap) {
+      // Populate Config Map
+      this.queue.queue(async() => {
+        let {monitorConfig} = await $.$api.v1.getMonitorConfig($.id, monitorKey);
+        $.monitorConfigMap[monitorKey] = monitorConfig;
+      });
+      // Get Monitor Data Min Max
+      this.queue.queue(async() => {
+        let csv = await $.$api.v1.getMonitorDataMinMax($.id, monitorKey);
+        d3.csvParse(csv, row => {
+          let minMax = {};
+          minMax.min = +row.min;
+          minMax.max = +row.max;
+          $.minMaxMap[monitorKey] = minMax;
+        });
+      });
+    }
 
   },
 
@@ -147,6 +158,7 @@ export default {
       focusedDatumMap:  {},
       dataset:          {},
       monitorConfigMap: {},
+      minMaxMap:        {},
       queue: new Queue()
     };
   },
@@ -209,24 +221,57 @@ export default {
           if($.dataset[monitorKey] === undefined) {
 
             let format = $.monitorConfigMap[monitorKey].format;
-            let buf = [];
-            let filter = {
-              from: 0, to: 2100000000, per: 1
-            };
-            let csv = await $.$api.v1.getMonitorDataCsv($.id, monitorKey, filter);
 
-            // Make this part of documentation
-            d3.csvParse(csv, row => buf.push({
-              timestamp: +row.timestamp,
-              value: +row.value,
-              per: +row.per
-            }));
-
+            // TODO make data accessor in order to fetch data in parts
+            // TODO put min max info in the dataset
+            /*
+TODO new dataset format
+{
+  color: "#......",
+  formatters: {
+    x: ...,
+    y: ...
+  },
+  minMaxes: {
+    x: {min: ..., max: ...},
+    y: {min: ..., max: ...}
+  },
+  data: undefined,
+  getters: {
+    x: (fromY, toY) => {},
+    y: (fromX, toX) => {}
+  }
+}
+            */
             $.$set($.dataset, monitorKey, {
-              data: buf,
               color: colorify(monitorKey),
               formatters: {
                 y: d => `${$.formatDatum(monitorKey, d)}`
+              },
+              minMaxes: {
+                y: $.minMaxMap[monitorKey]
+              },
+              data: undefined,
+              getters: {
+                byX: async(fromX, toX) => {
+
+                  let buf = [];
+                  // TODO make per changable
+                  let filter = {
+                    from: fromX, to: toX, per: 1
+                  };
+                  let csv = await $.$api.v1.getMonitorDataCsv($.id, monitorKey, filter);
+
+                  // TODO make this part of documentation
+                  d3.csvParse(csv, row => buf.push({
+                    timestamp: +row.timestamp,
+                    value: +row.value,
+                    per: +row.per
+                  }));
+
+                  return buf;
+
+                }
               }
             });
 
@@ -237,7 +282,6 @@ export default {
         }
         
         $.activeDataset = activeDataset;
-        console.log(activeDataset);
 
       });
 

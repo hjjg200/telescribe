@@ -11,6 +11,7 @@ import (
     "io/ioutil"
     "net"
     "net/http"
+    "math"
     "os"
     "strings"
     "time"
@@ -879,6 +880,7 @@ type FprintCsvFilter struct {
     To   int64 `json:"to"`
     Per  int32 `json:"per"`
 }
+
 func(srv *Server) FprintClientMonitorDataBoundaries(w io.Writer, clId string) {
 
     // CSV header
@@ -919,6 +921,39 @@ func(srv *Server) FprintClientMonitorDataBoundaries(w io.Writer, clId string) {
         fmt.Fprintf(w, "%d\n%d\n", g1, g2)
     }
     fmt.Fprintf(w, "%d\n", end)
+
+}
+
+func(srv *Server) FprintClientMonitorDataMinMax(w io.Writer, clId, mKey string) {
+
+    // CSV Header
+    w.Write([]byte("min,max\n"))
+
+    // Vars
+    min, max := math.Inf(0), math.Inf(-1)
+
+    // Indexes
+    mdIndexes, ok := srv.clientMonitorDataIndexesMap[clId][mKey]
+    if ok {
+        m, M := mdIndexes.MinMax()
+        if m < min {min = m}
+        if M > max {max = M}
+    }
+
+    // In-memory
+    md, ok := srv.clientMonitorDataMap[clId][mKey]
+    if ok {
+        m, M := md.MinMax()
+        if m < min {min = m}
+        if M > max {max = M}
+    }
+
+    if math.IsInf(min, 0) {
+        // No data at all
+        // TODO handle no data
+    }
+
+    fmt.Fprintf(w, "%f,%f\n", min, max)
 
 }
 

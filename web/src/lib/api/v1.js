@@ -66,22 +66,17 @@ export default {
     );
   },
 
+  keyMdmm: "monitorDataMinMax",
+  async getMonitorDataMinMax(clientId, monitorKey) {
+    return await apiFetch(
+      "GET", "text", undefined, this.keyMdmm, clientId, monitorKey
+    );
+  },
+
   keyMdc: "monitorDataCsv",
   async getMonitorDataCsv(clientId, monitorKey, filter) {
     return await apiFetch(
       "POST", "text", filter, this.keyMdc, clientId, monitorKey
-    );
-  },
-
-  keyMdt: "monitorDataTable",
-  async getMonitorDataTable(clientId, monitorKey) {
-    return await apiFetch(
-      "GET", "text", undefined, this.keyMdt, clientId, monitorKey
-    );
-  },
-  async deleteMonitorDataTable(clientId, monitorKey) {
-    return await apiFetch(
-      "DELETE", undefined, undefined, this.keyMdt, clientId, monitorKey
     );
   },
 

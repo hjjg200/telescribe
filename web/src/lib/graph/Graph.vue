@@ -435,10 +435,18 @@ export default {
       let yBoundary = d3.extent(function() {
         let arr = [];
         for(let key in $.dataset) {
-          let {data} = $.dataset[key];
-          data.forEach(i => arr.push(
-            $.asy(i)
-          ));
+          let {data, minMaxes} = $.dataset[key];
+          let mm = minMaxes.y;
+
+          if(mm !== undefined) {
+            // if min max is present
+            arr.push(mm.min, mm.max);
+          } else if(data !== undefined) {
+            // if data is present
+            data.forEach(i => arr.push(
+              $.asy(i)
+            ));
+          }
         }
         return arr;
       }());
@@ -560,11 +568,12 @@ export default {
           let handX;
     
           // Points
-          for(let key in dataset) {
-            let {data} = dataset[key];
-            let elem   = bisect(data, x, $.asx);
-            let elX    = $.asx(elem);
-            let elY    = $.asy(elem);
+          let visibleDataset = $._visibleDataset;
+          for(let key in visibleDataset) {
+            let data = visibleDataset[key];
+            let elem = bisect(data, x, $.asx);
+            let elX  = $.asx(elem);
+            let elY  = $.asy(elem);
 
             // No nearest found, return
             if(elem === undefined || isNaN(elY)) {
@@ -838,10 +847,19 @@ export default {
 
       // Visible Dataset
       let visibleDataset = {};
+      this._visibleDataset = visibleDataset;
       for(let key in this.dataset) {
-        visibleDataset[key] = sliceFromTo(
-          this.dataset[key].data, visibleBoundary[0], visibleBoundary[1], $.asx
-        );
+        let each = this.dataset[key];
+        let getter = each.getters.byX;
+        let [vb0, vb1] = visibleBoundary;
+        if(getter !== undefined) {
+          visibleDataset[key] = await getter(vb0, vb1);
+        } else {
+          // default to data
+          visibleDataset[key] = sliceFromTo(
+            this.dataset[key].data, vb0, vb1, $.asx
+          );
+        }
       }
 
       // Segments Each

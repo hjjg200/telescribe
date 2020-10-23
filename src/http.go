@@ -344,7 +344,28 @@ func(srv *Server) registerAPIV1() {
 
     })
 
+    // monitorDataMinMax
+    keyMdmm := "monitorDataMinMax"
+    rgxMdmm := formatRgx(keyMdmm, 2)
+    hr.Get(rgxMdmm, func(hctx HttpContext) {
+
+        defer catchStatus(hctx)
+        
+        // Vars
+        w    := hctx.Writer
+        clId := hctx.Matches[1]
+        mKey := hctx.Matches[2]
+        // Permission
+        assertStatus(isPermitted(hctx, keyMdmm, clId, mKey), 403)
+
+        // Write
+        w.Header().Set("Content-Type", "text/csv")
+        srv.FprintClientMonitorDataMinMax(w, clId, mKey)
+
+    })
+
     // monitorDataCsv
+    // TODO use query strings for filter not json
     keyMdc := "monitorDataCsv"
     rgxMdc := formatRgx(keyMdc, 2)
     hr.Post(rgxMdc, func(hctx HttpContext) {

@@ -69,8 +69,6 @@ func Statvfs(path string, buf *Statvfs_t) (err error) {
         Namemax: c_PROPAGATE_ALL_ONES(c_stat.f_namemax),
     }
 
-    fmt.Println(path, c_stat)
-
     return nil
 
 }
