@@ -118,6 +118,36 @@ function addDebouncedAsyncEvent(elem, type, handler, interval) {
   elem.addEventListener(type, wrap);
 }
 
+function d3SyncThrottle(handler, interval) {
+  let running = false;
+  return function() {
+    if(!running) {
+      running = true;
+      let context = this,
+        args = arguments;
+      
+      handler.apply(context, args);
+      setTimeout(function() {
+        running = false;
+      }, interval);
+    }
+  };
+}
+
+function d3SyncDebounce(handler, interval) {
+  let timer = null;
+  return function() {
+    let context = this,
+      args = arguments,
+      evt = d3.event;
+    clearTimeout(timer);
+    timer = setTimeout(function() {
+      d3.event = evt;
+      handler.apply(context, args);
+    }, interval);
+  };
+}
+
 // D3
 import {event, selectAll, select, mouse, customEvent} from "d3-selection";
 import {axisBottom, axisLeft} from "d3-axis";
@@ -153,6 +183,12 @@ export default {
     options()    {this._draw();}
   },
 
+  data() {
+    return {
+      segmentIdAUtoIncrement: 0
+    };
+  },
+
   computed: {
     keys() {
       return Object.keys(this.dataset);
@@ -160,6 +196,7 @@ export default {
     computedOptions() {
       return Object.assign({}, defaultOptions, this.options);
     }
+  
   },
 
   mounted() {
@@ -178,6 +215,33 @@ export default {
     },
     asy(d) { // y accessor
       return this.computedOptions.accessors.y(d);
+    },
+
+    cachedDataset() {
+      
+      let $ = this;
+      let graph         = d3.select(this.$el);
+      let segmentsWrap = graph.select(".segments-wrap");
+      let segments     = segmentsWrap.select(".segments");
+      let segmentNodes = segmentsWrap.selectAll(".segment").nodes();
+      let cachedDataset = {};
+
+      for(let key in $.dataset) {
+        cachedDataset[key] = [];
+      }
+
+      segmentNodes.forEach(function(node) {
+        if(!node.hasAttribute("data-id")) return;
+
+        let segId          = node.getAttribute("data-id");
+        let segmentDataset = $._segmentsDataset[segId];
+        for(let key in $.dataset) {
+          cachedDataset[key] = cachedDataset[key].concat(segmentDataset[key]);
+        }
+      });
+
+      return cachedDataset;
+      
     },
 
     async _draw() {
@@ -316,6 +380,8 @@ export default {
               .attr("class", "background");
     
       // Segments
+      let segmentsDataset = {};
+      $._segmentsDataset = segmentsDataset;
       let segmentsWrap = graph.append("div")
         .attr("class",   "segments-wrap")
         .style("width",  `${graphRect.width}px`)
@@ -568,10 +634,12 @@ export default {
           let handX;
     
           // Points
-          let visibleDataset = $._visibleDataset;
-          for(let key in visibleDataset) {
-            let data = visibleDataset[key];
+          let cachedDataset = $._cachedDataset;
+          for(let key in cachedDataset) {
+            let data = cachedDataset[key];
+            console.time(`bisect${key}`);
             let elem = bisect(data, x, $.asx);
+            console.timeEnd(`bisect${key}`);
             let elX  = $.asx(elem);
             let elY  = $.asy(elem);
 
@@ -670,7 +738,7 @@ export default {
               overlay.selectAll(".tooltip").style("opacity", 0);
             }
           })
-          .on("mousemove",   mouseHandler)
+          .on("mousemove",   d3SyncThrottle(mouseHandler, 3))
           .on("mousedown.a", mouseHandler)
           .on("mousedown.b", () => {isMouseDown = true;})
           .on("mouseup",     () => {isMouseDown = false;});
@@ -845,20 +913,6 @@ export default {
       ];
       this.visibleBoundary = visibleBoundary;
 
-      // Visible Dataset
-      let visibleDataset = {};
-      this._visibleDataset = visibleDataset;
-      for(let key in this.dataset) {
-        let each = this.dataset[key];
-        let [vb0, vb1] = visibleBoundary;
-        visibleDataset[key] = [];
-        if(each.data !== undefined) {
-          visibleDataset[key] = sliceFromTo(
-            each.data, vb0, vb1, $.asx
-          );
-        }
-      }
-
       // Segments Each
       // Loop
       let segments     = segmentsWrap.select(".segments");
@@ -866,44 +920,55 @@ export default {
       let visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
         scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
-      for(let i = 0; i < segmentNodes.length; i++) {
-        let node = segmentNodes[i];
-      
-      /*segmentNodes.forEach(function(node) {*/
+      let numCached = 0;
 
+      for(let i = 0; i < segmentNodes.length; i++) {
+
+        let node  = segmentNodes[i];
         let seg   = d3.select(node);
         let start = + node.getAttribute("data-start");
         let end   = + node.getAttribute("data-end");
         let left  = + node.getAttribute("data-left");
 
         // If it is already drawn
-        if(seg.selectAll("path").size() > 0)
-          return;
+        if(node.hasAttribute("data-id"))
+        //if(seg.selectAll("path").size() > 0)
+          continue;
 
         // Check visibility
         if(!(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]))
-          return;
+          continue;
+
+        // Assign id
+        let segId = `${$.segmentIdAUtoIncrement++}`;
+        node.setAttribute("data-id", segId);
+        numCached++;
 
         // Segment dataset
         let segDataGroups = [];
+        let segmentDataset = {};
+        $._segmentsDataset[segId] = segmentDataset;
         for(let key in this.dataset) {
           let each = this.dataset[key];
           let getter = each.getters.byX;
-          let data;
+          let data = [];
 
           if(each.data !== undefined) {
-            data = sliceFromTo(visibleDataset[key], start, end, $.asx);
+            data = sliceFromTo(each.data[key], start, end, $.asx);
           } else if(getter !== undefined) {
             data = await getter(start, end);
-            visibleDataset[key] = data.concat(visibleDataset[key]);
           }
 
-          if(data.length > 0) segDataGroups.push({key, data});
+          // Assign data
+          if(data.length > 0) {
+            segDataGroups.push({key, data});
+            segmentDataset[key] = data;
+          }
         }
 
         // If no data
         if(segDataGroups.length === 0)
-          return;
+          continue;
 
         // Add paths
         seg.selectAll("paths")
@@ -924,6 +989,8 @@ export default {
             );
 
       }
+
+      if(numCached > 0) $._cachedDataset = $.cachedDataset();
 
     }
 
