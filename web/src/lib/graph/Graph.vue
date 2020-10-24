@@ -850,14 +850,11 @@ export default {
       this._visibleDataset = visibleDataset;
       for(let key in this.dataset) {
         let each = this.dataset[key];
-        let getter = each.getters.byX;
         let [vb0, vb1] = visibleBoundary;
-        if(getter !== undefined) {
-          visibleDataset[key] = await getter(vb0, vb1);
-        } else {
-          // default to data
+        visibleDataset[key] = [];
+        if(each.data !== undefined) {
           visibleDataset[key] = sliceFromTo(
-            this.dataset[key].data, vb0, vb1, $.asx
+            each.data, vb0, vb1, $.asx
           );
         }
       }
@@ -869,7 +866,10 @@ export default {
       let visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
         scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
-      segmentNodes.forEach(function(node) {
+      for(let i = 0; i < segmentNodes.length; i++) {
+        let node = segmentNodes[i];
+      
+      /*segmentNodes.forEach(function(node) {*/
 
         let seg   = d3.select(node);
         let start = + node.getAttribute("data-start");
@@ -886,13 +886,19 @@ export default {
 
         // Segment dataset
         let segDataGroups = [];
-        for(let key in visibleDataset) {
-          let data = sliceFromTo(
-            visibleDataset[key], start, end, $.asx
-          );
-          if(data.length > 0) {
-            segDataGroups.push({key, data});
+        for(let key in this.dataset) {
+          let each = this.dataset[key];
+          let getter = each.getters.byX;
+          let data;
+
+          if(each.data !== undefined) {
+            data = sliceFromTo(visibleDataset[key], start, end, $.asx);
+          } else if(getter !== undefined) {
+            data = await getter(start, end);
+            visibleDataset[key] = data.concat(visibleDataset[key]);
           }
+
+          if(data.length > 0) segDataGroups.push({key, data});
         }
 
         // If no data
@@ -917,7 +923,7 @@ export default {
               (d.data)
             );
 
-      });
+      }
 
     }
 

@@ -541,7 +541,7 @@ func(srv *Server) Start() (err error) {
                 EventLogger.Warnln(r)
             }
         }()
-        Try(srv.StoreClientMonitorDataMap())
+        Try(srv.StoreClientMonitorDataMap(true))
         EventLogger.Infoln("Stored client monitor data")
 
     })
@@ -554,7 +554,7 @@ func(srv *Server) Start() (err error) {
         for Sleep(itv) && railSwitch.Queue(threadMain, 1) {
 
             timer := EventLogger.Timer("time:StoreClientMonitorDataMap")
-            err := srv.StoreClientMonitorDataMap()
+            err := srv.StoreClientMonitorDataMap(false)
             timer.Stop()
 
             // Task done
@@ -1057,7 +1057,7 @@ func(srv *Server) FprintClientMonitorDataCsvFilter(w io.Writer, clId, mKey strin
 
 }
 
-func(srv *Server) StoreClientMonitorDataMap() (err error) {
+func(srv *Server) StoreClientMonitorDataMap(forced bool) (err error) {
 
     // TODO: store the in-memory values into indexes at cleanup
 
@@ -1098,11 +1098,56 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
             // Vars
             stored    := MonitorData{}
             lenChunk  := srv.config.DataChunkLength
-            quotient  := len(mData) / lenChunk
-            lenStored := quotient * lenChunk
-            stored, srv.clientMonitorDataMap[clId][mKey] = mData[:lenStored], mData[lenStored:] // separate
+            lenStored := 0
+
+            if forced {
+                // All
+                lenStored = len(mData)
+            } else {
+                // Only as much as quotient
+                quotient  := len(mData) / lenChunk
+                lenStored  = quotient * lenChunk
+            }
+
+            // Separate
+            stored, srv.clientMonitorDataMap[clId][mKey] = mData[:lenStored], mData[lenStored:]
+
+            // Function
+            cursor := 0
+            advance := func(length int) bool {
+
+                if cursor >= len(stored) {
+                    return false
+                }
+
+                start := cursor
+                end   := cursor + length
+                if end > len(stored) {
+                    end = len(stored)
+                }
+
+                part    := stored[start:end]
+                index   := CreateIndexForMonitorData(part)
+                indexes  = indexes.Append(index)
+
+                // Store
+                fn     := srv.config.DataStoreDir + "/" + index.Uuid + dataStoreExt
+                f, err := os.OpenFile(fn, os.O_CREATE | os.O_WRONLY, 0600)
+                Try(err)
+                f.Write(SerializeMonitorData(part))
+                f.Close()
+
+                // Advance
+                cursor += length
+                return true
+
+            }
+            
+            // Do
+            for advance(lenChunk) {}
 
             // Index each
+            /*
             for i := 0; i < quotient; i++ {
                 start   := i * lenChunk
                 part    := stored[start:start + lenChunk]
@@ -1116,6 +1161,7 @@ func(srv *Server) StoreClientMonitorDataMap() (err error) {
                 f.Write(SerializeMonitorData(part))
                 f.Close()
             }
+            */
 
             // Assign
             clMdIdxMap[clId][mKey] = indexes

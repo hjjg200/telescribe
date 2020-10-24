@@ -6,6 +6,7 @@ import (
     "encoding/json"
     "fmt"
     "io"
+    "io/ioutil"
     "net"
     "net/http"
     "net/url"
@@ -379,9 +380,10 @@ func(srv *Server) registerAPIV1() {
         assertStatus(isPermitted(hctx, keyMdc, clId, mKey), 403)
 
         // Request body
-        dec    := json.NewDecoder(hctx.Request.Body)
+        p, _ := ioutil.ReadAll(hctx.Request.Body)
         filter := FprintCsvFilter{}
-        assertStatus(dec.Decode(&filter) == nil, 400)
+        EventLogger.Debugln("oct24-filter", string(p))
+        assertStatus(json.Unmarshal(p, &filter) == nil, 400)
 
         // Write
         w.Header().Set("Content-Type", "text/csv")

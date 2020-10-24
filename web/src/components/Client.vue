@@ -257,6 +257,8 @@ TODO new dataset format
 
                   let buf = [];
                   // TODO make per changable
+                  fromX = Math.round(fromX);
+                  toX   = Math.round(toX);
                   let filter = {
                     from: fromX, to: toX, per: 1
                   };
