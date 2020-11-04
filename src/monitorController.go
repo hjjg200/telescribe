@@ -66,6 +66,57 @@ func(md MonitorData) MinMax() (float64, float64) {
     return min, max
 }
 
+// Aggregate Types ---
+
+const (
+    monitorAggregateKeyMean = "mean"
+    monitorAggregateKeyMin = "min"
+    monitorAggregateKeyMax = "max"
+    monitorAggregateKeySum = "sum"
+)
+
+var monitorAggregateTypesMap = map[string] monitorAggregateFunc{
+    monitorAggregateKeyMean: monitorAggregateMean,
+    monitorAggregateKeyMin: monitorAggregateMin,
+    monitorAggregateKeyMax: monitorAggregateMax,
+    monitorAggregateKeySum: monitorAggregateSum,
+}
+
+type monitorAggregateFunc func(MonitorData) float64
+func monitorAggregateMean(md MonitorData) float64 {
+    accm := 0.0
+    for _, datum := range md {
+        accm += datum.Value
+    }
+    return accm / float64(len(md))
+}
+func monitorAggregateMin(md MonitorData) float64 {
+    min := math.Inf(0)
+    for _, datum := range md {
+        if datum.Value < min {
+            min = datum.Value
+        }
+    }
+    return min
+}
+func monitorAggregateMax(md MonitorData) float64 {
+    max := math.Inf(-1)
+    for _, datum := range md {
+        if datum.Value > max {
+            max = datum.Value
+        }
+    }
+    return max
+}
+func monitorAggregateSum(md MonitorData) float64 {
+    sum := 0.0
+    for _, datum := range md {
+        sum += datum.Value
+    }
+    return sum
+}
+
+
 // Index ---
 type MonitorDataIndex struct {
     Uuid   string  `json:"uuid"`

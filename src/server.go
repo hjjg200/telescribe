@@ -876,9 +876,11 @@ func(srv *Server) GetMonitorDataForIndex(uuid string) (MonitorData, error) {
 }
 
 type FprintCsvFilter struct {
-    From int64 `json:"from"`
-    To   int64 `json:"to"`
-    Per  int32 `json:"per"`
+    From        int64  `json:"from"`
+    To          int64  `json:"to"`
+    Per         int32  `json:"per"`
+    Type        string `json:"type"`
+    EqualWeight bool   `json:"equalWeight"`
 }
 
 func(srv *Server) FprintClientMonitorDataBoundaries(w io.Writer, clId string) {
@@ -973,12 +975,9 @@ func(srv *Server) FprintClientMonitorDataCsvFilter(w io.Writer, clId, mKey strin
     }
 
     // Funcs
-    avgFunc := func(md MonitorData) float64 {
-        acc := 0.0
-        for _, datum := range md {
-            acc += datum.Value
-        }
-        return acc / float64(len(md))
+    agrgFn, ok := monitorAggregateTypesMap[filter.Type]
+    if !ok {
+        return // TODO error handling
     }
 
     // Cache and flush
@@ -988,9 +987,16 @@ func(srv *Server) FprintClientMonitorDataCsvFilter(w io.Writer, clId, mKey strin
             return
         }
         // Data
+        ts  := cache.To()
+        val := agrgFn(cache)
+        per := cache.Duration()
+        if filter.EqualWeight { // TODO equal weight changes max and min value
+            val *= float64(filter.Per) / float64(per)
+            per  = int64(filter.Per)
+        }
         fmt.Fprintf(
-            w, "%.1f,%f,%d\n",
-            cache.MidTime(), avgFunc(cache), cache.Duration(),
+            w, "%d,%f,%d\n",
+            ts, val, per,
         )
         cache = MonitorData{}
     }

@@ -637,9 +637,7 @@ export default {
           let cachedDataset = $._cachedDataset;
           for(let key in cachedDataset) {
             let data = cachedDataset[key];
-            console.time(`bisect${key}`);
             let elem = bisect(data, x, $.asx);
-            console.timeEnd(`bisect${key}`);
             let elX  = $.asx(elem);
             let elY  = $.asy(elem);
 

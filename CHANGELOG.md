@@ -19,10 +19,15 @@ First version that complies with the documentation
 - [x] **Changed:** `go` log package's debug feature now can have different categories
 - [x] **Changed:** `server` flush monitor data cache when exiting app
 - [x] **Changed:** `web` made Graph component an independent component; made it use x and y instead of timestamp and value
-- [ ] **Changed:** `server` increase the data storing performance
-- [ ] **Changed:** `server` extract boundaries from raw monitor data not decimated one
+- [x] **Changed:** `server` increase the data storing performance
+- [x] **Changed:** `server` extract boundaries from raw monitor data not decimated one
+- [x] **Added:** `server` added a value min-max info in the indexes for graph drawing
+- [ ] **Fixed:** `web` aggregate tends to change min and max values for monitor data; consider per-segment y axis drawing
+- [ ] **Added:** `web` aggregate buttons for Client component
+- [ ] **Changed:** `web` better mouse(touch) events for better accuracy
 - [ ] **Fixed:** `server` added a handler for corrupted indexes file or store files
-- [ ] **Added:** `server` added a value min-max info in the indexes for graph drawing
+- [ ] **Fixed:** `web` fixed graph gap issue that appeared after aggregate implementation
+- [ ] **Changed:** `server` the format for indexes file is separated into a mother json file and children csv files which are more efficient for append-oriented tasks
 
 
 #### Known Issues

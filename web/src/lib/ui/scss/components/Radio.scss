@@ -1,0 +1,49 @@
+
+.ui-radio {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    @include control;
+    @include focusable(".mark");
+
+    input {
+        display: none;
+    }
+
+    .mark {
+        background: $cl-5-accent;
+        border: none;
+        border-radius: 100%;
+        display: inline-block;
+        flex: 0 0 1rem;
+        position: relative;
+        width: 1rem;
+        height: 1rem;
+        margin-right: .5rem;
+        .circle {
+            background: $cl-3-accent;
+            border-radius: 100%;
+            display: inline-block;
+            width: .4rem;
+            height: .4rem;
+            transform: translate(.3rem, .3rem);
+            position: absolute;
+        }
+    }
+
+    .label {
+        display: inline-block;
+    }
+
+    &:not(.checked) {
+        .mark {
+            border: 1px solid $cl-4-secondary !important;
+            background: white !important;
+            .circle {
+                display: none;
+            }
+        }
+    }
+
+}

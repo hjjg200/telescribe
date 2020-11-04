@@ -9,9 +9,34 @@
             <font-awesome icon="ellipsis-h"/>
           </Button>
           <Menu ref="menu">
+
             <MenuItem v-if="!isFavorite" @click="toggleFavorite">Add to Favorites</MenuItem>
-            <MenuItem v-else @click="toggleFavorite">Cancel Favorite</MenuItem>
+            <MenuItem v-else @click="toggleFavorite">Remove Favorite</MenuItem>
             <MenuItem @click="$refs.constantsModal.open = true">Constants</MenuItem>
+
+            <MenuLabel>Aggregate Per</MenuLabel>
+            <MenuItem v-for="each in aggregatePers" :key="each.value"
+              @click="changeAggreatePer(each.value)">
+              <Radio name="aggregatePer" :value="each.value" v-model="aggregatePer" readonly="true">
+                {{ each.label }}
+              </Radio>
+            </MenuItem>
+
+            <MenuLabel>Aggregate Type</MenuLabel>
+            <MenuItem v-for="each in aggregateTypes" :key="each.value"
+              @click="changeAggreateType(each.value)">
+              <Radio name="aggregateType" :value="each.value" v-model="aggregateType" readonly="true">
+                {{ each.label }}
+              </Radio>
+            </MenuItem>
+
+            <MenuLabel />
+            <MenuItem @click="aggregateEqualWeight = !aggregateEqualWeight">
+              <Checkbox v-model="aggregateEqualWeight" readonly="true">
+                Equal Weight
+              </Checkbox>
+            </MenuItem>
+
           </Menu>
         </div>
       </div>
@@ -120,6 +145,15 @@ export default {
     
     // Vars
     this.duration = this.webConfig.durations[0];
+    this.aggregatePers = [{label: "None", value: 0}];
+    this.webConfig["aggregate.pers"].forEach(ap =>
+      $.aggregatePers.push({label: ap, value: ap})
+    );
+    this.aggregatePer = this.aggregatePers[0].value;
+    this.aggregateTypes = this.webConfig["aggregate.types"].map(each => ({
+      label: each.charAt(0).toUpperCase() + each.slice(1), value: each
+    }));
+    this.aggregateType = this.aggregateTypes[0].value;
 
     // Get Monitor Data Boundaries
     this.queue.queue(async() => {
@@ -153,6 +187,11 @@ export default {
     return {
       activeKeys:       [],
       activeDataset:    {},
+      aggregatePer:     undefined,
+      aggregatePers:    [],
+      aggregateType:    undefined,
+      aggregateTypes:   [],
+      aggregateEqualWeight: false,
       boundaries:       [],
       duration:         undefined,
       focusedDatumMap:  {},
@@ -260,7 +299,9 @@ TODO new dataset format
                   fromX = Math.round(fromX);
                   toX   = Math.round(toX);
                   let filter = {
-                    from: fromX, to: toX, per: 1
+                    from: fromX, to: toX, per: $.aggregatePer, 
+                    type: $.aggregateType,
+                    equalWeight: $.aggregateEqualWeight
                   };
                   let csv = await $.$api.v1.getMonitorDataCsv($.id, monitorKey, filter);
 
@@ -326,6 +367,14 @@ TODO new dataset format
     },
     toggleFavorite() {
       this.$parent.toggleFavorite(this.id);
+    },
+    changeAggreatePer(ap) {
+      this.aggregatePer = ap;
+      this.$refs.graph._draw(); // TODO _draw is currently private
+    },
+    changeAggreateType(at) {
+      this.aggregateType = at;
+      this.$refs.graph._draw();
     }
   }
 }

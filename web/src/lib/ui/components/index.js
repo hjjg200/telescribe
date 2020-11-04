@@ -5,5 +5,6 @@ export * from './Cover';
 export * from './Icon';
 export * from './Menu';
 export * from './Modal';
+export * from './Radio';
 export * from './Rule';
 export * from './Select';
