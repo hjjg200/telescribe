@@ -11,6 +11,7 @@
 
 .ui-modal-window {
     background: white;
+    border: 1px solid $cl-3-secondary;
     display: inline-block;
     padding: 1.5rem;
     padding-top: 2.5rem;
@@ -19,6 +20,7 @@
     top: 50%;
     transform: translate(-50%, -50%);
     @include shadow;
+    @include border-radius;
 }
 
 .ui-modal-close {

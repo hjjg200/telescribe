@@ -102,7 +102,7 @@ const (
     clientMetaKeyGaps = "gaps"
 )
 
-func(srv *Server) openClientMetaFile(clId, key string) (*os.File, error) {
+func(srv *Server) openClientMetaFile(clId, key string, mode int) (*os.File, error) {
 
     hash := sha256.New()
     hash.Write([]byte(clId))
@@ -117,13 +117,13 @@ func(srv *Server) openClientMetaFile(clId, key string) (*os.File, error) {
 
     //
     fn := dir + "/" + key + clientMetaExt
-    return os.OpenFile(fn, os.O_RDWR | os.O_CREATE, 0600)
+    return os.OpenFile(fn, mode | os.O_CREATE, 0600)
 
 }
 func(srv *Server) readClientMetaFile(clId, key string) (p []byte, err error) {
 
     defer Catch(&err)
-    f, err := srv.openClientMetaFile(clId, key)
+    f, err := srv.openClientMetaFile(clId, key, os.O_RDONLY)
     Try(err)
 
     return ioutil.ReadAll(f)
@@ -132,7 +132,7 @@ func(srv *Server) readClientMetaFile(clId, key string) (p []byte, err error) {
 func(srv *Server) rewriteClientMetaFile(clId, key string, p []byte) (err error) {
 
     defer Catch(&err)
-    f, err := srv.openClientMetaFile(clId, key)
+    f, err := srv.openClientMetaFile(clId, key, os.O_WRONLY)
     Try(err)
     Try(f.Truncate(0))
     _, err = f.Seek(0, 0)
@@ -144,7 +144,7 @@ func(srv *Server) rewriteClientMetaFile(clId, key string, p []byte) (err error) 
 func(srv *Server) appendClientMetaFile(clId, key string, p []byte) (err error) {
 
     defer Catch(&err)
-    f, err := srv.openClientMetaFile(clId, key)
+    f, err := srv.openClientMetaFile(clId, key, os.O_APPEND | os.O_WRONLY)
     Try(err)
     _, err = f.Write(p)
     return err
