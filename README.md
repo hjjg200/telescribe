@@ -7,31 +7,108 @@ Telescribe is standalone application that helps remotely monitor client machines
 
 ## Pre-beta
 
-In the pre-beta stage:
+This project is currently in the pre-beta stage. There is no backward compatibility guarantee for the pre-beta stage; the versions of the beta and stable stage highly likely will not be compatible with the pre-beta versions.
 
-* It will mostly run normally, with few possible bugs.
-* It will successfully build, provided there are required prereqisites installed.
-* A server instance will most likely consume much resource with much accumulated data; thus, it is recommended to monitor the resource usage of the instance, should you ever have to run it for a while, and to NOT operate server instances for too long.
-* The web UI might not work properly.
+The development will be mainly done in the `develop` branch and only the successful and major commits will make it to the `main` branch.
 
-The above noted flaws have to be fixed prior to the beta stage.
+
+## Prerequisites
+
+The build process requires the following:
+
+* npm
+* go
+* https://github.com/hjjg200/go-act
+* https://github.com/hjjg200/go-together
 
 
 ## Install
-
-Note that this project is currently in **the pre-beta stage**; things are liable to change and there is no guarantee of backward compatibility in the pre-beta stage, which means that using data files or assets created by any version in the pre-beta stage may not be compatible with upcoming versions.
 
 The install procedure is as follows:
 
 1. Run `build.sh` which will produce necessary things in `bin` directory.
 1. In the bin folder, do `./telescribe -server` to create config files.
-1. Modify the configuration to your taste.
-1. Distribute the binary file `telescribe` to client machines.
-1. You can start the application on client machines by running `./telescribe -host <IP_ADDRESS/DOMAIN> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>`
+1. Exit the app and modify the configuration to your taste.
+1. Distribute the binary file, `telescribe`, to client machines.
+1. You can start the application on your client machines by: 
+> ```./telescribe -host <IP_ADDRESS/DOMAIN> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>```
 
 Post-installation process:
 
 1. You can simply edit the config files on the server machine in order to make changes to the configuration.
+
+
+## Trial and Error
+
+I started this personal project to learn about servers, monitoring, secure protocol, and web framework. These are the notes I personally made during the entire development process.
+
+### Secure Protocol
+
+#### ~*Hybrid Encryption*~
+
+Hybrid encryption is currently deprecated.
+
+* Every packet was encrypted using a new key and AES, and that key was encrypted using RSA public keys.
+* This was done because of the content size limit of RSA encryption.
+
+#### *Master Secret*
+
+* A new master secret for each session was created at the handshake process using ECDSA.
+* The master secret, then, was used for AES encryption.
+* Every packet includes a nonce and AES-encrypted data.
+
+
+### Web Framework
+
+#### ~*HTML/JS/SCSS*~
+
+In the early stage, no web framework was used.
+
+#### *Vue.js*
+
+Vue.js was chosen as the web framework to go due to its simplicity.
+
+* SFCs were used for legibility and better structure.
+
+
+### Chart Library
+
+#### ~*Chartist.js*~
+
+Because of its pro-SVG features, Chartist.js was used to plot graphs for data.
+
+#### *D3.js*
+
+As the data amount increased Chartist.js could not keep up with its performance, so D3.jss came in.
+
+* Lower level APIs for graph plotting
+* Better performance at high data count
+
+
+### Data File Encoding
+
+#### ~*Gob*~
+
+Package gob was used to encode and store monitored data files.
+
+#### *Custom Binary*
+
+As gob encoding took too much time to encode and decode data files, just simple binary format was used to encode and decode files.
+
+
+### Data via Web API
+
+Data are transmitted via web API in csv format which D3.js can understand.
+
+#### ~*Data Decimation*~
+
+* [Largest Triangle Three Buckets](https://github.com/sveinn-steinarsson/flot-downsample) was used to decimate data, in order to decrease the size and stress for the web user interface.
+* The problem was that the more were the data, the more abstract became the graph.
+
+#### *Aggregate*
+
+* Aggregation was the chosen method for reducing the performance stress.
+* Also, the graph web component was modified to only fetch the visible part of data; previously, the web UI fetched the entire data when plotting.
 
 
 ## Introduction

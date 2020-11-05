@@ -23,7 +23,7 @@ First version that complies with the documentation
 - [x] **Changed:** `server` extract boundaries from raw monitor data not decimated one
 - [x] **Added:** `server` added a value min-max info in the indexes for graph drawing
 - [ ] **Fixed:** `web` aggregate tends to change min and max values for monitor data; consider per-segment y axis drawing
-- [ ] **Added:** `web` aggregate buttons for Client component
+- [x] **Added:** `web` aggregate buttons for Client component
 - [ ] **Changed:** `web` better mouse(touch) events for better accuracy
 - [ ] **Fixed:** `server` added a handler for corrupted indexes file or store files
 - [ ] **Fixed:** `web` fixed graph gap issue that appeared after aggregate implementation
