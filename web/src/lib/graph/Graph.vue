@@ -220,25 +220,21 @@ export default {
     cachedDataset() {
       
       let $ = this;
-      let graph         = d3.select(this.$el);
-      let segmentsWrap = graph.select(".segments-wrap");
-      let segments     = segmentsWrap.select(".segments");
-      let segmentNodes = segmentsWrap.selectAll(".segment").nodes();
+      let segmentInfos = this._segmentInfos;
       let cachedDataset = {};
 
       for(let key in $.dataset) {
         cachedDataset[key] = [];
       }
 
-      segmentNodes.forEach(function(node) {
-        if(!node.hasAttribute("data-id")) return;
-
-        let segId          = node.getAttribute("data-id");
-        let segmentDataset = $._segmentsDataset[segId];
-        for(let key in $.dataset) {
-          cachedDataset[key] = cachedDataset[key].concat(segmentDataset[key]);
+      for(let i = 0; i < segmentInfos.length; i++) {
+        let info = segmentInfos[i];
+        if(info.drawn === true) {
+          for(let key in $.dataset) {
+            cachedDataset[key] = cachedDataset[key].concat(info.dataset[key]);
+          }
         }
-      });
+      }
 
       return cachedDataset;
       
@@ -382,6 +378,10 @@ export default {
       // Segments
       let segmentsDataset = {};
       $._segmentsDataset = segmentsDataset;
+
+      let segmentInfos = [];
+      $._segmentInfos = segmentInfos;
+
       let segmentsWrap = graph.append("div")
         .attr("class",   "segments-wrap")
         .style("width",  `${graphRect.width}px`)
@@ -438,6 +438,17 @@ export default {
           let segStart = xScale.invert(segLeft);
           // End is the timestamp for the end
           let segEnd   = Math.min(xScale.invert(segLeft + graphRect.width), xBoundary[1]);
+
+          segmentInfos.push({
+            drawn: false,
+            dataset: undefined,
+            left: segLeft,
+            start: segStart,
+            end: segEnd
+          });
+
+          continue; // TODO remove lines after this
+
           // Main ---
           let seg = segments.append("g")
             .attr("class", "segment")
@@ -902,6 +913,7 @@ export default {
 
       // Segments
       let segmentsWrap        = graph.select(".segments-wrap");
+      let segmentInfos        = this._segmentInfos;
       let scrollLeft          = segmentsWrap.node().scrollLeft;
       let scrollLeftTimestamp = xScale.invert(scrollLeft); // scrollLefTime
 
@@ -914,44 +926,40 @@ export default {
 
       // Segments Each
       // Loop
-      let segments     = segmentsWrap.select(".segments");
-      let segmentNodes = segmentsWrap.selectAll(".segment").nodes().reverse(); // reverse() to start from the most recent segment
+      let segments = segmentsWrap.select(".segments");
       let visibleSegmentsLefts = [ // Segments whose data range are in the visible boundaries
         scrollLeft - graphWidth, scrollLeft + graphWidth
       ];
       let numCached = 0;
 
-      for(let i = 0; i < segmentNodes.length; i++) {
+      for(let i = 0; i < segmentInfos.length; i++) {
 
-        let node  = segmentNodes[i];
-        let seg   = d3.select(node);
-        let start = + node.getAttribute("data-start");
-        let end   = + node.getAttribute("data-end");
-        let left  = + node.getAttribute("data-left");
+        let info = segmentInfos[i];
+        let {left, start, end} = info;
 
-        // If it is already drawn
-        if(node.hasAttribute("data-id"))
-        //if(seg.selectAll("path").size() > 0)
+        // If drawn
+        if(info.drawn === true)
           continue;
 
         // Check visibility
         if(!(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]))
           continue;
 
+        // Draw
+        info.drawn = true;
+        numCached++;
+        let seg   = segments.append("g")
+          .attr("class", "segment");
+
         // Seg width
         let startX = xScale(start);
         let endX   = xScale(end);
         let segWidth = endX - startX;
 
-        // Assign id
-        let segId = `${$.segmentIdAUtoIncrement++}`;
-        node.setAttribute("data-id", segId);
-        numCached++;
-
         // Segment dataset
         let segDataGroups = [];
         let segmentDataset = {};
-        $._segmentsDataset[segId] = segmentDataset;
+        info.dataset = segmentDataset;
         for(let key in this.dataset) {
           let each = this.dataset[key];
           let getter = each.getters.byX;
