@@ -431,6 +431,7 @@ export default {
       // For each segment
       {
         for(let i = 0; i < segNo; i++) {
+          // TOOD store extents here and draw them later
           // Pre ---
           let segLeft  = graphRect.width * i;
           // Start is the timestamp for the start of this segment
@@ -937,6 +938,11 @@ export default {
         if(!(visibleSegmentsLefts[0] <= left && left <= visibleSegmentsLefts[1]))
           continue;
 
+        // Seg width
+        let startX = xScale(start);
+        let endX   = xScale(end);
+        let segWidth = endX - startX;
+
         // Assign id
         let segId = `${$.segmentIdAUtoIncrement++}`;
         node.setAttribute("data-id", segId);
@@ -969,7 +975,42 @@ export default {
           continue;
 
         // Add paths
-        seg.selectAll("paths")
+        for(let j = 0; j < segDataGroups.length; j++) {
+          let each = segDataGroups[j];
+          let dataLength = each.data.length;
+
+          if(dataLength * 6 >= segWidth) {
+            // Path
+            seg.append("path")
+              .call(function(sel) {$._lines[each.key].push(sel.node());})
+              .attr("class", "line")
+              .attr("fill", "none")
+              .attr("data-key", each.key)
+              .attr("stroke", $.dataset[each.key].color)
+              .attr("stroke-width", 1)
+              .attr("d", d3.line()
+                .defined(e => !isNaN($.asy(e)))
+                .x(e => xScale($.asx(e)))
+                .y(e => yScale($.asy(e)))
+                (each.data)
+              );
+          } else {
+            // Circles
+            seg.selectAll("circles")
+              .data(each.data)
+              .enter()
+              .filter(e => !isNaN($.asy(e))) // Check NaN
+              .append("circle")
+                .attr("class", "circle")
+                .attr("fill", $.dataset[each.key].color)
+                .attr("r", 2)
+                .attr("cx", e => xScale($.asx(e)))
+                .attr("cy", e => yScale($.asy(e)));
+          }
+        }
+
+/*
+         seg.selectAll("paths")
           .data(segDataGroups)
           .enter()
           .append("path")
@@ -985,6 +1026,9 @@ export default {
               .y(e => yScale($.asy(e)))
               (d.data)
             );
+*/
+
+
 
       }
 
