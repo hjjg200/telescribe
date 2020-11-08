@@ -20,6 +20,7 @@ The build process requires the following:
 * go
 * https://github.com/hjjg200/go-act
 * https://github.com/hjjg200/go-together
+* https://github.com/hjjg200/go-jsoncfg
 
 
 ## Install
@@ -31,9 +32,11 @@ The install procedure is as follows:
 1. Exit the app and modify the configuration to your taste.
 1. Distribute the binary file, `telescribe`, to client machines.
 1. You can start the application on your client machines by: 
-> ```shell
-> ./telescribe -host <IP_ADDRESS/DOMAIN> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>
-> ```
+```shell
+./telescribe -host <IP_ADDRESS/DOMAIN> \
+  -alias <ALIAS_NAME|DEFAULT:default> \
+  -port <TARGET_PORT|DEFAULT:1226>
+```
 
 Post-installation process:
 
@@ -118,11 +121,11 @@ Data are transmitted via web API in csv format which D3.js can understand.
 #### ~*`df` Output*~
 
 * Parsed raw `df` output to monitor device size and device usage.
-* Used `-kP` flags in order to get coherent outputs from `df` across distributions.
+* Used `-kP` flags in order to get consistent outputs from `df` across distributions.
 
 #### *`statvfs`*
 
-* Found `df` uses `statvfs` for device information
+* In the `df` source code, I found it uses `statvfs` for device information
 * Used `cgo` to use the function directly
 
 
