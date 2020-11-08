@@ -31,7 +31,9 @@ The install procedure is as follows:
 1. Exit the app and modify the configuration to your taste.
 1. Distribute the binary file, `telescribe`, to client machines.
 1. You can start the application on your client machines by: 
-> ```./telescribe -host <IP_ADDRESS/DOMAIN> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>```
+> ```shell
+> ./telescribe -host <IP_ADDRESS/DOMAIN> -alias <ALIAS_NAME|DEFAULT:default> -port <TARGET_PORT|DEFAULT:1226>
+> ```
 
 Post-installation process:
 
@@ -48,13 +50,13 @@ I started this personal project to learn about servers, monitoring, secure proto
 
 Hybrid encryption is currently deprecated.
 
-* Every packet was encrypted using a new key and AES, and that key was encrypted using RSA public keys.
+* Every packet was encrypted using AES 256 GCM with a new key, and that key was encrypted using RSA public keys.
 * This was done because of the content size limit of RSA encryption.
 
 #### *Master Secret*
 
-* A new master secret for each session was created at the handshake process using ECDSA.
-* The master secret, then, was used for AES encryption.
+* A new master secret for each session was created at the handshake process using ECC P256.
+* The master secret, then, was used for AES 256 GCM encryption.
 * Every packet includes a nonce and AES-encrypted data.
 
 
@@ -133,19 +135,6 @@ And when it acts as a server, it handles connections from telescribe clients and
 Telescribe is designed in such a way that the only thing you have to worry about is the machine that acts as a server; client configurations can be modified on the server and they are to be delivered and applied along with the very next packet; when an update was made to the server executable and the version does not match with that of a client, the server will give the client its executable and the client will update itself and restart. And in order to prevent any MITM attack that may coorupt the configuration or the executable file, the server has its private key to sign the data. Clients, therefore, have its known hosts list that contain the public key fingerprints of the servers they have identified and thus consider authentic.
 
 
-## Components
-
-- **Elliptic Curve:** App uses elliptic curve to simultaenously create master secret for symmertic encryption.
-- **Symmetric Encryption:** App uses AES 256 GCM to encrypt and decrypt packets. Each encrypted packet includes a nonce and encrypted data.
-- **Port Forwarding:** HTTP runs on a random port that is only bound to localhost. The main listener recognizes the protocol for each connection and it forwards to HTTP if it is an HTTP request and calls Telescribe methods if it is a telescribe request.
-- **Monitoring:** A telescribe client uses files such as `/proc/stat` and `/proc/meminfo` to analyze the current status of the machine
-- **Private Key Signing:** App uses ECDSA P256 to sign and verify packets from clients and servers. A telescribe server has its own private key to sign data whose integrity is crucial. And the client stores the public keys of the servers and use them to verify the servers and the data they give.
-- **Packet Packing:** Each packet has a record header and several varints to hint the app how many bytes to read.
-- **~~Gob Encoding:~~** To serialize the monitored data and cache them as files.
-- **~~Data Decimation:~~** For compressing all the monitoring data into a set of the most relevant and concise data
-- **~~Hybrid Encryption:~~**(removed) Due to the limit of data length of RSA encryption, it first encrypts data with a key that is randomly generated at every instance using AES. Secondly, it encrypts the AES key with the given RSA public key.
-
-
 ## Web Design
 
 The exterior-wise design is mainly done on the following Figma document:
@@ -167,7 +156,7 @@ Note that, however, the above document is not a faithful representation of the w
 ## TODO (beta)
 
 1. IPv6 support
-1. Config validators
+1. ~~Config validators~~
 1. Custom executables in client configs, which are sent from the server to clients' machines for custom metrics
 1. Web anchors(#) or queries for fullName, timestamp, and selected items
 1. Client config mixins
@@ -177,16 +166,15 @@ Note that, however, the above document is not a faithful representation of the w
 
 ## TODO (pre-beta)
 
-1. Data aggregates
-1. Deprecate gob encoding and fully implement byte-level encoding
+1. ~~Data aggregates~~
+1. ~~Deprecate gob encoding and fully implement byte-level encoding~~
+1. Proper HTTPS support
 1. Protocol documentation
 1. Monitor documentation
-1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, Mint Linux, macOS(maybe) using LightSail
+1. Compatibility test for Debian, CentOS(Red Hat), Fedora, Ubuntu, and Mint Linux using LightSail
 
 
 ## TODO (alpha)
-
-Telescribe is currently at alpha stage. When all of the followings get done, it will be its beta stage.
 
 1. ~~Better handling of responses and requests~~
 1. ~~Elliptic curve encryption~~
