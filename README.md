@@ -111,6 +111,19 @@ Data are transmitted via web API in csv format which D3.js can understand.
 * Also, the graph web component was modified to only fetch the visible part of data; previously, the web UI fetched the entire data when plotting.
 
 
+### Disk Monitoring
+
+#### ~*`df` Output*~
+
+* Parsed raw `df` output to monitor device size and device usage.
+* Used `-kP` flags in order to get coherent outputs from `df` across distributions.
+
+#### *`statvfs`*
+
+* Found `df` uses `statvfs` for device information
+* Used `cgo` to use the function directly
+
+
 ## Introduction
 
 Telescribe is a standalone app that can act either as a server or a client, which is used for monitoring machines. When it acts as a client, it monitors the machine that it is on and sends the data to its designated server. And for the configuration of each client is all stored in the server and is given to each client at handshake, client machines have to have nothing but the executable file.

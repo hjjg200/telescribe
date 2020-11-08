@@ -24,9 +24,9 @@ First version that complies with the documentation
 - [x] **Added:** `server` added a value min-max info in the indexes for graph drawing
 - [ ] **Fixed:** `web` aggregate tends to change min and max values for monitor data; consider per-segment y axis drawing
 - [x] **Added:** `web` aggregate buttons for Client component
+- [x] **Added:** `web` graph shows points when data count is relatively low
 - [ ] **Changed:** `web` better mouse(touch) events for better accuracy
 - [ ] **Fixed:** `server` added a handler for corrupted indexes file or store files
-- [ ] **Fixed:** `web` fixed graph gap issue that appeared after aggregate implementation
 - [ ] **Changed:** `server` the format for indexes file is separated into a mother json file and children csv files which are more efficient for append-oriented tasks
 
 
@@ -34,7 +34,6 @@ First version that complies with the documentation
 
 - [ ] No error stacks for clients and server storage size information
 - [ ] No indicator for status and disabled status for clients not sending data
-- [ ] GapThresholdTime might have to be per-client, such as monitorInterval + 1 minute
 - [ ] `web` 66.65, 66.67, and 66.69 all become 6.66e+1
 - [ ] `web` sometimes mousemove event takes much more time than usual
 

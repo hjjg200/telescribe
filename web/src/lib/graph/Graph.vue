@@ -338,6 +338,7 @@ export default {
           // Restore scroll left and hand x position
           handX      = xScale(priorHandT);
           scrollLeft = Math.max(0, handX - graphRect.width * priorHandXEnRectPercent);
+          $._priorHandXEnRectPercent = priorHandXEnRectPercent;
 
           // When the hand is outside the graph, default to default position
           if(!(scrollLeft <= handX && handX <= scrollLeft + graphRect.width)) {
@@ -595,6 +596,7 @@ export default {
       { // Hand, Points and Tooltip and Touch Interface
         let isMouseDown = false;
         let isTouch     = false;
+        let priorHandXEnRectPercent = $._priorHandXEnRectPercent;
 
         // Bisect is used to get the nearest point to a timestamp
         let bisect = function(slice, x, accessor) {
@@ -617,11 +619,21 @@ export default {
           // No onLine events as paths trigger mouse events in a rectangle shape.
           let mouse      = d3.mouse(projection.node());
           let [mX, mY]   = mouse;
-          let x          = xScale.invert(mX);
           let dataset    = $.dataset;
           let yScale     = $._yScale;
           let scrollLeft = segmentsWrap.node().scrollLeft;
           let newModel   = {};
+
+          // Scroll
+          let x;
+          let isScroll   = event.type === "scroll";
+          if(isScroll) // Scroll does not change x pos
+            x = xScale.invert(scrollLeft + ($._width * priorHandXEnRectPercent));
+          else {
+            x = xScale.invert(mX);
+            priorHandXEnRectPercent = (mX - scrollLeft) / $._width;
+          }
+
 
           // Reset stroke width
           d3.selectAll(".line")
@@ -638,7 +650,7 @@ export default {
             // Thicken
             $._lines[key].forEach(
               line => d3.select(line)
-                .attr("stroke-width", 2)
+                .attr("stroke-width", 3)
             );
           }
 
@@ -983,29 +995,51 @@ export default {
           continue;
 
         // Add paths
+        // TODO add the first and the last point of the neighboring segment
+        let leftDataset, rightDataset;
+        if(i > 0 && segmentInfos[i - 1].drawn) {
+          // left exists
+          leftDataset = segmentInfos[i - 1].dataset;
+        }
+        if(i < segmentInfos.length - 1 && segmentInfos[i + 1].drawn) {
+          // right exists
+          rightDataset = segmentInfos[i + 1].dataset;
+        }
+
         for(let j = 0; j < segDataGroups.length; j++) {
           let each = segDataGroups[j];
-          let dataLength = each.data.length;
+          let data = each.data.slice(0);
+          let dataLength = data.length;
 
-          if(dataLength * 6 >= segWidth) {
-            // Path
-            seg.append("path")
-              .call(function(sel) {$._lines[each.key].push(sel.node());})
-              .attr("class", "line")
-              .attr("fill", "none")
-              .attr("data-key", each.key)
-              .attr("stroke", $.dataset[each.key].color)
-              .attr("stroke-width", 1)
-              .attr("d", d3.line()
-                .defined(e => !isNaN($.asy(e)))
-                .x(e => xScale($.asx(e)))
-                .y(e => yScale($.asy(e)))
-                (each.data)
-              );
-          } else {
+          // Prepend and append
+          if(leftDataset) {
+            let lhs = leftDataset[each.key];
+            data.unshift(lhs[lhs.length - 1]);
+          }
+          if(rightDataset) {
+            let rhs = rightDataset[each.key];
+            data.push(rhs[0]);
+          }
+
+          // Path
+          seg.append("path")
+            .call(function(sel) {$._lines[each.key].push(sel.node());})
+            .attr("class", "line")
+            .attr("fill", "none")
+            .attr("data-key", each.key)
+            .attr("stroke", $.dataset[each.key].color)
+            .attr("stroke-width", 1)
+            .attr("d", d3.line()
+              .defined(e => !isNaN($.asy(e)))
+              .x(e => xScale($.asx(e)))
+              .y(e => yScale($.asy(e)))
+              (data)
+            );
+
+          if(dataLength * 6 < segWidth) {
             // Circles
             seg.selectAll("circles")
-              .data(each.data)
+              .data(data)
               .enter()
               .filter(e => !isNaN($.asy(e))) // Check NaN
               .append("circle")
