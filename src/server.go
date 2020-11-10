@@ -69,6 +69,7 @@ var DefaultServerConfig = ServerConfig{
             Password: "",
             Permissions: []string{
                 "api/v1.get.*",
+                "api/v1.post.*",
             },
         },
     },
