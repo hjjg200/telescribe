@@ -15,7 +15,7 @@
     "@vue/cli-service": "^4.5.7",
     "d3": "^5.16.0",
     "moment": "^2.29.1",
-    "node-sass": "^4.14.1",
+    "node-sass": "^7.0.0",
     "sass-loader": "^8.0.2",
     "serialize-javascript": "^2.1.2",
     "v-click-outside": "^2.1.5",
